@@ -1,20 +1,16 @@
 "use client";
 
-import React, { useRef, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import React, { useRef } from "react";
+import { motion, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
+import { SPRING_MAGNETIC, SPRING_UI } from "@/lib/motion";
 
-export const HEAVY_PRECISION_SPRING = {
-  type: "spring" as const,
-  stiffness: 260,
-  damping: 28,
-  mass: 1.2,
-};
+/** Preserved exports for backward compatibility */
+export const HEAVY_PRECISION_SPRING = SPRING_UI;
 
 export const KINETIC_SNAP_SPRING = {
   type: "spring" as const,
-  stiffness: 420,
-  damping: 32,
-  mass: 0.8,
+  duration: 0.3,
+  bounce: 0,
 };
 
 interface MagneticButtonProps {
@@ -26,6 +22,7 @@ interface MagneticButtonProps {
   disabled?: boolean;
   id?: string;
   title?: string;
+  "aria-label"?: string;
 }
 
 export function MagneticButton({
@@ -37,26 +34,45 @@ export function MagneticButton({
   disabled = false,
   id,
   title,
+  "aria-label": ariaLabel,
 }: MagneticButtonProps) {
   const ref = useRef<HTMLButtonElement>(null);
   const prefersReducedMotion = useReducedMotion();
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (prefersReducedMotion || disabled || !ref.current) return;
+  const rawX = useMotionValue(0);
+  const rawY = useMotionValue(0);
+  const x = useSpring(rawX, SPRING_MAGNETIC);
+  const y = useSpring(rawY, SPRING_MAGNETIC);
+
+  const canUseFinePointer = () => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (
+      prefersReducedMotion ||
+      disabled ||
+      e.pointerType !== "mouse" ||
+      !canUseFinePointer() ||
+      !ref.current
+    ) {
+      return;
+    }
+
     const rect = ref.current.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
     const deltaX = ((e.clientX - centerX) / (rect.width / 2)) * strength;
     const deltaY = ((e.clientY - centerY) / (rect.height / 2)) * strength;
-    setOffset({
-      x: Math.max(-strength, Math.min(strength, deltaX)),
-      y: Math.max(-strength, Math.min(strength, deltaY)),
-    });
+
+    rawX.set(Math.max(-strength, Math.min(strength, deltaX)));
+    rawY.set(Math.max(-strength, Math.min(strength, deltaY)));
   };
 
-  const handleMouseLeave = () => {
-    setOffset({ x: 0, y: 0 });
+  const handlePointerLeave = () => {
+    rawX.set(0);
+    rawY.set(0);
   };
 
   return (
@@ -64,14 +80,14 @@ export function MagneticButton({
       ref={ref}
       id={id}
       title={title}
+      aria-label={ariaLabel}
       type={type}
       disabled={disabled}
       onClick={onClick}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      animate={{ x: offset.x, y: offset.y }}
-      transition={KINETIC_SNAP_SPRING}
-      className={`cursor-pointer select-none ${className}`}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
+      style={prefersReducedMotion ? undefined : { x, y }}
+      className={`cursor-pointer select-none transition-[background-color,border-color,color,scale] duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:active:scale-100 ${className}`}
     >
       {children}
     </motion.button>

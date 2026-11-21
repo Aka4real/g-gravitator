@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Search,
   LayoutGrid,
@@ -12,14 +19,15 @@ import {
   X,
   CheckCircle2,
   Radar,
+  RotateCcw,
 } from "lucide-react";
-import { CrosshairCell } from "@/components/kinetic/CrosshairCell";
 import { CountdownTimer } from "@/components/hackathons/CountdownTimer";
 import {
   SourceBadges,
   OxakalabsStatusBadge,
 } from "@/components/hackathons/SourceBadges";
 import { generateHackathonIcs } from "@/lib/ics";
+import { SPRING_SHEET, SPRING_UI } from "@/lib/motion";
 import type {
   Hackathon,
   HackathonFormat,
@@ -34,17 +42,24 @@ interface HackathonRadarProps {
 }
 
 const SOURCE_CHIPS: { key: HackathonProvider | "all"; label: string }[] = [
-  { key: "all", label: "All Sources" },
+  { key: "all", label: "All sources" },
   { key: "twitter", label: "X (Twitter)" },
   { key: "devpost", label: "Devpost" },
   { key: "dorahacks", label: "DoraHacks" },
   { key: "lablab", label: "Lablab.ai" },
-  { key: "luma", label: "Luma / CV" },
+  { key: "luma", label: "Luma" },
   { key: "mlh", label: "MLH" },
   { key: "ethglobal", label: "ETHGlobal" },
   { key: "kaggle", label: "Kaggle" },
   { key: "devfolio", label: "Devfolio" },
   { key: "unstop", label: "Unstop" },
+];
+
+const FORMAT_OPTIONS: { key: HackathonFormat | "ALL"; label: string }[] = [
+  { key: "ALL", label: "All" },
+  { key: "ONLINE", label: "Online" },
+  { key: "IN_PERSON", label: "In-person" },
+  { key: "HYBRID", label: "Hybrid" },
 ];
 
 const THEME_CHIPS = [
@@ -59,12 +74,60 @@ const THEME_CHIPS = [
   "Hardware",
 ];
 
+const BOOKMARKS_KEY = "gg_hackathon_bookmarks";
+const EMPTY_BOOKMARKS: string[] = [];
+const bookmarkListeners = new Set<() => void>();
+let cachedBookmarksRaw: string | null = null;
+let cachedBookmarksList: string[] = EMPTY_BOOKMARKS;
+
+function subscribeBookmarks(listener: () => void): () => void {
+  bookmarkListeners.add(listener);
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === BOOKMARKS_KEY) listener();
+  };
+  window.addEventListener("storage", handleStorage);
+  return () => {
+    bookmarkListeners.delete(listener);
+    window.removeEventListener("storage", handleStorage);
+  };
+}
+
+function getBookmarksSnapshot(): string[] {
+  try {
+    const raw = window.localStorage.getItem(BOOKMARKS_KEY);
+    if (raw === cachedBookmarksRaw) return cachedBookmarksList;
+    cachedBookmarksRaw = raw;
+    if (!raw) {
+      cachedBookmarksList = EMPTY_BOOKMARKS;
+      return cachedBookmarksList;
+    }
+    const parsed: unknown = JSON.parse(raw);
+    cachedBookmarksList = Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string")
+      : EMPTY_BOOKMARKS;
+    return cachedBookmarksList;
+  } catch {
+    return EMPTY_BOOKMARKS;
+  }
+}
+
+function getBookmarksServerSnapshot(): string[] {
+  return EMPTY_BOOKMARKS;
+}
+
+function formatFormatLabel(fmt: HackathonFormat): string {
+  if (fmt === "IN_PERSON") return "In-person";
+  if (fmt === "HYBRID") return "Hybrid";
+  return "Online";
+}
+
 export function HackathonRadar({
   initialHackathons,
   lastSyncAt,
   initialQuery = "",
   initialOpenSubmit = false,
 }: HackathonRadarProps) {
+  const prefersReducedMotion = useReducedMotion();
   const [hackathons, setHackathons] = useState<Hackathon[]>(initialHackathons);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedSource, setSelectedSource] = useState<HackathonProvider | "all">("all");
@@ -75,7 +138,14 @@ export function HackathonRadar({
   >("closing_soon");
   const [viewMode, setViewMode] = useState<"GRID" | "TABLE">("GRID");
   const [bookmarksOnly, setBookmarksOnly] = useState(false);
-  const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const bookmarks = useSyncExternalStore(
+    subscribeBookmarks,
+    getBookmarksSnapshot,
+    getBookmarksServerSnapshot
+  );
+
+  // Hydration-safe current timestamp (never evaluated during SSR / first hydration pass)
+  const [nowMs, setNowMs] = useState<number | null>(null);
 
   // Community Submission Modal State
   const [submitModalOpen, setSubmitModalOpen] = useState(initialOpenSubmit);
@@ -86,25 +156,47 @@ export function HackathonRadar({
   const [submittedCandidate, setSubmittedCandidate] = useState<Hackathon | null>(null);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("gg_hackathon_bookmarks");
-      if (saved) setBookmarks(JSON.parse(saved));
-    } catch {
-      // Ignore localStorage error
-    }
+    const syncNow = () => setNowMs(Date.now());
+    const kickoff = window.setTimeout(syncNow, 0);
+    const interval = window.setInterval(syncNow, 60_000);
+    return () => {
+      window.clearTimeout(kickoff);
+      window.clearInterval(interval);
+    };
   }, []);
 
-  const toggleBookmark = (id: string) => {
-    setBookmarks((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      try {
-        localStorage.setItem("gg_hackathon_bookmarks", JSON.stringify(next));
-      } catch {
-        // Ignore
+  // Escape key dismissal + scroll lock when modal is open
+  useEffect(() => {
+    if (!submitModalOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSubmitModalOpen(false);
       }
-      return next;
-    });
-  };
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [submitModalOpen]);
+
+  const toggleBookmark = useCallback((id: string) => {
+    const current = getBookmarksSnapshot();
+    const next = current.includes(id)
+      ? current.filter((x) => x !== id)
+      : [...current, id];
+    const serialized = JSON.stringify(next);
+    cachedBookmarksRaw = serialized;
+    cachedBookmarksList = next;
+    try {
+      window.localStorage.setItem(BOOKMARKS_KEY, serialized);
+    } catch {
+      // Ignore storage write error
+    }
+    bookmarkListeners.forEach((listener) => listener());
+  }, []);
 
   const handleDownloadIcs = (hack: Hackathon) => {
     const icsContent = generateHackathonIcs(hack);
@@ -118,6 +210,21 @@ export function HackathonRadar({
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+
+  const resetFilters = () => {
+    setSearchQuery("");
+    setSelectedSource("all");
+    setSelectedFormat("ALL");
+    setSelectedTheme("ALL");
+    setBookmarksOnly(false);
+  };
+
+  const hasActiveFilters =
+    searchQuery.trim().length > 0 ||
+    selectedSource !== "all" ||
+    selectedFormat !== "ALL" ||
+    selectedTheme !== "ALL" ||
+    bookmarksOnly;
 
   const filteredHackathons = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -175,23 +282,33 @@ export function HackathonRadar({
     bookmarks,
   ]);
 
-  // Top Telemetry Metrics
-  const totalPrizeUsd = hackathons.reduce(
-    (acc, h) => acc + (h.prize_pool_usd ?? 0),
-    0
+  // Hydration-safe top telemetry figures
+  const totalPrizeUsd = useMemo(
+    () => hackathons.reduce((acc, h) => acc + (h.prize_pool_usd ?? 0), 0),
+    [hackathons]
   );
-  const closingUnder72h = hackathons.filter((h) => {
-    const diff = new Date(h.deadline_at).getTime() - Date.now();
-    return diff > 0 && diff < 72 * 3600 * 1000;
-  }).length;
-  const xSignalCount = hackathons.filter((h) =>
-    h.sources.some((s) => s.provider === "twitter")
-  ).length;
 
-  const syncMinutesAgo = Math.max(
-    1,
-    Math.round((Date.now() - new Date(lastSyncAt).getTime()) / 60000)
+  const closingUnder72h = useMemo(() => {
+    if (nowMs === null) return null;
+    return hackathons.filter((h) => {
+      const diff = new Date(h.deadline_at).getTime() - nowMs;
+      return diff > 0 && diff < 72 * 3600 * 1000;
+    }).length;
+  }, [hackathons, nowMs]);
+
+  const xSignalCount = useMemo(
+    () =>
+      hackathons.filter((h) => h.sources.some((s) => s.provider === "twitter"))
+        .length,
+    [hackathons]
   );
+
+  const syncMinutesAgo = useMemo(() => {
+    if (nowMs === null) return null;
+    const syncMs = new Date(lastSyncAt).getTime();
+    if (Number.isNaN(syncMs)) return null;
+    return Math.max(1, Math.round((nowMs - syncMs) / 60_000));
+  }, [lastSyncAt, nowMs]);
 
   const handleSubmitUrl = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -210,12 +327,11 @@ export function HackathonRadar({
       });
       const data = await res.json();
       if (!res.ok) {
-        setSubmitError(data.error || "Verification gate rejected URL.");
+        setSubmitError(data.error || "Verification gate rejected this URL.");
       } else {
         const cand = data.candidate as Hackathon;
         setSubmittedCandidate(cand);
         if (cand.is_published) {
-          // Refresh local list
           const refreshed = await fetch("/api/hackathons").then((r) => r.json());
           if (Array.isArray(refreshed.hackathons)) {
             setHackathons(refreshed.hackathons);
@@ -223,82 +339,81 @@ export function HackathonRadar({
         }
       }
     } catch {
-      setSubmitError("Network error communicating with verification pipeline.");
+      setSubmitError("Network error communicating with the verification pipeline.");
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div>
-      {/* =====================================================================
-          1. TOP TELEMETRY STRIP (AEROSPACE MISSION CONTROL READOUT)
-         ===================================================================== */}
-      <div className="grid grid-cols-2 divide-x divide-y divide-[#27272A] border-b border-[#27272A] bg-[#111114] sm:grid-cols-5 sm:divide-y-0">
-        <div className="px-5 py-4">
-          <div className="font-mono-telemetry text-[10px] text-[#71717A]">
-            TOTAL ACTIVE
+    <div className="min-w-0">
+      {/* Compact Metric Pills & Primary Submit Trigger */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-[#111114] px-3.5 py-2 text-xs">
+            <span
+              aria-hidden="true"
+              className="h-1.5 w-1.5 rounded-full bg-[#10B981]"
+            />
+            <span className="font-mono-telemetry font-semibold text-[#F4F3EF]">
+              {hackathons.length}
+            </span>
+            <span className="text-[#A1A1AA]">active events</span>
           </div>
-          <div className="font-display mt-1 text-2xl font-extrabold text-[#F3F2EE]">
-            {hackathons.length} EVENTS
+
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-[#111114] px-3.5 py-2 text-xs">
+            <span className="font-mono-telemetry font-semibold text-[#34D399]">
+              ${totalPrizeUsd.toLocaleString("en-US")}
+            </span>
+            <span className="text-[#A1A1AA]">in prizes</span>
+          </div>
+
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-[#FF3B1F]/25 bg-[#FF3B1F]/[0.08] px-3.5 py-2 text-xs">
+            <span className="font-mono-telemetry font-semibold text-[#FF8A7A]">
+              {closingUnder72h === null ? "--" : closingUnder72h}
+            </span>
+            <span className="text-[#D4D4D8]">closing &lt;72h</span>
+          </div>
+
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-[#111114] px-3.5 py-2 text-xs">
+            <span className="font-mono-telemetry font-semibold text-[#F4F3EF]">
+              {xSignalCount}
+            </span>
+            <span className="text-[#A1A1AA]">X signals</span>
+          </div>
+
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.07] bg-transparent px-3 py-2 text-xs text-[#8B8B94]">
+            <span>Synced</span>
+            <span className="font-mono-telemetry text-[#A1A1AA]">
+              {syncMinutesAgo === null ? "recently" : `${syncMinutesAgo}m ago`}
+            </span>
           </div>
         </div>
-        <div className="px-5 py-4">
-          <div className="font-mono-telemetry text-[10px] text-[#71717A]">
-            COMBINED PRIZE POOL
-          </div>
-          <div className="font-display mt-1 text-2xl font-extrabold text-[#10B981]">
-            ${totalPrizeUsd.toLocaleString("en-US")}
-          </div>
-        </div>
-        <div className="px-5 py-4">
-          <div className="font-mono-telemetry text-[10px] text-[#71717A]">
-            CLOSING &lt; 72H
-          </div>
-          <div className="font-display mt-1 text-2xl font-extrabold text-[#FF3B1F]">
-            {closingUnder72h} URGENT
-          </div>
-        </div>
-        <div className="px-5 py-4">
-          <div className="font-mono-telemetry text-[10px] text-[#71717A]">
-            X / TWITTER SIGNALS
-          </div>
-          <div className="font-display mt-1 text-2xl font-extrabold text-[#F3F2EE]">
-            {xSignalCount} VERIFIED
-          </div>
-        </div>
-        <div className="col-span-2 flex items-center justify-between px-5 py-4 sm:col-span-1">
-          <div>
-            <div className="font-mono-telemetry text-[10px] text-[#71717A]">
-              LAST SYNC
-            </div>
-            <div className="font-mono-telemetry mt-1 text-xs font-bold text-[#10B981]">
-              {syncMinutesAgo}M AGO // NOMINAL
-            </div>
-          </div>
-          <button
-            type="button"
-            id="open-submit-hackathon-modal"
-            onClick={() => setSubmitModalOpen(true)}
-            className="font-mono-telemetry inline-flex items-center gap-1.5 bg-[#FF3B1F] px-3 py-2 text-[10px] font-bold text-[#09090B] hover:bg-[#F3F2EE]"
-          >
-            <Plus className="h-3.5 w-3.5" strokeWidth={2} />
-            <span>SUBMIT X / LINK</span>
-          </button>
-        </div>
+
+        <button
+          type="button"
+          id="open-submit-hackathon-modal"
+          onClick={() => setSubmitModalOpen(true)}
+          className="press-tactile inline-flex h-10 shrink-0 cursor-pointer items-center justify-center gap-1.5 self-start rounded-full bg-[#FF3B1F] px-5 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238] sm:self-auto"
+        >
+          <Plus className="h-4 w-4" strokeWidth={2} />
+          <span>Submit X or link</span>
+        </button>
       </div>
 
-      {/* =====================================================================
-          2. STICKY PRECISION FILTER BAR
-         ===================================================================== */}
-      <div className="sticky top-16 z-30 border-b border-[#27272A] bg-[#09090B]/95 px-6 py-4 backdrop-blur-md lg:px-10">
-        {/* Top Row: Search + Format + Sort + View Switcher */}
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      {/* Floating Frosted Filter Toolbar */}
+      <div className="glass-chrome mt-6 rounded-2xl p-4 sm:p-5 lg:sticky lg:top-[76px] lg:z-20">
+        {/* Top Row: Search + Format + Sort + Saved + View Switcher */}
+        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center">
           {/* Instant Search Input */}
-          <div className="relative flex-1">
+          <div className="relative min-w-0 flex-1">
+            <label htmlFor="hackathon-search-input" className="sr-only">
+              Search hackathons
+            </label>
             <Search
-              className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[#FF3B1F]"
-              strokeWidth={1.5}
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[#8B8B94]"
+              strokeWidth={1.6}
             />
             <input
               type="text"
@@ -306,215 +421,297 @@ export function HackathonRadar({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name, sponsor (DeepMind, Anthropic, Vercel), stack, or theme..."
-              className="w-full border border-[#27272A] bg-[#111114] py-2.5 pr-4 pl-10 text-xs text-[#F3F2EE] placeholder-[#71717A] focus:border-[#FF3B1F] focus:outline-none"
+              className="h-10 w-full min-w-0 rounded-xl border border-white/[0.12] bg-[#0B0B0E]/85 pr-9 pl-10 text-sm text-[#F4F3EF] placeholder:text-[#8B8B94] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/25 focus:outline-none"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                aria-label="Clear search query"
+                className="absolute top-1/2 right-2.5 -translate-y-1/2 rounded-full p-1 text-[#8B8B94] transition-colors hover:bg-white/[0.08] hover:text-[#F4F3EF]"
+              >
+                <X className="h-3.5 w-3.5" strokeWidth={1.8} />
+              </button>
+            )}
           </div>
 
-          {/* Format Toggle */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex border border-[#27272A] bg-[#111114] p-0.5">
-              {(["ALL", "ONLINE", "IN_PERSON", "HYBRID"] as const).map((fmt) => (
-                <button
-                  key={fmt}
-                  type="button"
-                  onClick={() => setSelectedFormat(fmt)}
-                  className={`font-mono-telemetry px-2.5 py-1.5 text-[10px] transition-colors ${
-                    selectedFormat === fmt
-                      ? "bg-[#FF3B1F] font-bold text-[#09090B]"
-                      : "text-[#A1A1AA] hover:text-[#F3F2EE]"
-                  }`}
-                >
-                  {fmt === "IN_PERSON" ? "IN-PERSON" : fmt}
-                </button>
-              ))}
+          {/* Right Control Cluster */}
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {/* Format Segmented Control */}
+            <div
+              role="group"
+              aria-label="Hackathon format"
+              className="inline-flex max-w-full items-center overflow-x-auto rounded-full border border-white/[0.08] bg-[#0B0B0E]/90 p-1"
+            >
+              {FORMAT_OPTIONS.map((fmt) => {
+                const active = selectedFormat === fmt.key;
+                return (
+                  <button
+                    key={fmt.key}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setSelectedFormat(fmt.key)}
+                    className={`press-tactile relative shrink-0 cursor-pointer rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
+                      active
+                        ? "text-[#08080A]"
+                        : "text-[#A1A1AA] hover:text-[#F4F3EF]"
+                    }`}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="hackathon-format-pill"
+                        transition={prefersReducedMotion ? { duration: 0.1 } : SPRING_UI}
+                        className="absolute inset-0 rounded-full bg-[#F4F3EF]"
+                      />
+                    )}
+                    <span className="relative z-10">{fmt.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Sort Selector */}
-            <select
-              id="hackathon-sort-select"
-              value={sortBy}
-              onChange={(e) =>
-                setSortBy(
-                  e.target.value as
-                    | "closing_soon"
-                    | "prize_pool"
-                    | "newest"
-                    | "oxakalabs"
-                )
-              }
-              className="font-mono-telemetry border border-[#27272A] bg-[#111114] px-3 py-2 text-[10px] text-[#F3F2EE] focus:border-[#FF3B1F] focus:outline-none"
-            >
-              <option value="closing_soon">SORT: CLOSING SOONEST</option>
-              <option value="prize_pool">SORT: HIGHEST PRIZE POOL</option>
-              <option value="newest">SORT: NEWLY DISCOVERED</option>
-              <option value="oxakalabs">SORT: OXAKALABS PICKS</option>
-            </select>
+            <div className="min-w-0">
+              <label htmlFor="hackathon-sort-select" className="sr-only">
+                Sort hackathons
+              </label>
+              <select
+                id="hackathon-sort-select"
+                value={sortBy}
+                onChange={(e) =>
+                  setSortBy(
+                    e.target.value as
+                      | "closing_soon"
+                      | "prize_pool"
+                      | "newest"
+                      | "oxakalabs"
+                  )
+                }
+                className="h-9 max-w-full cursor-pointer rounded-xl border border-white/[0.12] bg-[#111114] px-3 text-xs font-medium text-[#F4F3EF] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/25 focus:outline-none"
+              >
+                <option value="closing_soon">Sort: Closing soonest</option>
+                <option value="prize_pool">Sort: Highest prize pool</option>
+                <option value="newest">Sort: Newly discovered</option>
+                <option value="oxakalabs">Sort: OXAKALABS picks</option>
+              </select>
+            </div>
 
             {/* Bookmarks Filter */}
             <button
               type="button"
+              aria-pressed={bookmarksOnly}
               onClick={() => setBookmarksOnly((v) => !v)}
-              className={`font-mono-telemetry inline-flex items-center gap-1 border px-2.5 py-2 text-[10px] transition-colors ${
+              className={`press-tactile inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 text-xs font-medium whitespace-nowrap ${
                 bookmarksOnly
-                  ? "border-[#FF3B1F] bg-[#FF3B1F]/20 text-[#FF3B1F]"
-                  : "border-[#27272A] bg-[#111114] text-[#A1A1AA] hover:text-[#F3F2EE]"
+                  ? "border-[#FF3B1F]/40 bg-[#FF3B1F]/15 text-[#FF8A7A]"
+                  : "border-white/[0.09] bg-[#111114] text-[#A1A1AA] hover:border-white/[0.18] hover:text-[#F4F3EF]"
               }`}
             >
-              <Bookmark className="h-3 w-3" strokeWidth={1.5} />
-              <span>SAVED ({bookmarks.length})</span>
+              <Bookmark className="h-3.5 w-3.5" strokeWidth={1.6} />
+              <span>Saved</span>
+              <span className="font-mono-telemetry text-[11px]">
+                ({bookmarks.length})
+              </span>
             </button>
 
-            {/* View Switcher: Grid Cards vs Compact Telemetry Table */}
-            <div className="inline-flex border border-[#27272A] bg-[#111114] p-0.5">
+            {/* View Switcher: Grid vs Table */}
+            <div
+              role="group"
+              aria-label="Layout view"
+              className="inline-flex shrink-0 items-center rounded-full border border-white/[0.08] bg-[#0B0B0E]/90 p-1"
+            >
               <button
                 type="button"
                 id="view-mode-grid"
+                aria-label="Grid cards view"
+                aria-pressed={viewMode === "GRID"}
                 onClick={() => setViewMode("GRID")}
-                title="Grid Cards View"
-                className={`p-1.5 ${
+                title="Grid view"
+                className={`press-tactile relative flex h-7 w-8 cursor-pointer items-center justify-center rounded-full transition-colors ${
                   viewMode === "GRID"
-                    ? "bg-[#FF3B1F] text-[#09090B]"
-                    : "text-[#A1A1AA] hover:text-[#F3F2EE]"
+                    ? "text-[#08080A]"
+                    : "text-[#A1A1AA] hover:text-[#F4F3EF]"
                 }`}
               >
-                <LayoutGrid className="h-3.5 w-3.5" strokeWidth={1.5} />
+                {viewMode === "GRID" && (
+                  <motion.span
+                    layoutId="hackathon-view-pill"
+                    transition={prefersReducedMotion ? { duration: 0.1 } : SPRING_UI}
+                    className="absolute inset-0 rounded-full bg-[#F4F3EF]"
+                  />
+                )}
+                <LayoutGrid className="relative z-10 h-3.5 w-3.5" strokeWidth={1.7} />
               </button>
               <button
                 type="button"
                 id="view-mode-table"
+                aria-label="Compact table view"
+                aria-pressed={viewMode === "TABLE"}
                 onClick={() => setViewMode("TABLE")}
-                title="Compact Telemetry Table View"
-                className={`p-1.5 ${
+                title="Table view"
+                className={`press-tactile relative flex h-7 w-8 cursor-pointer items-center justify-center rounded-full transition-colors ${
                   viewMode === "TABLE"
-                    ? "bg-[#FF3B1F] text-[#09090B]"
-                    : "text-[#A1A1AA] hover:text-[#F3F2EE]"
+                    ? "text-[#08080A]"
+                    : "text-[#A1A1AA] hover:text-[#F4F3EF]"
                 }`}
               >
-                <TableIcon className="h-3.5 w-3.5" strokeWidth={1.5} />
+                {viewMode === "TABLE" && (
+                  <motion.span
+                    layoutId="hackathon-view-pill"
+                    transition={prefersReducedMotion ? { duration: 0.1 } : SPRING_UI}
+                    className="absolute inset-0 rounded-full bg-[#F4F3EF]"
+                  />
+                )}
+                <TableIcon className="relative z-10 h-3.5 w-3.5" strokeWidth={1.7} />
               </button>
             </div>
           </div>
         </div>
 
-        {/* Middle Row: Source Filter Chips */}
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <span className="font-mono-telemetry mr-1 text-[10px] text-[#71717A]">
-            SOURCE:
-          </span>
-          {SOURCE_CHIPS.map((src) => {
-            const active = selectedSource === src.key;
-            return (
-              <button
-                key={src.key}
-                type="button"
-                id={`source-chip-${src.key}`}
-                onClick={() => setSelectedSource(src.key)}
-                className={`font-mono-telemetry border px-2.5 py-1 text-[10px] transition-colors ${
-                  active
-                    ? "border-[#FF3B1F] bg-[#FF3B1F] font-bold text-[#09090B]"
-                    : "border-[#27272A] bg-[#111114] text-[#A1A1AA] hover:border-[#3F3F46] hover:text-[#F3F2EE]"
-                }`}
-              >
-                {src.label}
-              </button>
-            );
-          })}
+        {/* Source Filter Pill Rail (horizontally scrollable on mobile, wraps cleanly on desktop) */}
+        <div className="mt-3.5 flex min-w-0 items-center gap-2 border-t border-white/[0.06] pt-3.5">
+          <span className="shrink-0 text-xs font-medium text-[#8B8B94]">Sources</span>
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
+            {SOURCE_CHIPS.map((src) => {
+              const active = selectedSource === src.key;
+              return (
+                <button
+                  key={src.key}
+                  type="button"
+                  id={`source-chip-${src.key}`}
+                  aria-pressed={active}
+                  onClick={() => setSelectedSource(src.key)}
+                  className={`press-tactile shrink-0 cursor-pointer rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap ${
+                    active
+                      ? "border-[#F4F3EF] bg-[#F4F3EF] font-semibold text-[#08080A]"
+                      : "border-white/[0.08] bg-[#111114]/80 text-[#A1A1AA] hover:border-white/[0.18] hover:text-[#F4F3EF]"
+                  }`}
+                >
+                  {src.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Bottom Row: Theme Tags */}
-        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-          <span className="font-mono-telemetry mr-1 text-[10px] text-[#71717A]">
-            THEME:
-          </span>
-          {THEME_CHIPS.map((theme) => {
-            const active = selectedTheme === theme;
-            return (
-              <button
-                key={theme}
-                type="button"
-                onClick={() => setSelectedTheme(theme)}
-                className={`font-mono-telemetry border px-2 py-0.5 text-[10px] transition-colors ${
-                  active
-                    ? "border-[#F3F2EE] bg-[#F3F2EE] font-bold text-[#09090B]"
-                    : "border-[#27272A] bg-[#09090B] text-[#71717A] hover:text-[#F3F2EE]"
-                }`}
-              >
-                {theme}
-              </button>
-            );
-          })}
+        {/* Theme Filter Pill Rail */}
+        <div className="mt-2.5 flex min-w-0 items-center gap-2">
+          <span className="shrink-0 text-xs font-medium text-[#8B8B94]">Themes</span>
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
+            {THEME_CHIPS.map((theme) => {
+              const active = selectedTheme === theme;
+              const label = theme === "ALL" ? "All themes" : theme;
+              return (
+                <button
+                  key={theme}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setSelectedTheme(theme)}
+                  className={`press-tactile shrink-0 cursor-pointer rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap ${
+                    active
+                      ? "border-[#FF3B1F]/40 bg-[#FF3B1F]/15 text-[#FF8A7A]"
+                      : "border-white/[0.07] bg-transparent text-[#8B8B94] hover:border-white/[0.15] hover:text-[#F4F3EF]"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* =====================================================================
-          3. HACKATHON LISTING (GRID CARDS OR COMPACT TELEMETRY TABLE)
-         ===================================================================== */}
+      {/* Results Count + Active Filter Reset */}
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-[#8B8B94]">
+        <p>
+          Showing{" "}
+          <span className="font-mono-telemetry font-semibold text-[#F4F3EF]">
+            {filteredHackathons.length}
+          </span>{" "}
+          of{" "}
+          <span className="font-mono-telemetry text-[#A1A1AA]">
+            {hackathons.length}
+          </span>{" "}
+          hackathons
+        </p>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="press-tactile inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.09] bg-[#111114] px-3 py-1 text-xs font-medium text-[#D4D4D8] hover:border-white/[0.18] hover:text-[#F4F3EF]"
+          >
+            <RotateCcw className="h-3 w-3" strokeWidth={1.7} />
+            <span>Reset filters</span>
+          </button>
+        )}
+      </div>
+
+      {/* Hackathon Listing: Empty State, Grid Cards, or Compact Table */}
       {filteredHackathons.length === 0 ? (
-        <div className="p-16 text-center">
-          <Radar className="mx-auto h-8 w-8 text-[#FF3B1F]" strokeWidth={1.5} />
-          <h3 className="font-display mt-4 text-xl font-bold text-[#F3F2EE]">
-            ZERO HACKATHON SIGNALS MATCH CURRENT FILTER
-          </h3>
-          <p className="mt-2 text-xs text-[#A1A1AA]">
-            Clear your active filters or submit an X (Twitter) post or Devpost/Luma link
-            into the verification pipeline.
+        <div className="surface-card mt-5 p-10 text-center sm:p-16">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-[#FF3B1F]/25 bg-[#FF3B1F]/10 text-[#FF6B54]">
+            <Radar className="h-6 w-6" strokeWidth={1.6} />
+          </div>
+          <h2 className="font-display mt-5 text-2xl font-semibold text-[#F4F3EF]">
+            No hackathons match your filters
+          </h2>
+          <p className="mx-auto mt-2 max-w-[48ch] text-sm leading-relaxed text-[#A1A1AA]">
+            Clear your current filters to view all active events, or submit an X (Twitter)
+            announcement or registration link directly into the verification pipeline.
           </p>
-          <div className="mt-6 flex justify-center gap-3">
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             <button
               type="button"
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedSource("all");
-                setSelectedFormat("ALL");
-                setSelectedTheme("ALL");
-                setBookmarksOnly(false);
-              }}
-              className="font-mono-telemetry border border-[#27272A] bg-[#111114] px-4 py-2 text-xs text-[#F3F2EE]"
+              onClick={resetFilters}
+              className="press-tactile inline-flex h-10 cursor-pointer items-center rounded-full border border-white/[0.12] bg-[#18181D] px-5 text-sm font-medium text-[#F4F3EF] hover:border-white/[0.2] hover:bg-white/[0.08]"
             >
-              RESET FILTERS
+              Reset filters
             </button>
             <button
               type="button"
               onClick={() => setSubmitModalOpen(true)}
-              className="font-mono-telemetry bg-[#FF3B1F] px-4 py-2 text-xs font-bold text-[#09090B]"
+              className="press-tactile inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-[#FF3B1F] px-5 text-sm font-semibold text-[#08080A] hover:bg-[#FF5238]"
             >
-              + SUBMIT HACKATHON / X LINK
+              <Plus className="h-4 w-4" strokeWidth={2} />
+              <span>Submit X or link</span>
             </button>
           </div>
         </div>
       ) : viewMode === "GRID" ? (
-        <div className="grid grid-cols-1 divide-y divide-[#27272A] md:grid-cols-2 md:divide-y-0">
+        <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
           {filteredHackathons.map((hack) => {
             const isBookmarked = bookmarks.includes(hack.id);
             return (
-              <CrosshairCell
+              <article
                 key={hack.id}
-                corners={["tl", "tr"]}
-                className="flex flex-col justify-between border-r border-b border-[#27272A] bg-[#09090B] p-6 transition-colors hover:bg-[#111114] lg:p-8"
+                className="surface-card surface-card-interactive flex min-w-0 flex-col justify-between p-6 sm:p-7"
               >
-                <div>
-                  {/* Top Row: Source Badges + Format Pill + OXAKALABS Status Tag */}
+                <div className="min-w-0">
+                  {/* Top Row: Source Badges, Format Pill & OXAKALABS Status */}
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-1.5">
                       <SourceBadges sources={hack.sources} />
-                      <span className="font-mono-telemetry border border-[#27272A] bg-[#111114] px-2 py-0.5 text-[10px] text-[#F3F2EE]">
-                        {hack.format}
+                      <span className="inline-flex items-center rounded-full border border-white/[0.08] bg-[#18181D] px-2.5 py-0.5 text-xs font-medium text-[#A1A1AA]">
+                        {formatFormatLabel(hack.format)}
                       </span>
                     </div>
                     <OxakalabsStatusBadge status={hack.oxakalabs_status} />
                   </div>
 
                   {/* Title & Organizer */}
-                  <h2 className="font-display mt-4 text-xl font-bold tracking-tight text-[#F3F2EE] sm:text-2xl">
+                  <h2 className="font-display mt-4 text-xl leading-snug font-semibold tracking-[-0.02em] text-[#F4F3EF] sm:text-2xl">
                     {hack.title}
                   </h2>
-                  <div className="font-mono-telemetry mt-1 text-[11px] text-[#71717A]">
-                    ORGANIZER: <span className="text-[#A1A1AA]">{hack.organizer}</span> •{" "}
+                  <p className="mt-1.5 text-sm text-[#8B8B94]">
+                    <span className="font-medium text-[#D4D4D8]">{hack.organizer}</span>
+                    <span className="mx-1.5 text-[#52525B]" aria-hidden="true">
+                      /
+                    </span>
                     <span>{hack.location}</span>
-                  </div>
+                  </p>
 
-                  {/* 2-Line Crisp Description */}
-                  <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-[#A1A1AA]">
+                  {/* Crisp Description */}
+                  <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-[#A1A1AA]">
                     {hack.summary}
                   </p>
 
@@ -523,7 +720,7 @@ export function HackathonRadar({
                     {hack.themes.map((theme) => (
                       <span
                         key={theme}
-                        className="font-mono-telemetry border border-[#27272A] bg-[#111114] px-2 py-0.5 text-[9px] text-[#A1A1AA]"
+                        className="rounded-full bg-white/[0.05] px-2.5 py-0.5 text-xs font-medium text-[#A1A1AA]"
                       >
                         {theme}
                       </span>
@@ -531,36 +728,34 @@ export function HackathonRadar({
                   </div>
                 </div>
 
-                <div className="mt-6">
-                  {/* Metrics Strip (JetBrains Mono): Prize Pool | Live Countdown Timer */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-y border-[#27272A] bg-[#111114]/70 px-4 py-3">
-                    <div>
-                      <div className="font-mono-telemetry text-[9px] text-[#71717A]">
-                        PRIZE POOL
-                      </div>
-                      <div className="font-mono-telemetry text-xs font-bold text-[#10B981]">
+                {/* Metrics & Actions Footer */}
+                <div className="mt-6 border-t border-white/[0.07] pt-5">
+                  <div className="flex flex-wrap items-end justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-xs text-[#8B8B94]">Prize pool</div>
+                      <div className="font-mono-telemetry mt-0.5 text-sm font-semibold text-[#34D399]">
                         {hack.prize_display}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-mono-telemetry text-[9px] text-[#71717A]">
-                        SUBMISSION COUNTDOWN
+                    <div className="text-left sm:text-right">
+                      <div className="text-xs text-[#8B8B94]">Submission deadline</div>
+                      <div className="mt-0.5">
+                        <CountdownTimer deadlineAt={hack.deadline_at} />
                       </div>
-                      <CountdownTimer deadlineAt={hack.deadline_at} />
                     </div>
                   </div>
 
                   {/* Action Row */}
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                  <div className="mt-5 flex flex-wrap items-center justify-between gap-2.5">
                     <div className="flex flex-wrap items-center gap-2">
                       <a
                         href={hack.primary_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="font-mono-telemetry inline-flex items-center gap-1.5 bg-[#F3F2EE] px-3.5 py-2 text-[11px] font-bold text-[#09090B] transition-colors hover:bg-[#FF3B1F]"
+                        className="press-tactile inline-flex h-9 items-center gap-1.5 rounded-full bg-[#F4F3EF] px-4 text-xs font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF3B1F] hover:text-[#08080A]"
                       >
-                        <span>APPLY / VIEW SOURCE</span>
-                        <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.8} />
+                        <span>Apply</span>
+                        <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
                       </a>
 
                       {hack.source_tweet_url && (
@@ -568,10 +763,10 @@ export function HackathonRadar({
                           href={hack.source_tweet_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="font-mono-telemetry inline-flex items-center gap-1 border border-[#FF3B1F]/50 bg-[#FF3B1F]/10 px-2.5 py-2 text-[10px] text-[#FF3B1F] hover:bg-[#FF3B1F] hover:text-[#09090B]"
+                          className="press-tactile inline-flex h-9 items-center gap-1.5 rounded-full border border-[#FF3B1F]/35 bg-[#FF3B1F]/12 px-3.5 text-xs font-medium whitespace-nowrap text-[#FF8A7A] hover:bg-[#FF3B1F] hover:text-[#08080A]"
                         >
-                          <span>VIEW ORIGINAL X POST</span>
-                          <ArrowUpRight className="h-3 w-3" strokeWidth={1.8} />
+                          <span>View X post</span>
+                          <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.8} />
                         </a>
                       )}
                     </div>
@@ -580,224 +775,308 @@ export function HackathonRadar({
                       <button
                         type="button"
                         onClick={() => handleDownloadIcs(hack)}
-                        title="Add Deadline to Calendar (.ics)"
-                        className="font-mono-telemetry inline-flex items-center gap-1 border border-[#27272A] bg-[#111114] px-2.5 py-2 text-[10px] text-[#A1A1AA] hover:border-[#3F3F46] hover:text-[#F3F2EE]"
+                        title="Add deadline to calendar (.ics)"
+                        className="press-tactile inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.09] bg-[#18181D] px-3 text-xs font-medium text-[#D4D4D8] hover:border-white/[0.18] hover:text-[#F4F3EF]"
                       >
-                        <Calendar className="h-3 w-3 text-[#FF3B1F]" strokeWidth={1.5} />
-                        <span>.ICS</span>
+                        <Calendar
+                          className="h-3.5 w-3.5 text-[#FF6B54]"
+                          strokeWidth={1.6}
+                        />
+                        <span className="font-mono-telemetry">.ics</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => toggleBookmark(hack.id)}
-                        title="Bookmark Hackathon"
-                        className={`border p-2 transition-colors ${
+                        aria-label={
                           isBookmarked
-                            ? "border-[#FF3B1F] bg-[#FF3B1F] text-[#09090B]"
-                            : "border-[#27272A] bg-[#111114] text-[#A1A1AA] hover:text-[#F3F2EE]"
+                            ? `Remove ${hack.title} from bookmarks`
+                            : `Bookmark ${hack.title}`
+                        }
+                        aria-pressed={isBookmarked}
+                        title={isBookmarked ? "Bookmarked" : "Bookmark hackathon"}
+                        className={`press-tactile flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border ${
+                          isBookmarked
+                            ? "border-[#FF3B1F] bg-[#FF3B1F] text-[#08080A]"
+                            : "border-white/[0.09] bg-[#18181D] text-[#A1A1AA] hover:border-white/[0.18] hover:text-[#F4F3EF]"
                         }`}
                       >
-                        <Bookmark className="h-3.5 w-3.5" strokeWidth={1.5} />
+                        <Bookmark
+                          className="h-3.5 w-3.5"
+                          strokeWidth={1.7}
+                          fill={isBookmarked ? "currentColor" : "none"}
+                        />
                       </button>
                     </div>
                   </div>
                 </div>
-              </CrosshairCell>
+              </article>
             );
           })}
         </div>
       ) : (
-        /* Compact Telemetry Table View */
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-xs">
-            <thead>
-              <tr className="border-b border-[#27272A] bg-[#111114] text-[10px] text-[#71717A]">
-                <th className="font-mono-telemetry px-4 py-3">SOURCES</th>
-                <th className="font-mono-telemetry px-4 py-3">HACKATHON &amp; ORGANIZER</th>
-                <th className="font-mono-telemetry px-4 py-3">FORMAT</th>
-                <th className="font-mono-telemetry px-4 py-3">PRIZE POOL</th>
-                <th className="font-mono-telemetry px-4 py-3">COUNTDOWN</th>
-                <th className="font-mono-telemetry px-4 py-3">OXAKALABS STATUS</th>
-                <th className="font-mono-telemetry px-4 py-3 text-right">ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#27272A]">
-              {filteredHackathons.map((hack) => (
-                <tr key={hack.id} className="hover:bg-[#111114]/80">
-                  <td className="px-4 py-3.5">
-                    <SourceBadges sources={hack.sources} />
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="font-semibold text-[#F3F2EE]">{hack.title}</div>
-                    <div className="font-mono-telemetry text-[10px] text-[#71717A]">
-                      {hack.organizer} • {hack.location}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className="font-mono-telemetry border border-[#27272A] px-2 py-0.5 text-[10px] text-[#A1A1AA]">
-                      {hack.format}
-                    </span>
-                  </td>
-                  <td className="font-mono-telemetry px-4 py-3.5 font-semibold text-[#10B981]">
-                    {hack.prize_display}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <CountdownTimer deadlineAt={hack.deadline_at} compact />
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <OxakalabsStatusBadge status={hack.oxakalabs_status} />
-                  </td>
-                  <td className="px-4 py-3.5 text-right">
-                    <div className="inline-flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadIcs(hack)}
-                        className="font-mono-telemetry border border-[#27272A] px-2 py-1 text-[10px] text-[#A1A1AA] hover:text-[#F3F2EE]"
-                      >
-                        .ICS
-                      </button>
-                      <a
-                        href={hack.primary_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-mono-telemetry bg-[#FF3B1F] px-2.5 py-1 text-[10px] font-bold text-[#09090B]"
-                      >
-                        APPLY ↗
-                      </a>
-                    </div>
-                  </td>
+        /* Compact Responsive Table View */
+        <div className="surface-card mt-5 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[780px] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-white/[0.08] bg-[#16161A]/60 text-xs font-medium text-[#8B8B94]">
+                  <th className="px-5 py-3.5 font-medium">Sources</th>
+                  <th className="px-5 py-3.5 font-medium">Hackathon</th>
+                  <th className="px-5 py-3.5 font-medium">Format</th>
+                  <th className="px-5 py-3.5 font-medium">Prize pool</th>
+                  <th className="px-5 py-3.5 font-medium">Deadline</th>
+                  <th className="px-5 py-3.5 font-medium">Status</th>
+                  <th className="px-5 py-3.5 text-right font-medium">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* =====================================================================
-          4. COMMUNITY SUBMISSION MODAL (+ SUBMIT HACKATHON / X LINK)
-         ===================================================================== */}
-      {submitModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
-          onClick={() => setSubmitModalOpen(false)}
-        >
-          <div
-            className="w-full max-w-lg border border-[#27272A] bg-[#111114] text-[#F3F2EE]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-[#27272A] bg-[#09090B] px-6 py-4">
-              <div>
-                <span className="font-mono-telemetry text-[10px] text-[#FF3B1F]">
-                  GEMINI FLASH + HEURISTIC EXTRACTION PIPELINE
-                </span>
-                <h3 className="font-display mt-0.5 text-lg font-bold">
-                  SUBMIT HACKATHON OR X (TWITTER) SIGNAL
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSubmitModalOpen(false)}
-                className="border border-[#27272A] p-1.5 text-[#A1A1AA] hover:text-[#F3F2EE]"
-              >
-                <X className="h-4 w-4" strokeWidth={1.5} />
-              </button>
-            </div>
-
-            <div className="p-6">
-              {submittedCandidate ? (
-                <div className="border border-[#10B981] bg-[#09090B] p-5">
-                  <div className="flex items-center gap-2 text-[#10B981]">
-                    <CheckCircle2 className="h-5 w-5" strokeWidth={1.5} />
-                    <span className="font-mono-telemetry text-xs font-bold">
-                      EXTRACTED &amp; VERIFIED // CONFIDENCE:{" "}
-                      {Math.round(submittedCandidate.confidence_score * 100)}%
-                    </span>
-                  </div>
-                  <h4 className="font-display mt-3 text-lg font-bold text-[#F3F2EE]">
-                    {submittedCandidate.title}
-                  </h4>
-                  <p className="mt-1 text-xs text-[#A1A1AA]">
-                    Organizer: {submittedCandidate.organizer} • Prize:{" "}
-                    {submittedCandidate.prize_display}
-                  </p>
-                  <p className="mt-2 text-xs text-[#A1A1AA]">
-                    {submittedCandidate.is_published
-                      ? "Auto-published to the live radar (Confidence >= 85%)."
-                      : "Routed to the /admin Curator Moderation Queue for founder approval."}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSubmittedCandidate(null);
-                      setSubmitUrl("");
-                      setSubmitContext("");
-                      setSubmitModalOpen(false);
-                    }}
-                    className="font-mono-telemetry mt-5 bg-[#FF3B1F] px-4 py-2 text-xs font-bold text-[#09090B]"
-                  >
-                    DONE
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmitUrl} className="space-y-4">
-                  <p className="text-xs text-[#A1A1AA]">
-                    Paste any X (Twitter) announcement link (`https://x.com/.../status/...`)
-                    or Luma / Devpost / DoraHacks URL. Our pipeline resolves the post,
-                    filters retrospective noise, and extracts structured hackathon
-                    telemetry.
-                  </p>
-
-                  {submitError && (
-                    <div className="border border-[#FF3B1F] bg-[#FF3B1F]/10 p-3 text-xs text-[#FF3B1F]">
-                      {submitError}
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="font-mono-telemetry block text-[11px] text-[#A1A1AA]">
-                      X (TWITTER) STATUS URL OR HACKATHON LINK *
-                    </label>
-                    <input
-                      type="url"
-                      required
-                      id="submit-hackathon-url-input"
-                      value={submitUrl}
-                      onChange={(e) => setSubmitUrl(e.target.value)}
-                      placeholder="https://x.com/GoogleAI/status/189001020304050607"
-                      className="mt-1.5 w-full border border-[#27272A] bg-[#09090B] px-3.5 py-2.5 text-xs text-[#F3F2EE] focus:border-[#FF3B1F] focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-mono-telemetry block text-[11px] text-[#A1A1AA]">
-                      OPTIONAL TWEET TEXT / PRIZE &amp; DEADLINE CONTEXT
-                    </label>
-                    <textarea
-                      rows={3}
-                      id="submit-hackathon-context-input"
-                      value={submitContext}
-                      onChange={(e) => setSubmitContext(e.target.value)}
-                      placeholder="Optional: Paste the announcement text (e.g. '$50,000 AI Agents Hackathon by Anthropic & Cerebral Valley, online registration open...')"
-                      className="mt-1.5 w-full border border-[#27272A] bg-[#09090B] p-3 text-xs text-[#F3F2EE] focus:border-[#FF3B1F] focus:outline-none"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    id="submit-hackathon-confirm-btn"
-                    disabled={submitting}
-                    className="font-mono-telemetry w-full bg-[#FF3B1F] py-3 text-xs font-bold text-[#09090B] hover:bg-[#F3F2EE]"
-                  >
-                    {submitting
-                      ? "EXTRACTING & VERIFYING TELEMETRY..."
-                      : "RUN EXTRACTION & VERIFICATION →"}
-                  </button>
-                </form>
-              )}
-            </div>
+              </thead>
+              <tbody className="divide-y divide-white/[0.06]">
+                {filteredHackathons.map((hack) => {
+                  const isBookmarked = bookmarks.includes(hack.id);
+                  return (
+                    <tr
+                      key={hack.id}
+                      className="transition-colors hover:bg-white/[0.03]"
+                    >
+                      <td className="px-5 py-4 align-middle">
+                        <SourceBadges sources={hack.sources} />
+                      </td>
+                      <td className="px-5 py-4 align-middle">
+                        <div className="font-medium text-[#F4F3EF]">{hack.title}</div>
+                        <div className="mt-0.5 text-xs text-[#8B8B94]">
+                          {hack.organizer} · {hack.location}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 align-middle">
+                        <span className="inline-flex rounded-full border border-white/[0.08] bg-[#18181D] px-2.5 py-0.5 text-xs text-[#A1A1AA]">
+                          {formatFormatLabel(hack.format)}
+                        </span>
+                      </td>
+                      <td className="font-mono-telemetry px-5 py-4 align-middle text-xs font-semibold whitespace-nowrap text-[#34D399]">
+                        {hack.prize_display}
+                      </td>
+                      <td className="px-5 py-4 align-middle">
+                        <CountdownTimer deadlineAt={hack.deadline_at} compact />
+                      </td>
+                      <td className="px-5 py-4 align-middle">
+                        <OxakalabsStatusBadge status={hack.oxakalabs_status} />
+                      </td>
+                      <td className="px-5 py-4 text-right align-middle">
+                        <div className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => toggleBookmark(hack.id)}
+                            aria-label={
+                              isBookmarked
+                                ? `Remove ${hack.title} from bookmarks`
+                                : `Bookmark ${hack.title}`
+                            }
+                            aria-pressed={isBookmarked}
+                            className={`press-tactile flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border ${
+                              isBookmarked
+                                ? "border-[#FF3B1F] bg-[#FF3B1F] text-[#08080A]"
+                                : "border-white/[0.09] bg-[#18181D] text-[#A1A1AA] hover:text-[#F4F3EF]"
+                            }`}
+                          >
+                            <Bookmark
+                              className="h-3.5 w-3.5"
+                              strokeWidth={1.7}
+                              fill={isBookmarked ? "currentColor" : "none"}
+                            />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadIcs(hack)}
+                            className="press-tactile font-mono-telemetry inline-flex h-8 cursor-pointer items-center rounded-full border border-white/[0.09] bg-[#18181D] px-2.5 text-xs text-[#D4D4D8] hover:text-[#F4F3EF]"
+                          >
+                            .ics
+                          </button>
+                          <a
+                            href={hack.primary_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="press-tactile inline-flex h-8 items-center gap-1 rounded-full bg-[#FF3B1F] px-3 text-xs font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238]"
+                          >
+                            <span>Apply</span>
+                            <ArrowUpRight className="h-3 w-3" strokeWidth={2} />
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
+
+      {/* Community Submission Modal */}
+      <AnimatePresence>
+        {submitModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
+            onClick={() => setSubmitModalOpen(false)}
+          >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="submit-hackathon-modal-title"
+              initial={
+                prefersReducedMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, scale: 0.96, y: 10 }
+              }
+              animate={
+                prefersReducedMotion
+                  ? { opacity: 1 }
+                  : { opacity: 1, scale: 1, y: 0 }
+              }
+              exit={
+                prefersReducedMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, scale: 0.96, y: 8 }
+              }
+              transition={prefersReducedMotion ? { duration: 0.14 } : SPRING_SHEET}
+              className="glass-chrome w-full max-w-lg overflow-hidden rounded-2xl text-[#F4F3EF]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-white/[0.08] px-6 py-5">
+                <div>
+                  <h2
+                    id="submit-hackathon-modal-title"
+                    className="font-display text-xl font-semibold text-[#F4F3EF]"
+                  >
+                    Submit a hackathon or X signal
+                  </h2>
+                  <p className="mt-1 text-xs text-[#A1A1AA]">
+                    Parsed and verified through Gemini Flash and heuristic extraction.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close modal"
+                  onClick={() => setSubmitModalOpen(false)}
+                  className="press-tactile flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.05] text-[#A1A1AA] hover:bg-white/[0.1] hover:text-[#F4F3EF]"
+                >
+                  <X className="h-4 w-4" strokeWidth={1.7} />
+                </button>
+              </div>
+
+              <div className="p-6">
+                {submittedCandidate ? (
+                  <div className="rounded-2xl border border-[#10B981]/30 bg-[#10B981]/[0.08] p-5">
+                    <div className="flex items-center gap-2 text-sm font-medium text-[#34D399]">
+                      <CheckCircle2 className="h-4 w-4 shrink-0" strokeWidth={1.8} />
+                      <span>
+                        Verified (confidence{" "}
+                        <span className="font-mono-telemetry">
+                          {Math.round(submittedCandidate.confidence_score * 100)}%
+                        </span>
+                        )
+                      </span>
+                    </div>
+                    <h3 className="font-display mt-3 text-lg font-semibold text-[#F4F3EF]">
+                      {submittedCandidate.title}
+                    </h3>
+                    <p className="mt-1 text-sm text-[#A1A1AA]">
+                      {submittedCandidate.organizer} ·{" "}
+                      <span className="font-mono-telemetry text-[#34D399]">
+                        {submittedCandidate.prize_display}
+                      </span>
+                    </p>
+                    <p className="mt-2.5 text-sm leading-relaxed text-[#D4D4D8]">
+                      {submittedCandidate.is_published
+                        ? "Published straight to the live radar after passing the 85% confidence threshold."
+                        : "Queued in the Curator Console (/admin) for founder review."}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSubmittedCandidate(null);
+                        setSubmitUrl("");
+                        setSubmitContext("");
+                        setSubmitModalOpen(false);
+                      }}
+                      className="press-tactile mt-5 inline-flex h-10 cursor-pointer items-center rounded-full bg-[#FF3B1F] px-5 text-sm font-semibold text-[#08080A] hover:bg-[#FF5238]"
+                    >
+                      Done
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubmitUrl} className="space-y-4">
+                    <p className="text-sm leading-relaxed text-[#A1A1AA]">
+                      Paste an X (Twitter) announcement link or a Devpost, Luma, or
+                      DoraHacks URL. The pipeline resolves the post, filters
+                      retrospective chatter, and extracts structured hackathon fields.
+                    </p>
+
+                    {submitError && (
+                      <div
+                        role="alert"
+                        className="rounded-xl border border-[#FF3B1F]/35 bg-[#FF3B1F]/12 px-4 py-3 text-sm text-[#FF8A7A]"
+                      >
+                        {submitError}
+                      </div>
+                    )}
+
+                    <div>
+                      <label
+                        htmlFor="submit-hackathon-url-input"
+                        className="block text-sm font-medium text-[#D4D4D8]"
+                      >
+                        Hackathon or X status URL <span className="text-[#FF6B54]">*</span>
+                      </label>
+                      <input
+                        type="url"
+                        required
+                        id="submit-hackathon-url-input"
+                        value={submitUrl}
+                        onChange={(e) => setSubmitUrl(e.target.value)}
+                        placeholder="https://x.com/GoogleAI/status/189001020304050607"
+                        className="mt-2 h-11 w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E]/90 px-4 text-sm text-[#F4F3EF] placeholder:text-[#8B8B94] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/25 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="submit-hackathon-context-input"
+                        className="block text-sm font-medium text-[#D4D4D8]"
+                      >
+                        Announcement text or deadline notes{" "}
+                        <span className="font-normal text-[#8B8B94]">(optional)</span>
+                      </label>
+                      <textarea
+                        rows={3}
+                        id="submit-hackathon-context-input"
+                        value={submitContext}
+                        onChange={(e) => setSubmitContext(e.target.value)}
+                        placeholder="Paste tweet copy, prize pool, or registration deadline details..."
+                        className="mt-2 w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E]/90 px-4 py-3 text-sm text-[#F4F3EF] placeholder:text-[#8B8B94] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/25 focus:outline-none"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      id="submit-hackathon-confirm-btn"
+                      disabled={submitting}
+                      className="press-tactile inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-full bg-[#FF3B1F] px-5 text-sm font-semibold text-[#08080A] hover:bg-[#FF5238] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {submitting
+                        ? "Extracting and verifying..."
+                        : "Verify and submit signal"}
+                    </button>
+                  </form>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

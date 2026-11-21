@@ -1,22 +1,101 @@
 import React from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, Radio, Radar, Layers, Terminal } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { GravityFieldCanvas } from "@/components/kinetic/GravityFieldCanvas";
-import { CrosshairCell } from "@/components/kinetic/CrosshairCell";
 import { FlywheelMatrix } from "@/components/kinetic/FlywheelMatrix";
 import { CountdownTimer } from "@/components/hackathons/CountdownTimer";
 import {
   SourceBadges,
   OxakalabsStatusBadge,
 } from "@/components/hackathons/SourceBadges";
+import { Reveal, StaggerGroup, StaggerItem } from "@/lib/motion";
 import {
   getDispatches,
   getHackathons,
   getLabProjects,
   getNewsItems,
 } from "@/lib/db/repository";
+import type { LabProjectStatus } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
+
+const DROP_DISPLAY_NAMES: Record<string, string> = {
+  "GRAVITY DECK": "Gravity Deck",
+  OPSPILOT: "OpsPilot",
+  "KINETIC STUDIO": "Kinetic Studio",
+  ORBITBENCH: "OrbitBench",
+};
+
+const DROP_STATUS_META: Record<
+  LabProjectStatus,
+  { label: string; badgeClass: string }
+> = {
+  PROTOTYPING: {
+    label: "Prototyping",
+    badgeClass: "border-[#FF3B1F]/25 bg-[#FF3B1F]/15 text-[#FF8A7A]",
+  },
+  "R&D": {
+    label: "R&D",
+    badgeClass: "border-[#10B981]/25 bg-[#10B981]/12 text-[#34D399]",
+  },
+  LIVE: {
+    label: "Live",
+    badgeClass: "border-[#10B981]/25 bg-[#10B981]/12 text-[#34D399]",
+  },
+  BETA: {
+    label: "Beta",
+    badgeClass: "border-[#10B981]/25 bg-[#10B981]/12 text-[#34D399]",
+  },
+  CONCEPT: {
+    label: "Concept",
+    badgeClass: "border-white/[0.1] bg-white/[0.05] text-[#D4D4D8]",
+  },
+  "SKUNKWORKS CANDIDATE": {
+    label: "Skunkworks",
+    badgeClass: "border-[#F59E0B]/25 bg-[#F59E0B]/12 text-[#FBBF24]",
+  },
+  ARCHIVED: {
+    label: "Archived",
+    badgeClass: "border-white/[0.08] bg-white/[0.04] text-[#8B8B94]",
+  },
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  MODELS: "Models",
+  AGENTS: "Agents",
+  DEVTOOLS: "Devtools",
+  RESEARCH: "Research",
+  BUSINESS: "Business",
+  OPEN_SOURCE: "Open Source",
+  ARCHITECTURE: "Architecture",
+  "POST-MORTEM": "Post-Mortem",
+  "AI SYSTEMS": "AI Systems",
+  "HACKATHON LOG": "Hackathon Log",
+  "DESIGN ENGINEERING": "Design Engineering",
+};
+
+function cleanCopy(text: string): string {
+  return text.replace(/\s+\u2014\s+/g, ": ").replace(/\u2014/g, ", ");
+}
+
+function cleanOrigin(origin: string): string {
+  return cleanCopy(origin).replace(/\s*\/\/\s*/g, " · ");
+}
+
+function formatDropName(name: string): string {
+  const trimmed = name.trim();
+  const mapped = DROP_DISPLAY_NAMES[trimmed.toUpperCase()];
+  if (mapped) return mapped;
+  if (trimmed === trimmed.toUpperCase()) {
+    return trimmed.toLowerCase().replace(/\b\w/g, (ch) => ch.toUpperCase());
+  }
+  return trimmed;
+}
+
+function formatCategoryLabel(category: string): string {
+  return CATEGORY_LABELS[category.toUpperCase()] ?? category;
+}
 
 export default async function HomePage() {
   const [
@@ -35,535 +114,681 @@ export default async function HomePage() {
 
   const topHackathons = hackathons.slice(0, 4);
   const topNews = newsItems.slice(0, 4);
-  const featuredDispatch = dispatches.find((d) => d.is_featured) ?? dispatches[0];
-  const totalPrizePool = hackathons.reduce(
-    (acc, h) => acc + (h.prize_pool_usd ?? 0),
-    0
-  );
+  const featuredDispatch =
+    dispatches.find((d) => d.is_featured) ?? dispatches[0] ?? null;
 
   return (
-    <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
-      {/* Outer Exposed 1px Architectural Frame */}
-      <div className="border-x border-[#27272A]">
-        {/* ===================================================================
-            SECTION 1: HERO — FULL-VIEWPORT ARCHITECTURAL CANVAS
-           =================================================================== */}
-        <section className="relative overflow-hidden border-b border-[#27272A]">
-          {/* Top Telemetry Strip */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#27272A] bg-[#111114]/90 px-6 py-2.5">
-            <div className="font-mono-telemetry flex items-center gap-2 text-[11px] text-[#F3F2EE]">
-              <span className="h-2 w-2 bg-[#FF3B1F]" />
-              <span>G-GRAVITATOR // SOFTWARE &amp; AI CREATIVITY LAB</span>
-            </div>
-            <div className="font-mono-telemetry flex flex-wrap items-center gap-4 text-[11px] text-[#A1A1AA]">
-              <span>
-                HACKATHONS TRACKED:{" "}
-                <strong className="text-[#F3F2EE]">{hackathons.length}</strong>
-              </span>
-              <span className="text-[#3F3F46]">•</span>
-              <span>
-                ACTIVE BOUNTIES:{" "}
-                <strong className="text-[#10B981]">
-                  ${(totalPrizePool / 1000).toFixed(0)}K+
-                </strong>
-              </span>
-              <span className="text-[#3F3F46]">•</span>
-              <span>
-                LATEST DROP: <strong className="text-[#FF3B1F]">G-01</strong>
-              </span>
-              <span className="text-[#3F3F46]">•</span>
-              <span>
-                ORBIT CYCLE 01: <strong className="text-[#F3F2EE]">WAITLIST</strong>
-              </span>
-            </div>
-          </div>
+    <div className="relative overflow-x-clip bg-[#08080A] text-[#F4F3EF]">
+      {/* ===================================================================
+          SECTION 1: HERO (ASYMMETRIC SCULPTURAL VISUAL COMPOSITION)
+         =================================================================== */}
+      <section className="relative flex min-h-[calc(100dvh-76px)] items-center overflow-hidden pt-8 pb-16 lg:min-h-[min(calc(100dvh-76px),860px)] lg:pt-12 lg:pb-20">
+        {/* Subtle cursor-reactive orbital backdrop */}
+        <div className="pointer-events-none absolute inset-0 z-0 opacity-75">
+          <GravityFieldCanvas />
+        </div>
 
-          {/* Gravitational Grid Canvas + Hero Typography */}
-          <div className="relative min-h-[580px] px-6 py-16 sm:px-10 sm:py-24 lg:px-14 lg:py-28">
-            <GravityFieldCanvas />
-
-            <div className="relative z-10 max-w-5xl">
-              <div className="font-mono-telemetry inline-flex items-center gap-2 border border-[#27272A] bg-[#111114] px-3 py-1 text-[11px] text-[#A1A1AA]">
-                <span>TAGLINE // WHERE IDEAS GAIN MASS</span>
-                <span className="text-[#3F3F46]">|</span>
-                <span className="text-[#FF3B1F]">OXAKALABS FOUNDRY INSIDE</span>
-              </div>
-
-              <h1 className="font-display mt-6 text-[clamp(2.75rem,6.5vw,6.25rem)] font-extrabold tracking-[-0.035em] text-[#F3F2EE] uppercase">
-                BUILD WITH WEIGHT.
-                <span className="mt-1 block text-[#A1A1AA]">
-                  SOFTWARE &amp; AI ENGINEERED TO PULL MARKETS.
+        {/* Seamless right-anchored studio photograph blended into #08080A */}
+        <div className="relative z-10 mx-auto w-full max-w-[1360px] px-5 sm:px-8 lg:px-12">
+          <div className="relative flex flex-col lg:min-h-[580px] lg:justify-center">
+            {/* Editorial Stack: strictly 3 text groups (H1, subtext, CTA row) */}
+            <div className="relative z-20 max-w-[580px] xl:max-w-[650px]">
+              <h1 className="font-display text-[clamp(2.5rem,5vw,4.65rem)] font-bold leading-[1.04] tracking-[-0.03em] text-[#F4F3EF]">
+                Build with weight.
+                <span className="mt-2.5 block text-[clamp(1.45rem,2.45vw,2.3rem)] font-semibold leading-[1.14] tracking-[-0.025em] text-[#A1A1AA]">
+                  Software engineered to pull markets.
                 </span>
               </h1>
 
-              <p className="mt-7 max-w-3xl text-base leading-relaxed text-[#A1A1AA] sm:text-lg">
-                G-Gravitator is a software and AI creativity lab that engineers flagship
-                products, architects bespoke enterprise systems, competes in global
-                hackathons via{" "}
+              <p className="mt-6 max-w-[44ch] text-base leading-relaxed text-[#A1A1AA] sm:text-lg">
+                A software and AI lab engineering enterprise systems, commercial
+                drops, and 48-hour prototypes through{" "}
                 <Link
                   href="/skunkworks"
-                  className="text-[#F3F2EE] underline decoration-[#FF3B1F] underline-offset-4"
+                  className="font-medium text-[#F4F3EF] underline decoration-[#FF3B1F]/70 underline-offset-4 transition-colors hover:decoration-[#FF3B1F]"
                 >
                   OXAKALABS
                 </Link>
-                , and trains the next wave of technical builders.
+                .
               </p>
 
-              {/* Dual Primary CTAs */}
-              <div className="mt-10 flex flex-wrap items-center gap-4">
+              <div className="mt-9 flex flex-wrap items-center gap-3.5">
                 <Link
                   href="/systems"
                   id="hero-cta-commission-system"
-                  className="font-mono-telemetry inline-flex items-center gap-2.5 bg-[#FF3B1F] px-6 py-4 text-xs font-semibold text-[#09090B] transition-colors hover:bg-[#F3F2EE]"
+                  className="press-tactile inline-flex h-12 items-center gap-2 rounded-full bg-[#FF3B1F] px-6 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238]"
                 >
-                  <span>COMMISSION A SYSTEM</span>
-                  <ArrowUpRight className="h-4 w-4" strokeWidth={1.8} />
+                  <span>Commission a system</span>
+                  <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
                 </Link>
+
                 <Link
                   href="/labs"
                   id="hero-cta-explore-lab"
-                  className="font-mono-telemetry inline-flex items-center gap-2.5 border border-[#F3F2EE] bg-[#09090B]/80 px-6 py-4 text-xs font-semibold text-[#F3F2EE] transition-colors hover:border-[#FF3B1F] hover:bg-[#111114]"
+                  className="press-tactile inline-flex h-12 items-center gap-2 rounded-full border border-white/[0.14] bg-[#18181D]/85 px-6 text-sm font-medium whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.24] hover:bg-white/[0.1]"
                 >
-                  <span>EXPLORE THE LAB (G-01..G-04)</span>
-                  <ArrowUpRight className="h-4 w-4 text-[#FF3B1F]" strokeWidth={1.8} />
-                </Link>
-                <Link
-                  href="/hackathons"
-                  id="hero-cta-hackathon-radar"
-                  className="font-mono-telemetry inline-flex items-center gap-2 border border-[#27272A] bg-[#111114] px-5 py-4 text-xs text-[#A1A1AA] transition-colors hover:border-[#3F3F46] hover:text-[#F3F2EE]"
-                >
-                  <Radar className="h-4 w-4 text-[#FF3B1F]" strokeWidth={1.5} />
-                  <span>LIVE HACKATHON RADAR ({hackathons.length})</span>
+                  <span>Explore Labs</span>
+                  <ArrowUpRight
+                    className="h-4 w-4 text-[#A1A1AA]"
+                    strokeWidth={1.8}
+                  />
                 </Link>
               </div>
             </div>
-          </div>
 
-          {/* Bottom Hero Structural Metrics Bar */}
-          <div className="grid grid-cols-2 divide-x divide-y divide-[#27272A] border-t border-[#27272A] bg-[#09090B] sm:grid-cols-4 sm:divide-y-0">
-            <div className="px-6 py-4">
-              <div className="font-mono-telemetry text-[10px] text-[#71717A]">
-                01 // B2B VELOCITY
-              </div>
-              <div className="font-display mt-1 text-xl font-bold text-[#F3F2EE]">
-                5-DAY AUDIT → 4-WK MVP
-              </div>
-            </div>
-            <div className="px-6 py-4">
-              <div className="font-mono-telemetry text-[10px] text-[#71717A]">
-                02 // PROPRIETARY DROPS
-              </div>
-              <div className="font-display mt-1 text-xl font-bold text-[#F3F2EE]">
-                {labsDrops.length} NUMBERED RELEASES
-              </div>
-            </div>
-            <div className="px-6 py-4">
-              <div className="font-mono-telemetry text-[10px] text-[#71717A]">
-                03 // OXAKALABS SKUNKWORKS
-              </div>
-              <div className="font-display mt-1 text-xl font-bold text-[#F3F2EE]">
-                {skunkworksBuilds.length} SHIPPED ARCHIVES
-              </div>
-            </div>
-            <div className="px-6 py-4">
-              <div className="font-mono-telemetry text-[10px] text-[#71717A]">
-                04 // GRADUATION THRESHOLD
-              </div>
-              <div className="font-display mt-1 text-xl font-bold text-[#FF3B1F]">
-                20–25 / 25 SCORE FILTER
+            {/* Right-anchored studio sphere (stacks cleanly below on mobile) */}
+            <div className="relative mt-10 w-full lg:pointer-events-none lg:absolute lg:inset-y-0 lg:-right-8 lg:z-10 lg:mt-0 lg:flex lg:w-[74%] lg:max-w-[1040px] lg:items-center lg:justify-end xl:-right-12">
+              <div className="relative aspect-[4/3] w-full overflow-hidden sm:aspect-video lg:aspect-video">
+                <Image
+                  src="/images/hero-gravity-mass.jpg"
+                  alt="Anodized matte titanium and smoked optical glass gravitational sphere suspended in dark obsidian space"
+                  fill
+                  preload
+                  sizes="(max-width: 1024px) 100vw, 74vw"
+                  className="object-cover object-[76%_50%] lg:object-right"
+                />
+                {/* Soft CSS edge masks melting photography seamlessly into #08080A */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#08080A]/80 via-transparent via-18% to-transparent lg:from-[#08080A] lg:via-[#08080A]/65 lg:via-38% lg:to-transparent"
+                />
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-l from-[#08080A]/85 via-transparent via-14% to-transparent"
+                />
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#08080A] via-transparent via-22% to-transparent"
+                />
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#08080A]/90 via-transparent via-18% to-transparent"
+                />
               </div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* ===================================================================
-            SECTION 2: THE FOUR-UNIT FLYWHEEL MATRIX
-           =================================================================== */}
-        <section className="border-b border-[#27272A]">
-          <div className="flex flex-col justify-between gap-4 border-b border-[#27272A] px-6 py-8 sm:flex-row sm:items-end lg:px-10">
-            <div>
-              <span className="font-mono-telemetry text-[11px] text-[#FF3B1F]">
-                ARCHITECTURAL TOPOLOGY // 01
-              </span>
-              <h2 className="font-display mt-2 text-3xl font-extrabold tracking-tight uppercase sm:text-4xl">
-                ONE MASTERBRAND. FOUR INTERLOCKING UNITS.
-              </h2>
-            </div>
-            <p className="max-w-md text-xs text-[#A1A1AA]">
-              Hover any division cell below to trace how B2B Systems contracts and
-              OXAKALABS 48-hour hackathon R&amp;D fund commercial Labs drops and pull Orbit
-              talent.
+      {/* ===================================================================
+          SECTION 2: OPERATING ARCHITECTURE (INTERACTIVE FLYWHEEL STAGE)
+         =================================================================== */}
+      <section className="border-t border-white/[0.06] py-24 lg:py-32">
+        <div className="mx-auto max-w-[1360px] px-5 sm:px-8 lg:px-12">
+          <Reveal>
+            <h2 className="font-display text-[clamp(1.875rem,3.2vw,3rem)] font-semibold leading-[1.08] tracking-[-0.025em] text-[#F4F3EF]">
+              One lab, four interlocking engines.
+            </h2>
+            <p className="mt-4 max-w-[58ch] text-base leading-relaxed text-[#A1A1AA]">
+              Select a division to trace how B2B Systems contracts and OXAKALABS
+              48-hour sprints fund commercial Labs drops and pull Orbit builders.
             </p>
-          </div>
+          </Reveal>
 
-          <FlywheelMatrix />
-        </section>
+          <Reveal delay={0.08} className="mt-12 lg:mt-14">
+            <FlywheelMatrix />
+          </Reveal>
+        </div>
+      </section>
 
-        {/* ===================================================================
-            SECTION 3: FEATURED DROPS (G-01 – G-04 PREVIEW STRIP)
-           =================================================================== */}
-        <section className="border-b border-[#27272A]">
-          <div className="flex flex-col justify-between gap-4 border-b border-[#27272A] px-6 py-8 sm:flex-row sm:items-end lg:px-10">
+      {/* ===================================================================
+          SECTION 3: FEATURED LABS DROPS (VISUAL ANCHOR + ASYMMETRIC SHOWCASE)
+         =================================================================== */}
+      <section className="border-t border-white/[0.06] py-24 lg:py-32">
+        <div className="mx-auto max-w-[1360px] px-5 sm:px-8 lg:px-12">
+          <Reveal className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end">
             <div>
-              <span className="font-mono-telemetry text-[11px] text-[#FF3B1F]">
-                G-GRAVITATOR LABS // NUMBERED CATALOG
-              </span>
-              <h2 className="font-display mt-2 text-3xl font-extrabold tracking-tight uppercase sm:text-4xl">
-                INDUSTRIAL SOFTWARE &amp; AI DROPS (G-01 — G-04)
+              <h2 className="font-display text-[clamp(1.875rem,3.2vw,3rem)] font-semibold leading-[1.08] tracking-[-0.025em] text-[#F4F3EF]">
+                Proprietary software and AI drops.
               </h2>
+              <p className="mt-4 max-w-[54ch] text-base leading-relaxed text-[#A1A1AA]">
+                Commercial releases graduated from our internal sprints into
+                focused software for founders, operators, and engineering teams.
+              </p>
             </div>
+
             <Link
               href="/labs"
-              className="font-mono-telemetry inline-flex items-center gap-2 border border-[#27272A] bg-[#111114] px-4 py-2.5 text-xs text-[#F3F2EE] hover:border-[#FF3B1F]"
+              className="press-tactile inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-white/[0.12] bg-[#18181D] px-5 text-sm font-medium whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.22] hover:bg-white/[0.1]"
             >
-              <span>INSPECT FULL CATALOG</span>
-              <ArrowUpRight className="h-3.5 w-3.5 text-[#FF3B1F]" strokeWidth={1.8} />
+              <span>View full catalog</span>
+              <ArrowUpRight
+                className="h-4 w-4 text-[#A1A1AA]"
+                strokeWidth={1.8}
+              />
             </Link>
-          </div>
+          </Reveal>
 
-          <div className="grid grid-cols-1 divide-y divide-[#27272A] md:grid-cols-2 md:divide-y-0 lg:grid-cols-4 lg:divide-x">
-            {labsDrops.map((drop) => (
-              <CrosshairCell
-                key={drop.id}
-                corners={["tl", "tr"]}
-                className="flex flex-col justify-between bg-[#09090B] p-6 transition-colors hover:bg-[#111114] lg:p-7"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono-telemetry bg-[#F3F2EE] px-2 py-0.5 text-xs font-bold text-[#09090B]">
-                      {drop.code}
-                    </span>
-                    <span
-                      className={`font-mono-telemetry border px-2 py-0.5 text-[10px] ${
-                        drop.status === "PROTOTYPING"
-                          ? "border-[#FF3B1F]/60 bg-[#FF3B1F]/15 text-[#FF3B1F]"
-                          : drop.status === "R&D"
-                          ? "border-[#10B981]/50 bg-[#10B981]/10 text-[#10B981]"
-                          : "border-[#27272A] bg-[#18181B] text-[#A1A1AA]"
-                      }`}
-                    >
-                      {drop.status}
-                    </span>
-                  </div>
-
-                  <h3 className="font-display mt-5 text-xl font-bold tracking-tight text-[#F3F2EE]">
-                    {drop.name}
-                  </h3>
-
-                  <p className="mt-2.5 text-xs leading-relaxed text-[#A1A1AA]">
-                    {drop.tagline}
-                  </p>
-
-                  {drop.hackathon_origin && (
-                    <div className="font-mono-telemetry mt-4 border-l-2 border-[#FF3B1F] pl-2.5 text-[10px] text-[#71717A]">
-                      {drop.hackathon_origin}
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-6 border-t border-[#27272A] pt-4">
-                  <div className="flex flex-wrap gap-1.5">
-                    {drop.tech_stack.slice(0, 3).map((tech) => (
-                      <span
-                        key={tech}
-                        className="font-mono-telemetry border border-[#27272A] bg-[#09090B] px-1.5 py-0.5 text-[9px] text-[#71717A]"
-                      >
-                        {tech}
-                      </span>
-                    ))}
-                  </div>
-                  <Link
-                    href={`/labs/${drop.slug}`}
-                    className="font-mono-telemetry mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[#F3F2EE] hover:text-[#FF3B1F]"
-                  >
-                    <span>OPEN {drop.code} SPEC</span>
-                    <ArrowUpRight className="h-3.5 w-3.5 text-[#FF3B1F]" strokeWidth={1.8} />
-                  </Link>
-                </div>
-              </CrosshairCell>
-            ))}
-          </div>
-        </section>
-
-        {/* ===================================================================
-            SECTION 4: LIVE INTELLIGENCE SPLIT-PREVIEW (HACKATHONS + WIRE)
-           =================================================================== */}
-        <section className="border-b border-[#27272A]">
-          <div className="grid grid-cols-1 divide-y divide-[#27272A] lg:grid-cols-2 lg:divide-x lg:divide-y-0">
-            {/* LEFT COLUMN: LIVE HACKATHON RADAR */}
-            <div className="flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between border-b border-[#27272A] bg-[#111114] px-6 py-5 lg:px-8">
-                  <div>
-                    <div className="font-mono-telemetry flex items-center gap-2 text-[10px] text-[#FF3B1F]">
-                      <Radar className="h-3.5 w-3.5" strokeWidth={1.5} />
-                      <span>MODULE 01 // MULTI-PROVIDER + X SIGNAL</span>
-                    </div>
-                    <h2 className="font-display mt-1 text-2xl font-bold uppercase">
-                      LIVE HACKATHON RADAR
-                    </h2>
-                  </div>
-                  <Link
-                    href="/hackathons"
-                    className="font-mono-telemetry inline-flex items-center gap-1 border border-[#27272A] bg-[#09090B] px-3 py-2 text-[11px] text-[#F3F2EE] hover:border-[#FF3B1F]"
-                  >
-                    <span>OPEN FULL TRACKER</span>
-                    <ArrowUpRight className="h-3.5 w-3.5 text-[#FF3B1F]" strokeWidth={1.8} />
-                  </Link>
-                </div>
-
-                <div className="divide-y divide-[#27272A]">
-                  {topHackathons.map((hack) => (
-                    <div
-                      key={hack.id}
-                      className="p-6 transition-colors hover:bg-[#111114]/70 lg:px-8"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <SourceBadges sources={hack.sources} />
-                        <OxakalabsStatusBadge status={hack.oxakalabs_status} />
-                      </div>
-
-                      <div className="mt-3 flex items-baseline justify-between gap-4">
-                        <Link
-                          href={`/hackathons?q=${encodeURIComponent(hack.title)}`}
-                          className="font-display text-lg font-bold text-[#F3F2EE] hover:text-[#FF3B1F]"
-                        >
-                          {hack.title}
-                        </Link>
-                      </div>
-
-                      <p className="mt-1.5 line-clamp-2 text-xs text-[#A1A1AA]">
-                        {hack.summary}
-                      </p>
-
-                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#27272A]/80 pt-3">
-                        <div className="font-mono-telemetry text-xs font-semibold text-[#10B981]">
-                          PRIZE: {hack.prize_display}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <CountdownTimer deadlineAt={hack.deadline_at} compact />
-                          <a
-                            href={hack.primary_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="font-mono-telemetry inline-flex items-center gap-1 text-[11px] text-[#F3F2EE] hover:text-[#FF3B1F]"
-                          >
-                            <span>SOURCE</span>
-                            <ArrowUpRight className="h-3 w-3" strokeWidth={1.8} />
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          <div className="mt-12 grid grid-cols-1 gap-8 lg:mt-14 lg:grid-cols-12 lg:items-start">
+            {/* Sculpted Visual Showcase Anchor (ZERO overlaid text or pills) */}
+            <Reveal className="min-w-0 lg:sticky lg:top-28 lg:col-span-5">
+              <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-[#111114] ring-1 ring-inset ring-white/[0.08]">
+                <Image
+                  src="/images/labs-prism.jpg"
+                  alt="Stacked smoked optical glass and bead-blasted matte obsidian monoliths with a hairline vermilion refraction"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 42vw"
+                  className="object-cover"
+                />
               </div>
 
-              <div className="border-t border-[#27272A] bg-[#111114] px-6 py-4 lg:px-8">
-                <Link
-                  href="/hackathons"
-                  className="font-mono-telemetry flex items-center justify-between text-xs font-semibold text-[#F3F2EE] hover:text-[#FF3B1F]"
-                >
+              <div className="mt-6">
+                <h3 className="font-display text-lg font-semibold tracking-[-0.02em] text-[#F4F3EF]">
+                  Built inside the lab, shipped for real workflows
+                </h3>
+                <p className="mt-2 max-w-[44ch] text-sm leading-relaxed text-[#8B8B94]">
+                  Prototypes that score 20 to 25 on our Graduation Filter move
+                  from OXAKALABS experiments into numbered G-Gravitator Labs
+                  releases.
+                </p>
+                <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#8B8B94]">
                   <span>
-                    VIEW ALL {hackathons.length} TRACKED HACKATHONS (DEVPOST, DORAHACKS, X,
-                    LUMA, KAGGLE)
+                    <span className="font-mono-telemetry text-[#D4D4D8]">
+                      {labsDrops.length}
+                    </span>{" "}
+                    numbered drops
                   </span>
-                  <ArrowUpRight className="h-4 w-4 text-[#FF3B1F]" strokeWidth={1.8} />
-                </Link>
+                  <span aria-hidden="true" className="text-white/[0.24]">
+                    ·
+                  </span>
+                  <span className="font-mono-telemetry text-[#D4D4D8]">
+                    G-01 to G-04
+                  </span>
+                </div>
+              </div>
+            </Reveal>
+
+            {/* Asymmetric 2x2 Interactive Drops Cluster */}
+            <div className="min-w-0 lg:col-span-7">
+              {labsDrops.length === 0 ? (
+                <div className="surface-card rounded-2xl p-8 text-sm text-[#A1A1AA]">
+                  Labs catalog releases are currently syncing.{" "}
+                  <Link
+                    href="/labs"
+                    className="font-medium text-[#F4F3EF] underline underline-offset-4"
+                  >
+                    Open Labs catalog
+                  </Link>
+                </div>
+              ) : (
+                <StaggerGroup className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  {labsDrops.map((drop) => {
+                    const statusMeta =
+                      DROP_STATUS_META[drop.status] ?? DROP_STATUS_META.CONCEPT;
+
+                    return (
+                      <StaggerItem key={drop.id} className="min-w-0">
+                        <Link
+                          href={`/labs/${drop.slug}`}
+                          className="surface-card surface-card-interactive group flex h-full flex-col justify-between rounded-2xl p-6 lg:p-7"
+                        >
+                          <div>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="font-mono-telemetry rounded-full bg-white/[0.08] px-2.5 py-1 text-xs font-semibold text-[#F4F3EF]">
+                                {drop.code}
+                              </span>
+                              <span
+                                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusMeta.badgeClass}`}
+                              >
+                                {statusMeta.label}
+                              </span>
+                            </div>
+
+                            <h3 className="font-display mt-5 text-xl font-semibold tracking-[-0.02em] text-[#F4F3EF]">
+                              {formatDropName(drop.name)}
+                            </h3>
+
+                            <p className="mt-2.5 text-sm leading-relaxed text-[#A1A1AA]">
+                              {cleanCopy(drop.tagline)}
+                            </p>
+
+                            {drop.hackathon_origin && (
+                              <p className="mt-4 text-xs leading-relaxed text-[#8B8B94]">
+                                {cleanOrigin(drop.hackathon_origin)}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="mt-6 border-t border-white/[0.06] pt-4">
+                            <div className="flex flex-wrap gap-1.5">
+                              {drop.tech_stack.slice(0, 3).map((tech) => (
+                                <span
+                                  key={tech}
+                                  className="rounded-full bg-[#18181D] px-2.5 py-1 text-[11px] font-medium text-[#A1A1AA]"
+                                >
+                                  {tech}
+                                </span>
+                              ))}
+                            </div>
+
+                            <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#F4F3EF] transition-colors group-hover:text-[#FF8A7A]">
+                              <span>Open {drop.code} spec</span>
+                              <ArrowUpRight
+                                className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:group-hover:translate-x-0 motion-reduce:group-hover:translate-y-0"
+                                strokeWidth={1.8}
+                              />
+                            </span>
+                          </div>
+                        </Link>
+                      </StaggerItem>
+                    );
+                  })}
+                </StaggerGroup>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===================================================================
+          SECTION 4: LIVE INTELLIGENCE (EDITORIAL STREAM + FLOATING RADAR)
+         =================================================================== */}
+      <section className="border-t border-white/[0.06] py-24 lg:py-32">
+        <div className="mx-auto max-w-[1360px] px-5 sm:px-8 lg:px-12">
+          <Reveal>
+            <h2 className="font-display text-[clamp(1.875rem,3.2vw,3rem)] font-semibold leading-[1.08] tracking-[-0.025em] text-[#F4F3EF]">
+              Live intelligence from the frontier.
+            </h2>
+            <p className="mt-4 max-w-[58ch] text-base leading-relaxed text-[#A1A1AA]">
+              Original lab dispatches, daily AI wire signals with concrete
+              engineering takes, and active global hackathons tracked across ten
+              sources.
+            </p>
+          </Reveal>
+
+          <div className="mt-12 grid grid-cols-1 gap-10 lg:mt-14 lg:grid-cols-12 lg:items-start lg:gap-12">
+            {/* LEFT 7 COLS: Editorial Intelligence Stream (Featured Dispatch + Open Hairline Wire) */}
+            <div className="min-w-0 lg:col-span-7">
+              {featuredDispatch && (
+                <Reveal>
+                  <article className="surface-card surface-card-interactive group rounded-2xl p-6 sm:p-8">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <span className="font-mono-telemetry rounded-full bg-[#FF3B1F] px-3 py-1 text-[11px] font-semibold text-[#08080A]">
+                        Dispatch {featuredDispatch.issue_number}
+                      </span>
+                      <span className="text-xs text-[#8B8B94] tabular-nums">
+                        {formatCategoryLabel(featuredDispatch.category)} ·{" "}
+                        {featuredDispatch.reading_time_mins} min read
+                      </span>
+                    </div>
+
+                    <h3 className="font-display mt-5 text-2xl font-semibold leading-[1.16] tracking-[-0.02em] text-[#F4F3EF] sm:text-[1.75rem]">
+                      <Link
+                        href={`/journal/${featuredDispatch.slug}`}
+                        className="transition-colors hover:text-[#FF8A7A]"
+                      >
+                        {cleanCopy(featuredDispatch.title)}
+                      </Link>
+                    </h3>
+
+                    <p className="mt-3 max-w-[60ch] text-sm leading-relaxed text-[#A1A1AA]">
+                      {cleanCopy(featuredDispatch.subtitle)}
+                    </p>
+
+                    <div className="mt-6">
+                      <Link
+                        href={`/journal/${featuredDispatch.slug}`}
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#F4F3EF] transition-colors hover:text-[#FF8A7A]"
+                      >
+                        <span>Read featured dispatch</span>
+                        <ArrowUpRight
+                          className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:group-hover:translate-x-0 motion-reduce:group-hover:translate-y-0"
+                          strokeWidth={1.8}
+                        />
+                      </Link>
+                    </div>
+                  </article>
+                </Reveal>
+              )}
+
+              {/* Open Editorial Reading List for The Orbital Wire */}
+              <div className={featuredDispatch ? "mt-10" : ""}>
+                <Reveal className="flex flex-wrap items-baseline justify-between gap-3 pb-4">
+                  <h3 className="font-display text-lg font-semibold tracking-[-0.015em] text-[#F4F3EF]">
+                    The Orbital Wire
+                  </h3>
+                  <Link
+                    href="/journal"
+                    className="inline-flex items-center gap-1 text-sm font-medium text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
+                  >
+                    <span>
+                      All {dispatches.length} dispatches &amp; {newsItems.length}{" "}
+                      signals
+                    </span>
+                    <ArrowUpRight className="h-4 w-4" strokeWidth={1.8} />
+                  </Link>
+                </Reveal>
+
+                {topNews.length === 0 ? (
+                  <p className="border-t border-white/[0.06] py-6 text-sm text-[#8B8B94]">
+                    Fresh Orbital Wire signals are syncing now.
+                  </p>
+                ) : (
+                  <StaggerGroup>
+                    {topNews.map((item) => (
+                      <StaggerItem key={item.id}>
+                        <article className="border-t border-white/[0.06] py-6">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-wrap items-center gap-2.5">
+                              <span className="rounded-full bg-white/[0.06] px-2.5 py-0.5 text-[11px] font-medium text-[#D4D4D8]">
+                                {formatCategoryLabel(item.category)}
+                              </span>
+                              <span className="text-xs text-[#8B8B94]">
+                                {item.source_name}
+                              </span>
+                            </div>
+
+                            <span className="font-mono-telemetry text-xs font-medium text-[#34D399]">
+                              Impact {item.impact_score}/100
+                            </span>
+                          </div>
+
+                          <a
+                            href={item.source_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-2.5 block text-base font-semibold leading-snug text-[#F4F3EF] transition-colors hover:text-[#FF8A7A]"
+                          >
+                            {cleanCopy(item.title)}
+                          </a>
+
+                          <p className="mt-2 text-sm leading-relaxed text-[#A1A1AA]">
+                            <span className="font-medium text-[#F4F3EF]">
+                              Gravity Take:{" "}
+                            </span>
+                            {cleanCopy(item.gravity_take)}
+                          </p>
+                        </article>
+                      </StaggerItem>
+                    ))}
+                  </StaggerGroup>
+                )}
+
+                <div className="border-t border-white/[0.06] pt-6">
+                  <Link
+                    href="/journal"
+                    className="press-tactile inline-flex h-11 items-center gap-2 rounded-full border border-white/[0.12] bg-[#18181D] px-5 text-sm font-medium whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.22] hover:bg-white/[0.1]"
+                  >
+                    <span>Explore Journal &amp; Wire</span>
+                    <ArrowUpRight
+                      className="h-4 w-4 text-[#A1A1AA]"
+                      strokeWidth={1.8}
+                    />
+                  </Link>
+                </div>
               </div>
             </div>
 
-            {/* RIGHT COLUMN: THE ORBITAL WIRE & LAB DISPATCHES */}
-            <div className="flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between border-b border-[#27272A] bg-[#111114] px-6 py-5 lg:px-8">
+            {/* RIGHT 5 COLS: Elevated Live Hackathon Radar Panel */}
+            <Reveal delay={0.08} className="min-w-0 lg:col-span-5">
+              <div className="surface-card rounded-2xl p-6 sm:p-7">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <div className="font-mono-telemetry flex items-center gap-2 text-[10px] text-[#10B981]">
-                      <Radio className="h-3.5 w-3.5" strokeWidth={1.5} />
-                      <span>MODULE 02 // AI &amp; TECH INTELLIGENCE</span>
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        aria-hidden="true"
+                        className="h-2 w-2 shrink-0 rounded-full bg-[#10B981]"
+                      />
+                      <h3 className="font-display text-xl font-semibold tracking-[-0.02em] text-[#F4F3EF]">
+                        Live Hackathon Radar
+                      </h3>
                     </div>
-                    <h2 className="font-display mt-1 text-2xl font-bold uppercase">
-                      ORBITAL WIRE &amp; DISPATCHES
-                    </h2>
+                    <p className="mt-1 text-xs text-[#8B8B94] tabular-nums">
+                      {hackathons.length} active events across Devpost,
+                      DoraHacks, X, and Luma
+                    </p>
                   </div>
+
                   <Link
-                    href="/journal"
-                    className="font-mono-telemetry inline-flex items-center gap-1 border border-[#27272A] bg-[#09090B] px-3 py-2 text-[11px] text-[#F3F2EE] hover:border-[#FF3B1F]"
+                    href="/hackathons"
+                    className="press-tactile inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-white/[0.1] bg-white/[0.04] px-3 text-xs font-medium whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.2] hover:bg-white/[0.09]"
                   >
-                    <span>READ ALL INTELLIGENCE</span>
-                    <ArrowUpRight className="h-3.5 w-3.5 text-[#FF3B1F]" strokeWidth={1.8} />
+                    <span>Full radar</span>
+                    <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.8} />
                   </Link>
                 </div>
 
-                {/* Featured Lab Dispatch Banner */}
-                {featuredDispatch && (
-                  <div className="border-b border-[#27272A] bg-[#111114]/60 p-6 lg:px-8">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono-telemetry bg-[#FF3B1F] px-2 py-0.5 text-[10px] font-bold text-[#09090B]">
-                        FEATURED DISPATCH // {featuredDispatch.issue_number}
-                      </span>
-                      <span className="font-mono-telemetry text-[10px] text-[#A1A1AA]">
-                        {featuredDispatch.category} • {featuredDispatch.reading_time_mins}{" "}
-                        MIN READ
-                      </span>
-                    </div>
-                    <Link
-                      href={`/journal/${featuredDispatch.slug}`}
-                      className="font-display mt-3 block text-xl font-bold text-[#F3F2EE] hover:text-[#FF3B1F]"
-                    >
-                      {featuredDispatch.title}
-                    </Link>
-                    <p className="mt-2 line-clamp-2 text-xs text-[#A1A1AA]">
-                      {featuredDispatch.subtitle}
-                    </p>
+                {topHackathons.length === 0 ? (
+                  <p className="mt-6 border-t border-white/[0.06] pt-6 text-sm text-[#8B8B94]">
+                    No active hackathon windows are listed right now.
+                  </p>
+                ) : (
+                  <div className="mt-5">
+                    {topHackathons.map((hack) => (
+                      <article
+                        key={hack.id}
+                        className="border-t border-white/[0.06] py-5"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <SourceBadges sources={hack.sources} />
+                          <OxakalabsStatusBadge
+                            status={hack.oxakalabs_status}
+                          />
+                        </div>
+
+                        <h4 className="font-display mt-3 text-[17px] font-semibold leading-snug tracking-[-0.015em] text-[#F4F3EF]">
+                          <Link
+                            href={`/hackathons?q=${encodeURIComponent(hack.title)}`}
+                            className="transition-colors hover:text-[#FF8A7A]"
+                          >
+                            {cleanCopy(hack.title)}
+                          </Link>
+                        </h4>
+
+                        <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[#A1A1AA]">
+                          {cleanCopy(hack.summary)}
+                        </p>
+
+                        <div className="mt-3.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                          <span className="font-mono-telemetry text-xs font-semibold text-[#34D399]">
+                            {cleanCopy(hack.prize_display)}
+                          </span>
+
+                          <div className="flex flex-wrap items-center gap-3">
+                            <CountdownTimer
+                              deadlineAt={hack.deadline_at}
+                              compact
+                            />
+                            <a
+                              href={hack.primary_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-xs font-medium text-[#D4D4D8] transition-colors hover:text-[#F4F3EF]"
+                            >
+                              <span>Source</span>
+                              <ArrowUpRight
+                                className="h-3.5 w-3.5"
+                                strokeWidth={1.8}
+                              />
+                            </a>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
                   </div>
                 )}
 
-                {/* Top 4 Orbital Wire Items */}
-                <div className="divide-y divide-[#27272A]">
-                  {topNews.map((item) => (
-                    <div
-                      key={item.id}
-                      className="p-6 transition-colors hover:bg-[#111114]/70 lg:px-8"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono-telemetry border border-[#27272A] bg-[#09090B] px-2 py-0.5 text-[10px] text-[#A1A1AA]">
-                            {item.category}
-                          </span>
-                          <span className="font-mono-telemetry text-[10px] text-[#71717A]">
-                            {item.source_name}
-                          </span>
-                        </div>
-                        <span className="font-mono-telemetry text-[10px] text-[#10B981]">
-                          IMPACT: {item.impact_score}/100
-                        </span>
-                      </div>
-
-                      <a
-                        href={item.source_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-2.5 block text-sm font-semibold text-[#F3F2EE] hover:text-[#FF3B1F]"
-                      >
-                        {item.title}
-                      </a>
-
-                      <p className="mt-1.5 text-xs leading-relaxed text-[#A1A1AA]">
-                        <strong className="font-mono-telemetry text-[10px] text-[#FF3B1F]">
-                          GRAVITY TAKE:{" "}
-                        </strong>
-                        {item.gravity_take}
-                      </p>
-                    </div>
-                  ))}
+                <div className="border-t border-white/[0.08] pt-5">
+                  <Link
+                    href="/hackathons"
+                    id="hero-cta-hackathon-radar"
+                    className="press-tactile flex h-11 w-full items-center justify-between gap-3 rounded-full border border-white/[0.12] bg-[#18181D] px-5 text-sm font-medium text-[#F4F3EF] hover:border-white/[0.22] hover:bg-white/[0.1]"
+                  >
+                    <span className="truncate">
+                      View all {hackathons.length} tracked hackathons
+                    </span>
+                    <ArrowUpRight
+                      className="h-4 w-4 shrink-0 text-[#FF8A7A]"
+                      strokeWidth={1.8}
+                    />
+                  </Link>
                 </div>
               </div>
-
-              <div className="border-t border-[#27272A] bg-[#111114] px-6 py-4 lg:px-8">
-                <Link
-                  href="/journal"
-                  className="font-mono-telemetry flex items-center justify-between text-xs font-semibold text-[#F3F2EE] hover:text-[#FF3B1F]"
-                >
-                  <span>
-                    ENTER JOURNAL &amp; THE ORBITAL WIRE ({dispatches.length} DISPATCHES •{" "}
-                    {newsItems.length} WIRE SIGNALS)
-                  </span>
-                  <ArrowUpRight className="h-4 w-4 text-[#FF3B1F]" strokeWidth={1.8} />
-                </Link>
-              </div>
-            </div>
+            </Reveal>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* ===================================================================
-            SECTION 5: MANIFESTO & KINETIC CTA BAND
-           =================================================================== */}
-        <section className="bg-[#09090B] px-6 py-16 sm:px-10 lg:px-14 lg:py-24">
-          <div className="mx-auto max-w-5xl">
-            <div className="font-mono-telemetry flex items-center gap-2 text-xs text-[#FF3B1F]">
-              <Terminal className="h-4 w-4" strokeWidth={1.5} />
-              <span>G-GRAVITATOR MANIFESTO // CENTER OF MASS</span>
-            </div>
-
-            <blockquote className="font-display mt-6 text-2xl leading-[1.2] font-bold tracking-tight text-[#F3F2EE] sm:text-3xl lg:text-4xl">
-              &ldquo;Most labs either chase aesthetics with no engine underneath, or ship
-              raw engineering nobody wants to touch. G-Gravitator exists at the center of
-              mass—where software craftsmanship, applied AI, and radical creativity
-              collide. We build products for the world, architect high-velocity systems
-              for ambitious companies, stress-test frontier ideas in 48-hour hackathons
-              through OXAKALABS, and pull sharp minds into orbit to build what comes
-              next.&rdquo;
+      {/* ===================================================================
+          SECTION 5: MANIFESTO & VISUAL STUDIO PATHWAYS (BENTO DIVERSITY)
+         =================================================================== */}
+      <section className="border-t border-white/[0.06] py-24 lg:py-32">
+        <div className="mx-auto max-w-[1360px] px-5 sm:px-8 lg:px-12">
+          {/* Editorial Display Manifesto */}
+          <Reveal className="mx-auto max-w-4xl text-center">
+            <blockquote className="font-display text-[clamp(1.625rem,3vw,2.625rem)] font-semibold leading-[1.18] tracking-[-0.025em] text-[#F4F3EF]">
+              &ldquo;Most labs chase aesthetics without an engine underneath, or
+              ship raw engineering nobody wants to touch. G-Gravitator operates
+              at the center of mass: where software craft, applied AI, and
+              48-hour OXAKALABS velocity pull sharp minds and ambitious markets
+              into orbit.&rdquo;
             </blockquote>
+            <p className="mt-6 text-sm text-[#8B8B94]">
+              G-Gravitator Labs Ltd · Operating OXAKALABS since 2022
+            </p>
+          </Reveal>
 
-            <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {/* 3-Column Bento Pathways with Material & Photography Diversity */}
+          <StaggerGroup className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-3 lg:mt-20">
+            {/* Pathway 1: Sculpted Obsidian Architectural Card with Warm Specular Rim */}
+            <StaggerItem className="min-w-0">
               <Link
                 href="/systems"
-                className="group flex flex-col justify-between border border-[#27272A] bg-[#111114] p-6 transition-colors hover:border-[#FF3B1F]"
+                className="group relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-[#FF3B1F]/25 bg-gradient-to-b from-[#161417] via-[#111114] to-[#0E0E11] p-7 transition-[border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-[#FF3B1F]/50 motion-reduce:hover:translate-y-0"
               >
-                <div>
-                  <span className="font-mono-telemetry text-[10px] text-[#FF3B1F]">
-                    PATHWAY 01 // ENTERPRISE &amp; B2B
-                  </span>
-                  <h3 className="font-display mt-2 text-lg font-bold text-[#F3F2EE]">
-                    Book a Gravity Audit or Velocity MVP
-                  </h3>
-                  <p className="mt-1.5 text-xs text-[#A1A1AA]">
-                    5-day technical teardown or 4-week full-stack AI system delivery.
-                  </p>
-                </div>
-                <span className="font-mono-telemetry mt-6 inline-flex items-center gap-1 text-xs font-semibold text-[#F3F2EE] group-hover:text-[#FF3B1F]">
-                  <span>SCOPE YOUR BUILD</span>
-                  <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.8} />
-                </span>
-              </Link>
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF3B1F]/60 to-transparent"
+                />
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -top-20 -right-20 h-52 w-52 rounded-full bg-[#FF3B1F]/[0.09] blur-3xl"
+                />
 
+                <div className="relative z-10">
+                  <h3 className="font-display text-2xl font-semibold leading-[1.15] tracking-[-0.02em] text-[#F4F3EF]">
+                    G-Gravitator Systems
+                  </h3>
+
+                  <p className="mt-3 text-sm leading-relaxed text-[#A1A1AA]">
+                    Book a 5-day Gravity Audit or 4-week Velocity MVP for
+                    production AI workflows and full-stack software with clean
+                    IP handover.
+                  </p>
+
+                  <dl className="mt-7 space-y-3 border-t border-white/[0.08] pt-5 text-xs">
+                    <div className="flex items-center justify-between gap-4">
+                      <dt className="text-[#8B8B94]">Gravity Audit</dt>
+                      <dd className="font-mono-telemetry font-medium text-[#F4F3EF]">
+                        5 days
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <dt className="text-[#8B8B94]">Velocity MVP</dt>
+                      <dd className="font-mono-telemetry font-medium text-[#F4F3EF]">
+                        4 weeks
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <dt className="text-[#8B8B94]">Lab Retainer</dt>
+                      <dd className="font-mono-telemetry font-medium text-[#F4F3EF]">
+                        Monthly
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <div className="relative z-10 mt-8">
+                  <span className="press-tactile inline-flex h-11 items-center gap-2 rounded-full bg-[#FF3B1F] px-5 text-sm font-semibold whitespace-nowrap text-[#08080A] transition-colors group-hover:bg-[#FF5238]">
+                    <span>Scope your build</span>
+                    <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+                  </span>
+                </div>
+              </Link>
+            </StaggerItem>
+
+            {/* Pathway 2: Clean Photographic Media Header (Skunkworks Forge) */}
+            <StaggerItem className="min-w-0">
               <Link
                 href="/skunkworks"
-                className="group flex flex-col justify-between border border-[#27272A] bg-[#111114] p-6 transition-colors hover:border-[#FF3B1F]"
+                className="surface-card surface-card-interactive group flex h-full flex-col overflow-hidden rounded-2xl"
               >
-                <div>
-                  <span className="font-mono-telemetry text-[10px] text-[#10B981]">
-                    PATHWAY 02 // R&amp;D &amp; HACKATHONS
-                  </span>
-                  <h3 className="font-display mt-2 text-lg font-bold text-[#F3F2EE]">
-                    Inspect OXAKALABS // Skunkworks
-                  </h3>
-                  <p className="mt-1.5 text-xs text-[#A1A1AA]">
-                    Explore 48-hour builds and run the interactive 25-Point Graduation
-                    Scorecard.
-                  </p>
+                <div className="relative aspect-video w-full overflow-hidden border-b border-white/[0.06] bg-[#0B0B0E]">
+                  <Image
+                    src="/images/skunkworks-forge.jpg"
+                    alt="CNC-milled dark aerospace alloy mechanism and frosted glass aperture representing OXAKALABS Skunkworks"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
+                  />
                 </div>
-                <span className="font-mono-telemetry mt-6 inline-flex items-center gap-1 text-xs font-semibold text-[#F3F2EE] group-hover:text-[#FF3B1F]">
-                  <span>ENTER SKUNKWORKS</span>
-                  <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.8} />
-                </span>
-              </Link>
 
+                <div className="flex flex-1 flex-col justify-between p-7">
+                  <div>
+                    <h3 className="font-display text-2xl font-semibold leading-[1.15] tracking-[-0.02em] text-[#F4F3EF]">
+                      OXAKALABS Skunkworks
+                    </h3>
+
+                    <p className="mt-3 text-sm leading-relaxed text-[#A1A1AA]">
+                      Explore {skunkworksBuilds.length} shipped 48-hour GitHub
+                      prototypes and score product viability on the 25-point
+                      Graduation Filter.
+                    </p>
+                  </div>
+
+                  <span className="mt-7 inline-flex items-center gap-1.5 text-sm font-medium text-[#F4F3EF] transition-colors group-hover:text-[#FF8A7A]">
+                    <span>Enter Skunkworks</span>
+                    <ArrowUpRight
+                      className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:group-hover:translate-x-0 motion-reduce:group-hover:translate-y-0"
+                      strokeWidth={1.8}
+                    />
+                  </span>
+                </div>
+              </Link>
+            </StaggerItem>
+
+            {/* Pathway 3: Clean Photographic Media Header (Orbit Atelier) */}
+            <StaggerItem className="min-w-0">
               <Link
                 href="/orbit"
-                className="group flex flex-col justify-between border border-[#27272A] bg-[#111114] p-6 transition-colors hover:border-[#FF3B1F]"
+                className="surface-card surface-card-interactive group flex h-full flex-col overflow-hidden rounded-2xl"
               >
-                <div>
-                  <span className="font-mono-telemetry text-[10px] text-[#3B82F6]">
-                    PATHWAY 03 // INCOMING BUILDERS
-                  </span>
-                  <h3 className="font-display mt-2 text-lg font-bold text-[#F3F2EE]">
-                    Apply for Orbit Cycle 01
-                  </h3>
-                  <p className="mt-1.5 text-xs text-[#A1A1AA]">
-                    6-week intensive technical cohort across AI Engineering &amp; Kinetic
-                    Craft.
-                  </p>
+                <div className="relative aspect-video w-full overflow-hidden border-b border-white/[0.06] bg-[#0B0B0E]">
+                  <Image
+                    src="/images/orbit-atelier.jpg"
+                    alt="Twilight monolithic dark board-formed concrete and smoked glass studio interior representing G-Gravitator Orbit"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
+                  />
                 </div>
-                <span className="font-mono-telemetry mt-6 inline-flex items-center gap-1 text-xs font-semibold text-[#F3F2EE] group-hover:text-[#FF3B1F]">
-                  <span>JOIN WAITLIST</span>
-                  <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.8} />
-                </span>
+
+                <div className="flex flex-1 flex-col justify-between p-7">
+                  <div>
+                    <h3 className="font-display text-2xl font-semibold leading-[1.15] tracking-[-0.02em] text-[#F4F3EF]">
+                      G-Gravitator Orbit
+                    </h3>
+
+                    <p className="mt-3 text-sm leading-relaxed text-[#A1A1AA]">
+                      Apply for Orbit Cycle 01, a selective 6-week residency in
+                      AI engineering, full-stack product systems, and kinetic
+                      craft.
+                    </p>
+                  </div>
+
+                  <span className="mt-7 inline-flex items-center gap-1.5 text-sm font-medium text-[#F4F3EF] transition-colors group-hover:text-[#FF8A7A]">
+                    <span>Join waitlist</span>
+                    <ArrowUpRight
+                      className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:group-hover:translate-x-0 motion-reduce:group-hover:translate-y-0"
+                      strokeWidth={1.8}
+                    />
+                  </span>
+                </div>
               </Link>
-            </div>
-          </div>
-        </section>
-      </div>
+            </StaggerItem>
+          </StaggerGroup>
+        </div>
+      </section>
     </div>
   );
 }

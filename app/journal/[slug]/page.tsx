@@ -17,7 +17,7 @@ export async function generateMetadata({
     return { title: "Dispatch Not Found | G-Gravitator Journal" };
   }
   return {
-    title: `Dispatch // ${dispatch.issue_number}: ${dispatch.title}`,
+    title: `Issue ${dispatch.issue_number}: ${dispatch.title}`,
     description: dispatch.subtitle,
     openGraph: {
       title: dispatch.title,
@@ -47,13 +47,9 @@ export default async function DispatchArticlePage({
   const otherDispatches = allDispatches.filter((d) => d.slug !== dispatch.slug);
 
   return (
-    <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
-      <div className="border-x border-[#27272A]">
-        <DispatchReaderClient
-          dispatch={dispatch}
-          otherDispatches={otherDispatches}
-        />
-      </div>
-    </div>
+    <DispatchReaderClient
+      dispatch={dispatch}
+      otherDispatches={otherDispatches}
+    />
   );
 }

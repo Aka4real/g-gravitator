@@ -642,7 +642,7 @@ export async function searchGlobal(query: string): Promise<GlobalSearchResult[]>
       type: "ROUTE",
       code: "NAV // 01",
       title: "G-Gravitator Systems",
-      subtitle: "High-Ticket B2B AI Foundry — Gravity Audit, Velocity MVP & Lab Retainer",
+      subtitle: "High-Ticket B2B AI Foundry: Gravity Audit, Velocity MVP & Lab Retainer",
       href: "/systems",
       badge: "B2B FOUNDRY",
     },

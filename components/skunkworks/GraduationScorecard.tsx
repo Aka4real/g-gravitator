@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { Sliders, RotateCcw } from "lucide-react";
-import { evaluateGraduationScorecard } from "@/lib/scorecard";
+import { RotateCcw } from "lucide-react";
+import {
+  evaluateGraduationScorecard,
+  type GraduationVerdictCode,
+} from "@/lib/scorecard";
 import type { GraduationScorecardData, LabProject } from "@/lib/supabase/types";
 
 interface GraduationScorecardProps {
@@ -16,30 +19,56 @@ const AXES: {
 }[] = [
   {
     key: "pain_intensity",
-    label: "01. Pain Intensity",
-    desc: "Acute recurring operational bleed vs. one-off novelty prompt.",
+    label: "Pain intensity",
+    desc: "Acute recurring operational bleed versus a one-off novelty prompt.",
   },
   {
     key: "willingness_to_pay",
-    label: "02. Willingness to Pay",
-    desc: "Clear enterprise or prosumer ROI anchor and budget ownership.",
+    label: "Willingness to pay",
+    desc: "Clear enterprise or prosumer ROI anchor with direct budget ownership.",
   },
   {
     key: "technical_moat",
-    label: "03. Technical Moat & Polish",
-    desc: "Non-trivial architecture, verification harness, or kinetic UI craft.",
+    label: "Technical moat and polish",
+    desc: "Non-trivial architecture, verification harness, or interaction craft.",
   },
   {
     key: "distribution_hook",
-    label: "04. Distribution Hook",
-    desc: "Artifact inherently markets itself when shared or embedded.",
+    label: "Distribution hook",
+    desc: "Artifact naturally markets itself whenever shared or embedded.",
   },
   {
     key: "lean_maintainability",
-    label: "05. Solo / Lean Maintainability",
-    desc: "Operable by a 1-to-3 engineer cell without crushing support debt.",
+    label: "Lean maintainability",
+    desc: "Operable by a 1-to-3 engineer cell without heavy support drag.",
   },
 ];
+
+function getVerdictTheme(code: GraduationVerdictCode) {
+  switch (code) {
+    case "PROMOTE_TO_LABS":
+      return {
+        scoreText: "text-[#FF5238]",
+        badgeBg: "border-[#FF3B1F]/35 bg-[#FF3B1F]/12",
+        labelText: "text-[#FF8A7A]",
+        thresholdTag: "20 to 25 threshold met",
+      };
+    case "B2B_CASE_STUDY_OPEN_SOURCE":
+      return {
+        scoreText: "text-[#FBBF24]",
+        badgeBg: "border-[#F59E0B]/35 bg-[#F59E0B]/12",
+        labelText: "text-[#FBBF24]",
+        thresholdTag: "14 to 19 mid-band",
+      };
+    default:
+      return {
+        scoreText: "text-[#D4D4D8]",
+        badgeBg: "border-white/[0.14] bg-white/[0.05]",
+        labelText: "text-[#D4D4D8]",
+        thresholdTag: "Under 14 archive band",
+      };
+  }
+}
 
 export function GraduationScorecard({ presets }: GraduationScorecardProps) {
   const [scores, setScores] = useState<GraduationScorecardData>({
@@ -52,6 +81,7 @@ export function GraduationScorecard({ presets }: GraduationScorecardProps) {
   const [activePresetCode, setActivePresetCode] = useState<string>("OXA-01");
 
   const verdict = evaluateGraduationScorecard(scores);
+  const theme = getVerdictTheme(verdict.code);
 
   const handleLoadPreset = (project: LabProject) => {
     if (!project.scorecard) return;
@@ -59,164 +89,233 @@ export function GraduationScorecard({ presets }: GraduationScorecardProps) {
     setActivePresetCode(project.code);
   };
 
+  const handleReset = () => {
+    setActivePresetCode("Custom");
+    setScores({
+      pain_intensity: 3,
+      willingness_to_pay: 3,
+      technical_moat: 3,
+      distribution_hook: 3,
+      lean_maintainability: 3,
+    });
+  };
+
   return (
-    <div className="border border-[#27272A] bg-[#111114]">
-      {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#27272A] bg-[#09090B] px-6 py-4">
-        <div className="flex items-center gap-2">
-          <Sliders className="h-4 w-4 text-[#FF3B1F]" strokeWidth={1.5} />
-          <span className="font-mono-telemetry text-xs font-bold text-[#F3F2EE]">
-            INTERACTIVE 25-POINT GRADUATION SCORECARD // THE SKUNKWORKS FILTER
-          </span>
+    <div className="surface-card rounded-2xl p-6 sm:p-8 lg:p-10">
+      {/* Top Instrument Control Bar */}
+      <div className="flex flex-col gap-5 border-b border-white/[0.07] pb-6 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h3 className="font-display text-xl font-semibold tracking-[-0.02em] text-[#F4F3EF]">
+            Interactive 25-point filter
+          </h3>
+          <p className="mt-1 text-sm text-[#8B8B94]">
+            Load an OXAKALABS preset or calibrate each axis from 1 to 5.
+          </p>
         </div>
 
-        {/* Preset Selector Pills */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="font-mono-telemetry mr-1 text-[10px] text-[#71717A]">
-            LOAD BUILD:
-          </span>
+        {/* Preset Pills & Reset */}
+        <div
+          role="group"
+          aria-label="Load OXAKALABS build presets"
+          className="flex flex-wrap items-center gap-2"
+        >
           {presets
             .filter((p) => p.scorecard)
-            .map((proj) => (
-              <button
-                key={proj.code}
-                type="button"
-                onClick={() => handleLoadPreset(proj)}
-                className={`font-mono-telemetry border px-2 py-1 text-[10px] transition-colors ${
-                  activePresetCode === proj.code
-                    ? "border-[#FF3B1F] bg-[#FF3B1F] font-bold text-[#09090B]"
-                    : "border-[#27272A] bg-[#111114] text-[#A1A1AA] hover:border-[#3F3F46] hover:text-[#F3F2EE]"
-                }`}
-              >
-                {proj.code}
-              </button>
-            ))}
+            .map((proj) => {
+              const isActive = activePresetCode === proj.code;
+              return (
+                <button
+                  key={proj.code}
+                  type="button"
+                  aria-pressed={isActive}
+                  onClick={() => handleLoadPreset(proj)}
+                  className={`press-tactile font-mono-telemetry cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    isActive
+                      ? "border-[#F4F3EF] bg-[#F4F3EF] text-[#08080A]"
+                      : "border-white/[0.1] bg-[#18181D] text-[#A1A1AA] hover:border-white/[0.2] hover:text-[#F4F3EF]"
+                  }`}
+                >
+                  {proj.code}
+                </button>
+              );
+            })}
+
           <button
             type="button"
-            onClick={() => {
-              setActivePresetCode("CUSTOM");
-              setScores({
-                pain_intensity: 3,
-                willingness_to_pay: 3,
-                technical_moat: 3,
-                distribution_hook: 3,
-                lean_maintainability: 3,
-              });
-            }}
-            className="font-mono-telemetry inline-flex items-center gap-1 border border-[#27272A] bg-[#111114] px-2 py-1 text-[10px] text-[#A1A1AA] hover:text-[#F3F2EE]"
+            onClick={handleReset}
+            className="press-tactile inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-[#D4D4D8] transition-colors hover:border-white/[0.2] hover:bg-white/[0.08] hover:text-[#F4F3EF]"
           >
-            <RotateCcw className="h-2.5 w-2.5" />
-            <span>RESET</span>
+            <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.7} />
+            <span>Reset</span>
           </button>
         </div>
       </div>
 
-      {/* Main Split Grid */}
-      <div className="grid grid-cols-1 divide-y divide-[#27272A] lg:grid-cols-12 lg:divide-x lg:divide-y-0">
-        {/* Left 7 Columns: 5 Interactive Metric Sliders */}
-        <div className="space-y-6 p-6 sm:p-8 lg:col-span-7">
+      {/* Main Split: 5 Tactile Stepped Controls + Live Verdict Panel */}
+      <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
+        {/* Left 7 Cols: Stepped 1-5 Axes */}
+        <div className="space-y-6 lg:col-span-7">
           {AXES.map((axis) => {
             const val = scores[axis.key];
             return (
               <div key={axis.key}>
-                <div className="flex items-baseline justify-between gap-2">
-                  <div>
-                    <span className="font-mono-telemetry text-xs font-semibold text-[#F3F2EE]">
+                <div className="flex items-baseline justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="text-sm font-medium text-[#F4F3EF]">
                       {axis.label}
                     </span>
-                    <p className="mt-0.5 text-xs text-[#71717A]">{axis.desc}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-[#8B8B94]">
+                      {axis.desc}
+                    </p>
                   </div>
-                  <span className="font-mono-telemetry text-sm font-bold text-[#FF3B1F]">
+                  <span className="font-mono-telemetry shrink-0 text-sm font-semibold text-[#F4F3EF]">
                     {val} / 5
                   </span>
                 </div>
 
-                {/* 1-to-5 Segmented Precision Selector + Range */}
-                <div className="mt-2.5 flex items-center gap-2">
-                  {[1, 2, 3, 4, 5].map((step) => (
-                    <button
-                      key={step}
-                      type="button"
-                      id={`scorecard-${axis.key}-${step}`}
-                      onClick={() => {
-                        setActivePresetCode("CUSTOM");
-                        setScores((prev) => ({ ...prev, [axis.key]: step }));
-                      }}
-                      className={`font-mono-telemetry h-8 flex-1 border text-xs font-semibold transition-colors ${
-                        step <= val
-                          ? "border-[#FF3B1F] bg-[#FF3B1F]/20 text-[#F3F2EE]"
-                          : "border-[#27272A] bg-[#09090B] text-[#71717A] hover:border-[#3F3F46]"
-                      }`}
-                    >
-                      {step}
-                    </button>
-                  ))}
+                {/* Recessed 1-5 Stepped Pill Rail */}
+                <div
+                  role="group"
+                  aria-label={axis.label}
+                  className="mt-3 grid grid-cols-5 gap-1.5 rounded-full border border-white/[0.07] bg-[#0B0B0E] p-1"
+                >
+                  {[1, 2, 3, 4, 5].map((step) => {
+                    const isExact = step === val;
+                    const isFilled = step < val;
+                    return (
+                      <button
+                        key={step}
+                        type="button"
+                        id={`scorecard-${axis.key}-${step}`}
+                        aria-pressed={isExact}
+                        aria-label={`${axis.label}: ${step} out of 5`}
+                        onClick={() => {
+                          setActivePresetCode("Custom");
+                          setScores((prev) => ({ ...prev, [axis.key]: step }));
+                        }}
+                        className={`press-tactile font-mono-telemetry h-9 cursor-pointer rounded-full text-xs font-semibold transition-colors ${
+                          isExact
+                            ? "bg-[#FF3B1F] text-[#08080A]"
+                            : isFilled
+                            ? "bg-[#FF3B1F]/20 text-[#F4F3EF] hover:bg-[#FF3B1F]/30"
+                            : "bg-transparent text-[#8B8B94] hover:bg-white/[0.06] hover:text-[#F4F3EF]"
+                        }`}
+                      >
+                        {step}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Right 5 Columns: Dynamic Verdict Telemetry Console */}
-        <div className="flex flex-col justify-between bg-[#09090B] p-6 sm:p-8 lg:col-span-5">
+        {/* Right 5 Cols: Live Verdict Console */}
+        <div className="flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[#0B0B0E] p-6 sm:p-7 lg:col-span-5">
           <div>
-            <div className="flex items-center justify-between">
-              <span className="font-mono-telemetry text-[11px] text-[#71717A]">
-                COMPUTED MASS SCORE
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-medium text-[#8B8B94]">
+                Computed score
               </span>
-              <span className="font-mono-telemetry border border-[#27272A] px-2 py-0.5 text-[10px] text-[#A1A1AA]">
-                PRESET: {activePresetCode}
+              <span className="font-mono-telemetry rounded-full border border-white/[0.1] bg-white/[0.05] px-2.5 py-0.5 text-xs font-medium text-[#D4D4D8]">
+                {activePresetCode}
               </span>
             </div>
 
-            <div className="mt-4 flex items-baseline gap-3">
+            <div className="mt-4 flex flex-wrap items-baseline justify-between gap-3">
+              <div className="flex items-baseline gap-2">
+                <span
+                  className={`font-display tabular-nums text-6xl font-bold leading-none tracking-[-0.03em] ${theme.scoreText}`}
+                >
+                  {verdict.total}
+                </span>
+                <span className="font-mono-telemetry text-lg text-[#8B8B94]">
+                  / {verdict.max}
+                </span>
+              </div>
               <span
-                className="font-display text-6xl font-extrabold"
-                style={{ color: verdict.accentColor }}
+                className={`font-mono-telemetry rounded-full border px-3 py-1 text-xs font-medium ${theme.badgeBg} ${theme.labelText}`}
               >
-                {verdict.total}
-              </span>
-              <span className="font-mono-telemetry text-lg text-[#71717A]">
-                / {verdict.max} PTS
+                {theme.thresholdTag}
               </span>
             </div>
 
-            <div
-              className="mt-6 border p-4"
-              style={{
-                borderColor: verdict.accentColor,
-                backgroundColor: `${verdict.accentColor}12`,
-              }}
-            >
-              <div className="font-mono-telemetry text-[10px] text-[#A1A1AA]">
-                DYNAMIC PIPELINE VERDICT
+            {/* Verdict Callout */}
+            <div className={`mt-6 rounded-xl border p-4 sm:p-5 ${theme.badgeBg}`}>
+              <div className="text-xs font-medium text-[#A1A1AA]">
+                Pipeline verdict
               </div>
               <div
-                className="font-display mt-1 text-xl font-extrabold"
-                style={{ color: verdict.accentColor }}
+                className={`font-display mt-1 text-lg font-semibold tracking-[-0.015em] ${theme.labelText}`}
               >
                 {verdict.label}
               </div>
-              <p className="mt-2 text-xs leading-relaxed text-[#F3F2EE]">
+              <p className="mt-2 text-sm leading-relaxed text-[#D4D4D8]">
                 {verdict.actionDirective}
               </p>
             </div>
           </div>
 
-          {/* Threshold Legend */}
-          <div className="mt-8 space-y-2 border-t border-[#27272A] pt-5 text-[11px]">
-            <div className="font-mono-telemetry flex items-center justify-between text-[#FF3B1F]">
-              <span>20–25 PTS</span>
-              <span>→ PROMOTE TO LABS (G-XX)</span>
-            </div>
-            <div className="font-mono-telemetry flex items-center justify-between text-[#F59E0B]">
-              <span>14–19 PTS</span>
-              <span>→ B2B CASE STUDY &amp; OPEN SOURCE</span>
-            </div>
-            <div className="font-mono-telemetry flex items-center justify-between text-[#71717A]">
-              <span>&lt; 14 PTS</span>
-              <span>→ DISPATCH &amp; ARCHIVE</span>
-            </div>
+          {/* Threshold Indicators */}
+          <div className="mt-7 space-y-2.5 border-t border-white/[0.07] pt-5 text-xs">
+            {[
+              {
+                code: "PROMOTE_TO_LABS" as const,
+                band: "20 to 25",
+                label: "Promote to Labs (G-XX)",
+                activeClass: "text-[#FF8A7A]",
+                dotClass: "bg-[#FF3B1F]",
+              },
+              {
+                code: "B2B_CASE_STUDY_OPEN_SOURCE" as const,
+                band: "14 to 19",
+                label: "B2B case study and open source",
+                activeClass: "text-[#FBBF24]",
+                dotClass: "bg-[#F59E0B]",
+              },
+              {
+                code: "DISPATCH_AND_ARCHIVE" as const,
+                band: "Under 14",
+                label: "Dispatch and archive",
+                activeClass: "text-[#F4F3EF]",
+                dotClass: "bg-[#A1A1AA]",
+              },
+            ].map((row) => {
+              const isCurrent = verdict.code === row.code;
+              return (
+                <div
+                  key={row.code}
+                  className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 transition-colors ${
+                    isCurrent
+                      ? "bg-white/[0.05] font-medium"
+                      : "text-[#8B8B94]"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${
+                        isCurrent ? row.dotClass : "bg-white/[0.16]"
+                      }`}
+                    />
+                    <span
+                      className={`font-mono-telemetry ${
+                        isCurrent ? row.activeClass : "text-[#8B8B94]"
+                      }`}
+                    >
+                      {row.band}
+                    </span>
+                  </div>
+                  <span
+                    className={`text-right ${
+                      isCurrent ? "text-[#F4F3EF]" : "text-[#8B8B94]"
+                    }`}
+                  >
+                    {row.label}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

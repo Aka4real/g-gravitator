@@ -2,123 +2,193 @@
 
 :root {
   /* Core Surfaces */
-  --bg-primary: #09090B;        /* Event Horizon — Primary dark canvas */
-  --bg-elevated: #111114;       /* Deep Obsidian — Cards, drawers, modals */
-  --bg-subtle: #18181B;         /* Machined Zinc — Interactive hover fills */
+  --bg-primary: #08080A;
+  --bg-elevated: #111114;
+  --bg-subtle: #18181D;
 
-  /* Typography & Light Surfaces */
-  --text-primary: #F3F2EE;      /* Alabaster Bone — Primary ink on dark */
-  --text-secondary: #A1A1AA;    /* Muted Titanium — Body & descriptions */
-  --text-tertiary: #71717A;     /* Telemetry Slate — Timestamps, captions */
+  /* Ink & Hierarchy */
+  --text-primary: #F4F3EF;
+  --text-secondary: #A1A1AA;
+  --text-tertiary: #8B8B94;
 
-  /* Structural Geometry */
-  --border-structural: #27272A; /* Brushed Tungsten — 1px exposed gridlines */
-  --border-active: #3F3F46;     /* Illuminated Edge — Focused states */
+  /* Hairlines & Elevation Borders */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-active: rgba(255, 255, 255, 0.18);
+  /* Softened alias for any legacy references */
+  --border-structural: rgba(255, 255, 255, 0.08);
 
-  /* Kinetic Accent (Use Surgically — Max 15% of viewport) */
-  --accent-ion: #FF3B1F;        /* Ion Signal — Primary CTAs, live dots, active filters */
+  /* Surgical Kinetic Accent */
+  --accent-ion: #FF3B1F;
   --accent-ion-glow: rgba(255, 59, 31, 0.16);
 
-  /* Semantic Telemetry Status */
-  --status-live: #10B981;       /* Active / Live Feed / Open Hackathon */
-  --status-warning: #F59E0B;    /* Closing Soon (<72h) / Scouting */
-  --status-cobalt: #3B82F6;     /* Research / Papers / Systems B2B */
+  /* Semantic Status */
+  --status-live: #10B981;
+  --status-warning: #F59E0B;
+  --status-cobalt: #3B82F6;
+
+  /* Motion Curves */
+  --ease-out-expo: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-smooth: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
+/* Editorial Light Reading Mode (Journal Dispatches) */
 [data-reading-theme="light"] {
-  --reading-bg: #F3F2EE;
-  --reading-elevated: #E7E5DE;
-  --reading-subtle: #DCD9CF;
-  --reading-text: #09090B;
+  --reading-bg: #F4F3EF;
+  --reading-elevated: #E8E6DF;
+  --reading-subtle: #DDDAD0;
+  --reading-text: #08080A;
   --reading-secondary: #27272A;
   --reading-tertiary: #52525B;
-  --reading-border: #C8C5BA;
+  --reading-border: rgba(8, 8, 10, 0.12);
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  color-scheme: dark;
+  background-color: var(--bg-primary);
+  scroll-behavior: smooth;
+  scrollbar-color: rgba(255, 255, 255, 0.16) var(--bg-primary);
+  scrollbar-width: thin;
+}
+
 html,
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 15.5px;
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
   line-height: 1.6;
+  letter-spacing: 0;
+  caret-color: var(--accent-ion);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  selection-background-color: var(--accent-ion);
-  selection-color: #09090B;
+  text-rendering: optimizeLegibility;
 }
 
 ::selection {
   background: var(--accent-ion);
-  color: #09090B;
+  color: #08080A;
 }
 
-/* Typography Helpers */
+:focus-visible {
+  outline: 2px solid var(--accent-ion);
+  outline-offset: 2px;
+}
+
+/* Typography Utilities */
 .font-display {
-  font-family: var(--font-display), sans-serif;
-  letter-spacing: -0.035em;
-  line-height: 0.95;
+  font-family: var(--font-display), -apple-system, BlinkMacSystemFont, sans-serif;
+  font-optical-sizing: auto;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  text-wrap: balance;
 }
 
+.font-mono,
+code,
+pre,
+kbd {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Clean tabular monospace strictly for real data, shortcuts, timestamps, and IDs */
 .font-mono-telemetry {
-  font-family: var(--font-mono), monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
 }
 
-/* Exposed 1px Architectural Grid & Crosshairs */
-.arch-frame {
-  border: 1px solid var(--border-structural);
-  background-color: var(--bg-primary);
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
-.arch-cell {
-  position: relative;
-  border-color: var(--border-structural);
-  transition: background-color 180ms ease, border-color 180ms ease;
+/* Translucent Floating Chrome (honest web frosted-glass approximation) */
+.glass-chrome {
+  background-color: rgba(14, 14, 18, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 16px 40px rgba(0, 0, 0, 0.45);
 }
 
-.arch-cell:hover {
-  border-color: var(--border-active);
+@media (prefers-reduced-transparency: reduce) {
+  .glass-chrome {
+    background-color: #111114;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-color: rgba(255, 255, 255, 0.14);
+  }
 }
 
-.crosshair-marker {
-  position: absolute;
-  width: 9px;
-  height: 9px;
-  pointer-events: none;
-  z-index: 10;
+@media (prefers-contrast: more) {
+  .glass-chrome {
+    background-color: #0E0E12;
+    border-color: rgba(255, 255, 255, 0.28);
+  }
 }
 
-.crosshair-marker::before,
-.crosshair-marker::after {
-  content: "";
-  position: absolute;
-  background-color: #52525B;
+/* Sculpted Matte Obsidian Surface Card (single elevation layer, no ghost double-shadow) */
+.surface-card {
+  border-radius: 1rem;
+  background-color: var(--bg-elevated);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  transition:
+    background-color 200ms var(--ease-out-expo),
+    border-color 200ms var(--ease-out-expo),
+    transform 200ms var(--ease-out-expo);
 }
 
-.crosshair-marker::before {
-  top: 4px;
-  left: 0;
-  width: 9px;
-  height: 1px;
+.surface-subtle {
+  border-radius: 0.75rem;
+  background-color: var(--bg-subtle);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.crosshair-marker::after {
-  top: 0;
-  left: 4px;
-  width: 1px;
-  height: 9px;
+.hairline-t {
+  border-top: 1px solid var(--border-subtle);
 }
 
-/* Custom Machined Scrollbar */
+.hairline-b {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Tactile pointer-down feedback */
+.press-tactile {
+  transition:
+    transform 140ms var(--ease-out-expo),
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.press-tactile:active {
+  transform: scale(0.97);
+}
+
+/* Hover transitions strictly gated to fine pointer devices */
+@media (hover: hover) and (pointer: fine) {
+  .surface-card:hover {
+    background-color: #16161A;
+    border-color: rgba(255, 255, 255, 0.14);
+  }
+
+  .surface-card-interactive:hover {
+    background-color: #16161A;
+    border-color: var(--border-active);
+    transform: translateY(-2px);
+  }
+}
+
+/* Smooth Dark Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -126,9 +196,31 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-structural);
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+  border: 2px solid var(--bg-primary);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-ion);
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* Global Reduced Motion Safety */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 120ms !important;
+  }
+
+  .surface-card-interactive:hover,
+  .press-tactile:active {
+    transform: none !important;
+  }
 }

@@ -1,31 +1,32 @@
 import type { Metadata } from "next";
-import { Syne, Inter, JetBrains_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { ArchitecturalShell } from "@/components/layout/ArchitecturalShell";
 import { getHackathons } from "@/lib/db/repository";
 
-const syne = Syne({
+const bricolageGrotesque = Bricolage_Grotesque({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["700", "800"],
+  weight: ["500", "600", "700", "800"],
+  display: "swap",
 });
 
-const inter = Inter({
+const geist = Geist({
   variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const geistMono = Geist_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
   title: {
-    default: "G-Gravitator — Build With Weight | Software & AI Creativity Lab",
+    default: "G-Gravitator | Build With Weight",
     template: "%s | G-Gravitator",
   },
   description:
@@ -37,12 +38,12 @@ export const metadata: Metadata = {
     "B2B AI Foundry",
     "Live Hackathon Tracker",
     "Orbital Wire",
-    "Kinetic Luxury",
+    "Design Engineering",
   ],
   openGraph: {
-    title: "G-Gravitator — Where Ideas Gain Mass",
+    title: "G-Gravitator: Where Ideas Gain Mass",
     description:
-      "Software & AI engineered to pull markets. Operating Systems, Labs (G-01..G-04), OXAKALABS // Skunkworks, and Orbit.",
+      "Software and AI engineered to pull markets. Operating Systems, Labs (G-01..G-04), OXAKALABS Skunkworks, and Orbit.",
     type: "website",
   },
 };
@@ -57,9 +58,9 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${syne.variable} ${inter.variable} ${jetbrainsMono.variable} dark`}
+      className={`${bricolageGrotesque.variable} ${geist.variable} ${geistMono.variable} dark`}
     >
-      <body className="min-h-screen bg-[#09090B] text-[#F3F2EE] antialiased">
+      <body className="min-h-screen bg-[#08080A] text-[#F4F3EF] antialiased">
         <ArchitecturalShell activeHackathonCount={hackathons.length}>
           {children}
         </ArchitecturalShell>

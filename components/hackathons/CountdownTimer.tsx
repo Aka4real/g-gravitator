@@ -7,19 +7,73 @@ interface CountdownTimerProps {
   compact?: boolean;
 }
 
+const UTC_MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+function formatStableUtcDeadline(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "--";
+  const month = UTC_MONTHS[date.getUTCMonth()];
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${month} ${day} UTC`;
+}
+
 export function CountdownTimer({ deadlineAt, compact = false }: CountdownTimerProps) {
-  const [remainingMs, setRemainingMs] = useState<number>(() => {
-    return Math.max(0, new Date(deadlineAt).getTime() - Date.now());
-  });
+  // Always start null so SSR and initial client hydration produce identical markup.
+  const [remainingMs, setRemainingMs] = useState<number | null>(null);
 
   useEffect(() => {
+    const targetMs = new Date(deadlineAt).getTime();
     const update = () => {
-      setRemainingMs(Math.max(0, new Date(deadlineAt).getTime() - Date.now()));
+      if (Number.isNaN(targetMs)) {
+        setRemainingMs(0);
+        return;
+      }
+      setRemainingMs(Math.max(0, targetMs - Date.now()));
     };
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
+    const kickoff = window.setTimeout(update, 0);
+    const interval = window.setInterval(update, 1000);
+    return () => {
+      window.clearTimeout(kickoff);
+      window.clearInterval(interval);
+    };
   }, [deadlineAt]);
+
+  if (remainingMs === null) {
+    return (
+      <span
+        className={`font-mono-telemetry inline-flex items-center font-medium text-[#A1A1AA] ${
+          compact ? "text-xs" : "text-[13px]"
+        }`}
+      >
+        {formatStableUtcDeadline(deadlineAt)}
+      </span>
+    );
+  }
+
+  if (remainingMs <= 0) {
+    return (
+      <span
+        className={`font-mono-telemetry inline-flex items-center font-medium text-[#8B8B94] ${
+          compact ? "text-xs" : "text-[13px]"
+        }`}
+      >
+        Window closed
+      </span>
+    );
+  }
 
   const totalSeconds = Math.floor(remainingMs / 1000);
   const days = Math.floor(totalSeconds / 86400);
@@ -33,35 +87,27 @@ export function CountdownTimer({ deadlineAt, compact = false }: CountdownTimerPr
 
   const pad = (n: number) => String(n).padStart(2, "0");
 
-  if (remainingMs <= 0) {
-    return (
-      <span className="font-mono-telemetry text-[11px] text-[#71717A]">
-        WINDOW CLOSED
-      </span>
-    );
-  }
-
   return (
     <span
-      className={`font-mono-telemetry inline-flex items-center gap-1.5 ${
-        compact ? "text-[11px]" : "text-xs"
-      } font-semibold ${
+      className={`font-mono-telemetry inline-flex items-center gap-1.5 font-semibold whitespace-nowrap ${
+        compact ? "text-xs" : "text-[13px]"
+      } ${
         isUrgent
-          ? "text-[#FF3B1F]"
+          ? "text-[#FF6B54]"
           : isWarning
-          ? "text-[#F59E0B]"
-          : "text-[#F3F2EE]"
+          ? "text-[#FBBF24]"
+          : "text-[#F4F3EF]"
       }`}
     >
       {isUrgent && (
         <span
           aria-hidden="true"
-          className="inline-block h-1.5 w-1.5 animate-pulse bg-[#FF3B1F]"
+          className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[#FF3B1F]"
         />
       )}
       <span>
-        {pad(days)}D : {pad(hours)}H : {pad(minutes)}M
-        {!compact && ` : ${pad(seconds)}S`}
+        {pad(days)}d {pad(hours)}h {pad(minutes)}m
+        {!compact && ` ${pad(seconds)}s`}
       </span>
     </span>
   );

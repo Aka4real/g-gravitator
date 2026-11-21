@@ -4,9 +4,9 @@ import { JournalHubClient } from "@/components/journal/JournalHubClient";
 import { getDispatches, getNewsItems } from "@/lib/db/repository";
 
 export const metadata: Metadata = {
-  title: "Journal & The Orbital Wire — AI Intelligence & Engineering Dispatches",
+  title: "Journal and The Orbital Wire | AI Intelligence and Lab Dispatches",
   description:
-    "Dual-track intelligence center combining G-Gravitator & OXAKALABS original Lab Dispatches with The Orbital Wire automated AI & tech news radar.",
+    "Dual-track intelligence center combining G-Gravitator and OXAKALABS original Lab Dispatches with The Orbital Wire automated AI and tech news radar.",
 };
 
 export const dynamic = "force-dynamic";
@@ -23,29 +23,22 @@ export default async function JournalPage({
   ]);
 
   return (
-    <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
-      <div className="border-x border-[#27272A]">
-        {/* Header */}
-        <section className="border-b border-[#27272A] px-6 py-12 sm:px-10 lg:px-14 lg:py-16">
-          <div className="font-mono-telemetry inline-flex items-center gap-2 border border-[#27272A] bg-[#111114] px-3 py-1 text-[11px] text-[#FF3B1F]">
-            <span>DEEP-DIVE MODULE 02 // DUAL-TRACK INTELLIGENCE</span>
-            <span className="text-[#3F3F46]">|</span>
-            <span className="text-[#10B981]">LAB DISPATCHES + THE ORBITAL WIRE</span>
-          </div>
+    <div className="mx-auto max-w-[1360px] px-5 pt-10 pb-24 sm:px-8 lg:px-12 lg:pt-14 lg:pb-32">
+      {/* Open Editorial Header */}
+      <header className="max-w-3xl">
+        <h1 className="font-display text-[clamp(2rem,4.2vw,3.5rem)] font-bold tracking-[-0.03em] text-[#F4F3EF]">
+          Engineering dispatches and live AI intelligence
+        </h1>
+        <p className="mt-4 max-w-[65ch] text-base leading-relaxed text-[#A1A1AA]">
+          Original architectural breakdowns and post-mortems written by G-Gravitator and
+          OXAKALABS engineers, paired with{" "}
+          <strong className="font-medium text-[#F4F3EF]">The Orbital Wire</strong>, our
+          real-time radar distilling breakthroughs across frontier models, agentic
+          tooling, arXiv research, and Hacker News into concise builder takeaways.
+        </p>
+      </header>
 
-          <h1 className="font-display mt-5 max-w-4xl text-[clamp(2.25rem,5vw,4.5rem)] font-extrabold tracking-[-0.035em] text-[#F3F2EE] uppercase">
-            ENGINEERING DISPATCHES &amp; LIVE AI TELEMETRY.
-          </h1>
-
-          <p className="mt-4 max-w-3xl text-sm leading-relaxed text-[#A1A1AA]">
-            Original architectural breakdowns and post-mortems authored by G-Gravitator
-            &amp; OXAKALABS engineers—paired with{" "}
-            <strong className="text-[#F3F2EE]">The Orbital Wire</strong>, our real-time
-            radar synthesizing breakthroughs across frontier models, agentic tooling,
-            arXiv research, and Hacker News into 2-sentence builder takeaways.
-          </p>
-        </section>
-
+      <div className="mt-8">
         <JournalHubClient
           dispatches={dispatches}
           newsItems={newsItems}

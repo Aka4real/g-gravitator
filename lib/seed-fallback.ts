@@ -208,7 +208,7 @@ export const SEED_LAB_PROJECTS: LabProject[] = [
     tagline:
       "Autonomous demo engineering & interactive product walkthrough synthesis engine built for high-stakes technical launches.",
     description:
-      "Built in a 48-hour OXAKALABS sprint to eliminate dead demo videos during hackathon judging and founder pitches. DEMOPILOT synthesizes live product states, voiceover telemetry, and guided interactive DOM walkthroughs—graduating directly into G-01 // GRAVITY DECK.",
+      "Built in a 48-hour OXAKALABS sprint to eliminate dead demo videos during hackathon judging and founder pitches. DEMOPILOT synthesizes live product states, voiceover telemetry, and guided interactive DOM walkthroughs, graduating directly into G-01 // GRAVITY DECK.",
     status: "LIVE",
     tech_stack: ["TypeScript", "Next.js", "AI Agents", "DOM Telemetry", "Framer Motion"],
     live_url: "https://github.com/Aka4real/DEMOPILOT",
@@ -683,7 +683,7 @@ export const SEED_NEWS_ITEMS: NewsItem[] = [
   {
     id: "news-03",
     url_hash: "arxiv-verifiable-multi-agent-consensus-2026",
-    title: "arXiv:2611.08412 — Deterministic Verification Gates Outperform Reflexion Loops in Multi-Agent Coding",
+    title: "arXiv:2611.08412: Deterministic Verification Gates Outperform Reflexion Loops in Multi-Agent Coding",
     source_name: "arXiv cs.AI",
     source_url: "https://arxiv.org/list/cs.AI/recent",
     category: "RESEARCH",
@@ -733,7 +733,7 @@ export const SEED_NEWS_ITEMS: NewsItem[] = [
     source_url: "https://openai.com/news",
     category: "AGENTS",
     gravity_take:
-      "Asynchronous tool completion over WebRTC data channels allows voice and operations agents to keep conversing while slow ERP or payment queries resolve in the background. Critical primitive for SME operations agents like G-02 // OpsPilot.",
+      "Asynchronous tool completion over WebRTC data channels allows voice and operations agents to keep conversing while slow ERP or payment queries resolve in the background. Critical primitive for SME operations agents like G-02 · OpsPilot.",
     impact_score: 90,
     published_at: pastIso(13 * HOUR),
     is_pinned: false,
@@ -748,7 +748,7 @@ export const SEED_NEWS_ITEMS: NewsItem[] = [
     source_url: "https://github.com/trending",
     category: "DEVTOOLS",
     gravity_take:
-      "Stepping animation timelines frame-by-frame via VideoEncoder API produces bit-perfect 60fps MP4 exports directly in Chromium without server render farms. Directly validates the zero-marginal-cost rendering thesis behind G-03 // Kinetic Studio.",
+      "Stepping animation timelines frame-by-frame via VideoEncoder API produces bit-perfect 60fps MP4 exports directly in Chromium without server render farms. Directly validates the zero-marginal-cost rendering thesis behind G-03 · Kinetic Studio.",
     impact_score: 85,
     published_at: pastIso(18 * HOUR),
     is_pinned: false,
@@ -779,10 +779,10 @@ export const SEED_DISPATCHES: Dispatch[] = [
     slug: "multi-provider-signal-extraction-x-hackathon-radar",
     title: "Multi-Provider Signal Extraction: Engineering a Deterministic + Gemini Flash Radar for X and Global Hackathons",
     subtitle:
-      "Why the highest-leverage AI hackathons break on X (Twitter) 72 hours before hitting aggregators—and how we built a fault-tolerant, cross-source deduplication pipeline to capture them.",
+      "Why the highest-leverage AI hackathons break on X (Twitter) 72 hours before hitting aggregators, and how we built a fault-tolerant, cross-source deduplication pipeline to capture them.",
     category: "AI SYSTEMS",
     author_name: "Enwedo Akaolisa Gift",
-    author_role: "Principal Architect // G-Gravitator & OXAKALABS",
+    author_role: "Principal Architect · G-Gravitator & OXAKALABS",
     reading_time_mins: 8,
     tags: ["GEMINI FLASH", "INGESTION", "DEDUPLICATION", "X PIPELINE", "SYSTEM DESIGN"],
     is_featured: true,
@@ -791,7 +791,7 @@ export const SEED_DISPATCHES: Dispatch[] = [
     updated_at: pastIso(1 * DAY),
     mdx_content: `## The Discovery Asymmetry in Global Hackathons
 
-Most builders discover hackathons only after they appear on legacy directory front pages. By then, half the registration window has evaporated. Inside **OXAKALABS // Skunkworks**, four years of 48-hour builds taught us a basic structural rule: **frontier AI sprints—from Cerebral Valley and Google DeepMind to Anthropic, Vercel, and protocol syndicates—are announced first as raw posts on X (Twitter) or Luma calendar links.**
+Most builders discover hackathons only after they appear on legacy directory front pages. By then, half the registration window has evaporated. Inside **OXAKALABS · Skunkworks**, four years of 48-hour builds taught us a basic structural rule: **frontier AI sprints (from Cerebral Valley and Google DeepMind to Anthropic, Vercel, and protocol syndicates) are announced first as raw posts on X (Twitter) or Luma calendar links.**
 
 When we architected the **G-Gravitator Live Hackathon Tracker (\`/hackathons\`)**, we refused to build another static link directory. We needed an aerospace-grade radar that unifies 10 distinct providers while staying resilient against API rate limits, noisy social chatter, and cross-posted duplicates.
 
@@ -808,7 +808,7 @@ const X_HACKATHON_QUERY =
 
 1. **Primary Mode (\`x_api\`):** Queries X API v2 Recent Search every 6 hours across our operator grammar and high-signal monitored accounts (\`@devpost\`, \`@DoraHacks\`, \`@lablabai\`, \`@cerebral_valley\`, \`@GoogleAI\`, \`@AnthropicAI\`, \`@OpenAIDevs\`, \`@vercel\`, \`@supabase\`).
 2. **Search Bridge Mode (\`search_api\` / \`apify\`):** Falls back to indexed \`site:x.com\` discovery when direct bearer quotas are constrained.
-3. **Zero-Key Public Syndication & oEmbed Resolver:** Whenever an OXAKALABS scout or community builder pastes an \`x.com\` status URL into \`POST /api/hackathons/submit\`, our resolver extracts the tweet payload directly via X's public Syndication and oEmbed endpoints—expanding shortened \`t.co\` links before passing the text to normalization.
+3. **Zero-Key Public Syndication & oEmbed Resolver:** Whenever an OXAKALABS scout or community builder pastes an \`x.com\` status URL into \`POST /api/hackathons/submit\`, our resolver extracts the tweet payload directly via X's public Syndication and oEmbed endpoints, expanding shortened \`t.co\` links before passing the text to normalization.
 
 ## 2. Two-Stage Noise Gate: Heuristics First, Gemini Flash Second
 
@@ -817,7 +817,7 @@ To prevent runaway LLM bills, raw feeds never touch the model unfiltered. Every 
 - **Batch Ceiling:** Hard cap of 30 raw tweets and 40 news items per cron execution.
 - **Temporal & Lexical Guard:** Rejects posts containing retrospective markers (*"congrats to the winners"*, *"recap of last weekend"*, *"demo day highlights"*) unless paired with an explicit upcoming registration deadline.
 
-Survivors enter our structured normalization gate powered by **Gemini 2.5 Flash** (\`@google/genai\`) with a strict JSON Schema contract—backed by a deterministic heuristic parser when running offline:
+Survivors enter our structured normalization gate powered by **Gemini 2.5 Flash** (\`@google/genai\`) with a strict JSON Schema contract, backed by a deterministic heuristic parser when running offline:
 
 \`\`\`typescript
 export interface NormalizedHackathonCandidate {
@@ -847,7 +847,7 @@ Our deduplicator computes a dual key:
 - **Lexical Fingerprint:** \`normalize(titleTokens) + "::" + normalize(organizer) + "::" + YYYY_MM\`
 - **Canonical URL Fingerprint:** Stripping protocol, \`www.\`, query parameters, and trailing slashes from the resolved registration URL.
 
-When an incoming X signal matches an existing Devpost record, we merge their \`sources\` JSONB arrays into a single database row—preserving the highest-confidence deadline and prize pool while rendering **both \`DEVPOST\` and \`X\` badges** on a single card.`,
+When an incoming X signal matches an existing Devpost record, we merge their \`sources\` JSONB arrays into a single database row, preserving the highest-confidence deadline and prize pool while rendering **both \`DEVPOST\` and \`X\` badges** on a single card.`,
   },
   {
     id: "disp-003",
@@ -858,7 +858,7 @@ When an incoming X signal matches an existing Devpost record, we merge their \`s
       "Most hackathon teams ship slideware that rots on GitHub by Monday morning. Here is the 25-point mathematical filter we use to promote weekend experiments like DEMOPILOT into G-Gravitator Labs.",
     category: "HACKATHON LOG",
     author_name: "Enwedo Akaolisa Gift",
-    author_role: "Founder // OXAKALABS & G-Gravitator",
+    author_role: "Founder · OXAKALABS & G-Gravitator",
     reading_time_mins: 7,
     tags: ["OXAKALABS", "SKUNKWORKS", "GRADUATION SCORECARD", "DEMOPILOT", "PRODUCT STRATEGY"],
     is_featured: false,
@@ -867,9 +867,9 @@ When an incoming X signal matches an existing Devpost record, we merge their \`s
     updated_at: pastIso(5 * DAY),
     mdx_content: `## Why We Elevated OXAKALABS Into G-Gravitator's Skunkworks
 
-Founded in 2022, **OXAKALABS** was built as a high-velocity R&D sandbox and hackathon strike team. Over dozens of sprints—ranging from **DEMOPILOT** and the **All-Things-Agentic Harness** to **Aify Cycle** and the **Nexus Retail Operations Suite**—we noticed a recurring failure mode across the builder ecosystem: teams treat hackathons either as disposable theatrical demos or try to turn every weekend toy into a venture startup.
+Founded in 2022, **OXAKALABS** was built as a high-velocity R&D sandbox and hackathon strike team. Over dozens of sprints (ranging from **DEMOPILOT** and the **All-Things-Agentic Harness** to **Aify Cycle** and the **Nexus Retail Operations Suite**), we noticed a recurring failure mode across the builder ecosystem: teams treat hackathons either as disposable theatrical demos or try to turn every weekend toy into a venture startup.
 
-Both extremes waste engineering mass. Within **G-Gravitator**, OXAKALABS operates as our official **Skunkworks Foundry (\`OXAKALABS // by G-Gravitator\`)**— governed by a strict, unsentimental promotion protocol.
+Both extremes waste engineering mass. Within **G-Gravitator**, OXAKALABS operates as our official **Skunkworks Foundry (\`OXAKALABS · by G-Gravitator\`)**, governed by a strict, unsentimental promotion protocol.
 
 ## The 25-Point Graduation Scorecard
 
@@ -889,7 +889,7 @@ TOTAL SCORE < 14  / 25  ==>  WRITE POST-MORTEM DISPATCH & ARCHIVE CLEANLY
 
 ## Case Study: From OXA-01 (DEMOPILOT) to G-01 (GRAVITY DECK)
 
-When we built **DEMOPILOT** (\`github.com/Aka4real/DEMOPILOT\`), the immediate goal was eliminating fragile video demos during technical judging. After testing it with founders who wanted the exact same kinetic, telemetry-backed micro-site engine for their seed pitches and enterprise architecture reviews, it scored **23/25** on the Graduation Filter—earning promotion into **G-01 // GRAVITY DECK**.`,
+When we built **DEMOPILOT** (\`github.com/Aka4real/DEMOPILOT\`), the immediate goal was eliminating fragile video demos during technical judging. After testing it with founders who wanted the exact same kinetic, telemetry-backed micro-site engine for their seed pitches and enterprise architecture reviews, it scored **23/25** on the Graduation Filter, earning promotion into **G-01 · GRAVITY DECK**.`,
   },
   {
     id: "disp-002",
@@ -900,7 +900,7 @@ When we built **DEMOPILOT** (\`github.com/Aka4real/DEMOPILOT\`), the immediate g
       "Rejecting purple-gradient AI slop in favor of Porsche Design structural silence, Teenage Engineering telemetry, and damped spring physics.",
     category: "DESIGN ENGINEERING",
     author_name: "Enwedo Akaolisa Gift",
-    author_role: "Design Engineering Lead // G-Gravitator",
+    author_role: "Design Engineering Lead · G-Gravitator",
     reading_time_mins: 6,
     tags: ["KINETIC LUXURY", "DESIGN SYSTEM", "FRAMER MOTION", "TYPOGRAPHY", "UI ARCHITECTURE"],
     is_featured: false,
@@ -911,14 +911,14 @@ When we built **DEMOPILOT** (\`github.com/Aka4real/DEMOPILOT\`), the immediate g
 
 Walk through fifty AI startup landing pages today and you will see the exact same template: purple-to-indigo radial blobs, floating glassmorphic cards with blurred borders, and centered three-column marketing clichés. It signals zero engineering weight.
 
-When defining G-Gravitator's visual language—**Kinetic Luxury**—we looked outside software to industrial instruments that hold physical load: **Porsche Design chronographs, Teenage Engineering synthesizers, and Swiss aerospace schematics.**
+When defining G-Gravitator's visual language, **Kinetic Luxury**, we looked outside software to industrial instruments that hold physical load: **Porsche Design chronographs, Teenage Engineering synthesizers, and Swiss aerospace schematics.**
 
 ## The 85 / 15 Allocation Rule
 
 Every viewport across G-Gravitator obeys a strict compositional ratio:
 
 - **85% Minimalist Luxury:** Architectural silence. An **Event Horizon (\`#09090B\`)** canvas divided by exposed \`1px solid #27272A\` Brushed Tungsten structural gridlines, pinned at key intersections by \`9px × 9px\` hairline \`+\` registration crosshairs. Zero muddy drop shadows; depth is communicated strictly through surface luminance step-ups (\`#09090B\` → \`#111114\` → \`#18181B\`).
-- **15% Bold Kinetic:** Surgical bursts of **Ion Signal (\`#FF3B1F\`)** reserved exclusively for primary conversion vectors, urgent \`< 48h\` hackathon countdowns, and active telemetry nodes—paired with physically weighted motion.
+- **15% Bold Kinetic:** Surgical bursts of **Ion Signal (\`#FF3B1F\`)** reserved exclusively for primary conversion vectors, urgent \`< 48h\` hackathon countdowns, and active telemetry nodes, paired with physically weighted motion.
 
 \`\`\`typescript
 // G-Gravitator Canonical Motion Physics
@@ -937,7 +937,7 @@ export const KINETIC_SNAP_SPRING = {
 };
 \`\`\`
 
-Notice the \`mass: 1.2\` parameter on our primary spring preset. Cheap animations feel weightless because they use low mass and under-damped bounce. By increasing virtual mass and critical damping, elements—from the stretched **\`G—GRAVITATOR\`** spacetime vector wordmark to our magnetic CTAs—accelerate with deliberate inertia and lock into place with mechanical certainty.`,
+Notice the \`mass: 1.2\` parameter on our primary spring preset. Cheap animations feel weightless because they use low mass and under-damped bounce. By increasing virtual mass and critical damping, elements (from the stretched **\`G-GRAVITATOR\`** spacetime vector wordmark to our magnetic CTAs) accelerate with deliberate inertia and lock into place with mechanical certainty.`,
   },
   {
     id: "disp-001",
@@ -948,7 +948,7 @@ Notice the \`mass: 1.2\` parameter on our primary spring preset. Cheap animation
       "Most labs either chase aesthetics with no engine underneath, or ship raw engineering nobody wants to touch. G-Gravitator exists where software craftsmanship, applied AI, and radical creativity collide.",
     category: "ARCHITECTURE",
     author_name: "Enwedo Akaolisa Gift",
-    author_role: "Founder // G-Gravitator Labs Ltd",
+    author_role: "Founder · G-Gravitator Labs Ltd",
     reading_time_mins: 5,
     tags: ["MANIFESTO", "FLYWHEEL", "SYSTEMS", "LABS", "ORBIT"],
     is_featured: false,
@@ -966,7 +966,7 @@ Consultancies stall because client work starves internal products. Product studi
 We architected G-Gravitator as a closed-loop four-unit flywheel:
 
 1. **G-Gravitator Systems (\`/systems\`):** High-ticket B2B foundry delivering 5-day Gravity Audits, 4-week Velocity MVPs, and fractional R&D retainers. Generates non-dilutive cashflow and exposes us directly to enterprise operational bottlenecks.
-2. **OXAKALABS // Skunkworks (\`/skunkworks\` & \`/hackathons\`):** Our 48-hour experimental R&D foundry and global hackathon strike arm. Stress-tests frontier models and agent protocols under extreme time compression.
+2. **OXAKALABS · Skunkworks (\`/skunkworks\` & \`/hackathons\`):** Our 48-hour experimental R&D foundry and global hackathon strike arm. Stress-tests frontier models and agent protocols under extreme time compression.
 3. **G-Gravitator Labs (\`/labs\`):** Ships proprietary software and AI tools as numbered industrial drops (\`G-01\` through \`G-04\`), seeded by the highest-scoring prototypes graduating from OXAKALABS and battle-tested patterns from Systems.
 4. **G-Gravitator Orbit (\`/orbit\`):** Selective 6-week technical training cohorts (*Gravity Cycles*) that pull the sharpest emerging engineers and design technologists directly into our ecosystem.`,
   },

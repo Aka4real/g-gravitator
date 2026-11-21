@@ -5,6 +5,7 @@ type Corner = "tl" | "tr" | "bl" | "br";
 interface CrosshairCellProps {
   children: React.ReactNode;
   className?: string;
+  /** @deprecated Kept for backwards compatibility; crosshair markers are removed. */
   corners?: Corner[];
   as?: "div" | "section" | "article";
   id?: string;
@@ -13,36 +14,11 @@ interface CrosshairCellProps {
 export function CrosshairCell({
   children,
   className = "",
-  corners = ["tl", "tr"],
   as: Component = "div",
   id,
 }: CrosshairCellProps) {
   return (
-    <Component id={id} className={`arch-cell relative ${className}`}>
-      {corners.includes("tl") && (
-        <span
-          aria-hidden="true"
-          className="crosshair-marker -top-[5px] -left-[5px]"
-        />
-      )}
-      {corners.includes("tr") && (
-        <span
-          aria-hidden="true"
-          className="crosshair-marker -top-[5px] -right-[5px]"
-        />
-      )}
-      {corners.includes("bl") && (
-        <span
-          aria-hidden="true"
-          className="crosshair-marker -bottom-[5px] -left-[5px]"
-        />
-      )}
-      {corners.includes("br") && (
-        <span
-          aria-hidden="true"
-          className="crosshair-marker -bottom-[5px] -right-[5px]"
-        />
-      )}
+    <Component id={id} className={`surface-card relative rounded-2xl ${className}`}>
       {children}
     </Component>
   );

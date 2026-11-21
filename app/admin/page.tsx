@@ -11,7 +11,7 @@ import {
 } from "@/lib/db/repository";
 
 export const metadata: Metadata = {
-  title: "Curator Command Console (/admin) — G-Gravitator",
+  title: "Curator Console | G-Gravitator",
   description:
     "Founder curation console for approving X hackathon signals, deploying OXAKALABS squads, pinning Orbital Wire news, and triaging B2B inquiries.",
 };
@@ -37,17 +37,15 @@ export default async function AdminPage() {
   ]);
 
   return (
-    <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
-      <div className="border-x border-[#27272A]">
-        <AdminConsoleClient
-          initialAuthenticated={isAuthed}
-          initialHackathons={hackathons}
-          initialNews={news}
-          initialInquiries={inquiries}
-          initialOrbit={orbitApps}
-          initialSubscribers={subscribers}
-        />
-      </div>
+    <div className="mx-auto max-w-[1360px] px-5 pt-10 pb-24 sm:px-8 lg:px-12 lg:pt-14 lg:pb-32">
+      <AdminConsoleClient
+        initialAuthenticated={isAuthed}
+        initialHackathons={hackathons}
+        initialNews={news}
+        initialInquiries={inquiries}
+        initialOrbit={orbitApps}
+        initialSubscribers={subscribers}
+      />
     </div>
   );
 }

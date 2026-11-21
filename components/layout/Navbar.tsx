@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Command, Menu, X, ArrowUpRight } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Search, Menu, X, ArrowUpRight } from "lucide-react";
 import { StretchedWordmark } from "@/components/layout/StretchedWordmark";
 import { MagneticButton } from "@/components/kinetic/MagneticButton";
+import { SPRING_UI } from "@/lib/motion";
 
 interface NavbarProps {
   activeHackathonCount: number;
@@ -28,146 +30,201 @@ export function Navbar({
   onOpenScopeDrawer,
 }: NavbarProps) {
   const pathname = usePathname();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
+  const [openedAtPath, setOpenedAtPath] = useState<string | null>(null);
+  const mobileMenuOpen = openedAtPath !== null && openedAtPath === pathname;
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenedAtPath(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileMenuOpen]);
 
   return (
-    <header className="sticky top-0 z-40 h-16 w-full border-b border-[#27272A] bg-[#09090B]/90 backdrop-blur-md">
-      <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Left: Gravity Stamp (GG) + Stretched Vector Wordmark */}
-        <StretchedWordmark />
+    <header className="pointer-events-none fixed inset-x-0 top-3 z-40 px-4 sm:px-6">
+      <div className="mx-auto max-w-[1360px]">
+        <div className="glass-chrome pointer-events-auto flex h-14 items-center justify-between gap-2 rounded-full px-3 sm:px-4 lg:px-5">
+          {/* Brand Wordmark */}
+          <StretchedWordmark />
 
-        {/* Center Navigation (Desktop) */}
-        <nav
-          aria-label="Primary Navigation"
-          className="hidden items-center gap-1 lg:flex"
-        >
-          {NAV_ITEMS.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== "/" && pathname?.startsWith(item.href));
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                id={`nav-link-${item.label.toLowerCase()}`}
-                className={`relative inline-flex items-center gap-1.5 px-3.5 py-2 text-[13px] font-medium transition-colors ${
-                  isActive
-                    ? "text-[#F3F2EE]"
-                    : "text-[#A1A1AA] hover:text-[#F3F2EE]"
-                }`}
-              >
-                <span>{item.label}</span>
-                {item.showCount && (
-                  <span
-                    className={`font-mono-telemetry px-1.5 py-0.5 text-[10px] leading-none ${
-                      isActive
-                        ? "bg-[#FF3B1F] text-[#09090B] font-semibold"
-                        : "border border-[#27272A] bg-[#111114] text-[#FF3B1F]"
-                    }`}
-                  >
-                    {activeHackathonCount}
-                  </span>
-                )}
-                {isActive && (
-                  <span className="absolute right-3 bottom-0 left-3 h-[2px] bg-[#FF3B1F]" />
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Right Utilities */}
-        <div className="flex items-center gap-2.5">
-          {/* Live Signal Telemetry Dot */}
-          <Link
-            href="/admin"
-            title="Curator Console & Telemetry Status"
-            className="hidden items-center gap-2 border border-[#27272A] bg-[#111114] px-2.5 py-1.5 text-[10px] text-[#A1A1AA] transition-colors hover:border-[#3F3F46] hover:text-[#F3F2EE] xl:inline-flex"
+          {/* Center Single-Line Desktop Navigation */}
+          <nav
+            aria-label="Primary Navigation"
+            className="hidden items-center gap-0.5 lg:flex"
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-[#10B981]" />
-            <span className="font-mono-telemetry">SYS: NOMINAL</span>
-          </Link>
+            {NAV_ITEMS.map((item) => {
+              const isActive =
+                pathname === item.href ||
+                (item.href !== "/" && pathname?.startsWith(item.href));
 
-          {/* Command Palette Trigger (⌘K) */}
-          <button
-            type="button"
-            id="nav-cmd-k-trigger"
-            onClick={onOpenCommandPalette}
-            className="inline-flex items-center gap-2 border border-[#27272A] bg-[#111114] px-2.5 py-1.5 text-xs text-[#A1A1AA] transition-colors hover:border-[#3F3F46] hover:text-[#F3F2EE]"
-          >
-            <Command className="h-3.5 w-3.5 text-[#FF3B1F]" strokeWidth={1.5} />
-            <span className="font-mono-telemetry text-[11px]">⌘K</span>
-          </button>
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  id={`nav-link-${item.label.toLowerCase()}`}
+                  className={`relative inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13.5px] font-medium whitespace-nowrap transition-colors duration-150 ${
+                    isActive
+                      ? "text-[#F4F3EF]"
+                      : "text-[#A1A1AA] hover:text-[#F4F3EF]"
+                  }`}
+                >
+                  {isActive && (
+                    <motion.span
+                      layoutId="nav-active-pill"
+                      transition={SPRING_UI}
+                      className="absolute inset-0 -z-10 rounded-full bg-white/[0.1] ring-1 ring-inset ring-white/[0.1]"
+                    />
+                  )}
+                  <span>{item.label}</span>
+                  {item.showCount && (
+                    <span
+                      className={`font-mono-telemetry rounded-full px-1.5 py-0.5 text-[11px] leading-none font-medium ${
+                        isActive
+                          ? "bg-[#FF3B1F] text-[#08080A] font-semibold"
+                          : "bg-white/[0.08] text-[#D4D4D8]"
+                      }`}
+                    >
+                      {activeHackathonCount}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
 
-          {/* Primary CTA Button: Initiate Build */}
-          <MagneticButton
-            id="nav-initiate-build-btn"
-            strength={5}
-            onClick={onOpenScopeDrawer}
-            className="font-mono-telemetry hidden items-center gap-1.5 bg-[#FF3B1F] px-3.5 py-2 text-[11px] font-semibold text-[#09090B] transition-colors hover:bg-[#F3F2EE] sm:inline-flex"
-          >
-            <span>INITIATE BUILD</span>
-            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.8} />
-          </MagneticButton>
-
-          {/* Mobile Menu Toggle */}
-          <button
-            type="button"
-            id="nav-mobile-menu-btn"
-            onClick={() => setMobileMenuOpen((v) => !v)}
-            className="inline-flex items-center justify-center border border-[#27272A] bg-[#111114] p-2 text-[#F3F2EE] lg:hidden"
-            aria-label="Toggle Menu"
-          >
-            {mobileMenuOpen ? (
-              <X className="h-4 w-4" strokeWidth={1.5} />
-            ) : (
-              <Menu className="h-4 w-4" strokeWidth={1.5} />
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Navigation Drawer */}
-      {mobileMenuOpen && (
-        <div className="border-b border-[#27272A] bg-[#09090B] px-4 py-4 lg:hidden">
-          <div className="grid grid-cols-2 gap-2">
-            {NAV_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-between border border-[#27272A] bg-[#111114] px-3.5 py-2.5 text-xs font-medium text-[#F3F2EE]"
-              >
-                <span>{item.label}</span>
-                {item.showCount && (
-                  <span className="font-mono-telemetry bg-[#FF3B1F] px-1.5 py-0.5 text-[10px] font-bold text-[#09090B]">
-                    {activeHackathonCount}
-                  </span>
-                )}
-              </Link>
-            ))}
-          </div>
-          <div className="mt-3 flex items-center gap-2">
+          {/* Right Controls */}
+          <div className="flex shrink-0 items-center gap-2">
+            {/* Command Palette Trigger */}
             <button
               type="button"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onOpenScopeDrawer();
-              }}
-              className="font-mono-telemetry flex-1 bg-[#FF3B1F] py-2.5 text-center text-xs font-semibold text-[#09090B]"
+              id="nav-cmd-k-trigger"
+              onClick={onOpenCommandPalette}
+              aria-label="Open command palette"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-white/[0.09] bg-white/[0.04] px-3 text-xs font-medium text-[#A1A1AA] transition-[background-color,border-color,color,transform] duration-150 hover:border-white/[0.16] hover:bg-white/[0.09] hover:text-[#F4F3EF] active:scale-[0.97]"
             >
-              INITIATE BUILD →
+              <Search className="h-3.5 w-3.5 text-[#A1A1AA]" strokeWidth={1.6} />
+              <kbd className="font-mono-telemetry text-[11px] text-current">⌘K</kbd>
             </button>
-            <Link
-              href="/admin"
-              onClick={() => setMobileMenuOpen(false)}
-              className="font-mono-telemetry border border-[#27272A] bg-[#111114] px-3 py-2.5 text-[11px] text-[#A1A1AA]"
+
+            {/* Primary CTA: Initiate build */}
+            <MagneticButton
+              id="nav-initiate-build-btn"
+              strength={4}
+              onClick={onOpenScopeDrawer}
+              className="hidden h-9 items-center gap-1.5 rounded-full bg-[#FF3B1F] px-4 text-[13px] font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238] sm:inline-flex"
             >
-              ADMIN
-            </Link>
+              <span>Initiate build</span>
+              <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
+            </MagneticButton>
+
+            {/* Mobile Menu Toggle */}
+            <button
+              type="button"
+              id="nav-mobile-menu-btn"
+              onClick={() =>
+                setOpenedAtPath((prev) => (prev === pathname ? null : pathname))
+              }
+              aria-expanded={mobileMenuOpen}
+              aria-controls="nav-mobile-drawer"
+              aria-label="Toggle Menu"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.05] text-[#F4F3EF] transition-[background-color,transform] duration-150 hover:bg-white/[0.1] active:scale-[0.95] lg:hidden"
+            >
+              {mobileMenuOpen ? (
+                <X className="h-4 w-4" strokeWidth={1.6} />
+              ) : (
+                <Menu className="h-4 w-4" strokeWidth={1.6} />
+              )}
+            </button>
           </div>
         </div>
-      )}
+
+        {/* Mobile Floating Translucent Panel */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              id="nav-mobile-drawer"
+              initial={
+                prefersReducedMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, y: -8, scale: 0.98 }
+              }
+              animate={
+                prefersReducedMotion
+                  ? { opacity: 1 }
+                  : { opacity: 1, y: 0, scale: 1 }
+              }
+              exit={
+                prefersReducedMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, y: -6, scale: 0.98 }
+              }
+              transition={
+                prefersReducedMotion ? { duration: 0.14 } : SPRING_UI
+              }
+              style={{ transformOrigin: "top center" }}
+              className="glass-chrome pointer-events-auto mt-2.5 overflow-hidden rounded-2xl p-2.5 lg:hidden"
+            >
+              <nav aria-label="Mobile Navigation" className="flex flex-col gap-0.5">
+                {NAV_ITEMS.map((item) => {
+                  const isActive =
+                    pathname === item.href ||
+                    (item.href !== "/" && pathname?.startsWith(item.href));
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setOpenedAtPath(null)}
+                      className={`flex items-center justify-between rounded-xl px-4 py-3 text-[15px] font-medium transition-[background-color,color,transform] duration-150 active:scale-[0.98] ${
+                        isActive
+                          ? "bg-white/[0.1] text-[#F4F3EF]"
+                          : "text-[#A1A1AA] hover:bg-white/[0.05] hover:text-[#F4F3EF]"
+                      }`}
+                    >
+                      <span>{item.label}</span>
+                      {item.showCount && (
+                        <span
+                          className={`font-mono-telemetry rounded-full px-2 py-0.5 text-xs font-semibold ${
+                            isActive
+                              ? "bg-[#FF3B1F] text-[#08080A]"
+                              : "bg-white/[0.08] text-[#D4D4D8]"
+                          }`}
+                        >
+                          {activeHackathonCount}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              <div className="mt-2.5 flex items-center gap-2 border-t border-white/[0.08] pt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenedAtPath(null);
+                    onOpenScopeDrawer();
+                  }}
+                  className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#FF3B1F] px-5 text-sm font-semibold text-[#08080A] transition-[background-color,transform] duration-150 hover:bg-[#FF5238] active:scale-[0.98]"
+                >
+                  <span>Initiate build</span>
+                  <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+                </button>
+                <Link
+                  href="/admin"
+                  onClick={() => setOpenedAtPath(null)}
+                  className="inline-flex h-11 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.04] px-4 text-sm font-medium text-[#A1A1AA] transition-[background-color,color,transform] duration-150 hover:bg-white/[0.09] hover:text-[#F4F3EF] active:scale-[0.98]"
+                >
+                  Console
+                </Link>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </header>
   );
 }

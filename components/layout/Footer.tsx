@@ -1,216 +1,213 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, CheckCircle2, Clock } from "lucide-react";
+import { ArrowUpRight, CheckCircle2 } from "lucide-react";
 import { StretchedWordmark } from "@/components/layout/StretchedWordmark";
 
 export function Footer() {
-  const [timeTelemetry, setTimeTelemetry] = useState<string>(
-    "UTC // --:--:-- • WAT (UTC+1) // --:--:--"
-  );
   const [email, setEmail] = useState("");
   const [subStatus, setSubStatus] = useState<"IDLE" | "LOADING" | "DONE" | "ERROR">("IDLE");
-
-  useEffect(() => {
-    const updateClock = () => {
-      const now = new Date();
-      const utc = now.toISOString().slice(11, 19);
-      const watDate = new Date(now.getTime() + 3600 * 1000);
-      const wat = watDate.toISOString().slice(11, 19);
-      setTimeTelemetry(`UTC ${utc} // WAT (UTC+1) ${wat}`);
-    };
-    updateClock();
-    const interval = setInterval(updateClock, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email.trim()) return;
     setSubStatus("LOADING");
+    setErrorMessage(null);
     try {
       const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, source: "footer" }),
+        body: JSON.stringify({ email: email.trim(), source: "footer" }),
       });
       if (res.ok) {
         setSubStatus("DONE");
         setEmail("");
       } else {
+        const data = await res.json().catch(() => null);
         setSubStatus("ERROR");
+        setErrorMessage(
+          data?.error || "Could not complete your subscription. Please check your email and try again."
+        );
       }
     } catch {
       setSubStatus("ERROR");
+      setErrorMessage("Network error while subscribing. Please try again.");
     }
   };
 
   return (
-    <footer className="border-t border-[#27272A] bg-[#09090B] text-[#F3F2EE]">
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
-        {/* 4-Column Architectural Grid */}
-        <div className="grid grid-cols-1 divide-y divide-[#27272A] border-x border-[#27272A] md:grid-cols-2 md:divide-y-0 lg:grid-cols-4 lg:divide-x">
-          {/* Column 1: Masterbrand & OXAKALABS Affiliation */}
-          <div className="p-6 lg:p-8">
+    <footer className="border-t border-white/[0.07] bg-[#08080A] text-[#F4F3EF]">
+      <div className="mx-auto max-w-[1360px] px-6 pt-20 pb-12 sm:px-10 lg:px-12">
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-10">
+          {/* Brand Statement */}
+          <div className="lg:col-span-4">
             <StretchedWordmark compact />
-            <p className="mt-4 text-xs leading-relaxed text-[#A1A1AA]">
-              Software &amp; AI creativity lab where raw ideas gain enough engineering mass
-              to pull markets toward them.
+            <p className="mt-5 max-w-[34ch] text-sm leading-relaxed text-[#A1A1AA]">
+              Software and AI creativity lab where raw ideas gain enough engineering
+              weight to pull markets toward them.
             </p>
-            <div className="mt-5 inline-flex items-center gap-2 border border-[#27272A] bg-[#111114] px-2.5 py-1.5">
-              <span className="h-1.5 w-1.5 bg-[#FF3B1F]" />
-              <span className="font-mono-telemetry text-[10px] text-[#F3F2EE]">
-                OXAKALABS // SKUNKWORKS EST. 2022
-              </span>
+          </div>
+
+          {/* Open Link Columns */}
+          <div className="grid grid-cols-2 gap-8 lg:col-span-4">
+            <div>
+              <h3 className="text-xs font-semibold tracking-wide text-[#F4F3EF]">
+                Divisions
+              </h3>
+              <ul className="mt-4 space-y-3 text-sm">
+                <li>
+                  <Link
+                    href="/systems"
+                    className="text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
+                  >
+                    Systems
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/labs"
+                    className="text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
+                  >
+                    Labs
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/skunkworks"
+                    className="text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
+                  >
+                    Skunkworks
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/orbit"
+                    className="text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
+                  >
+                    Orbit
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-xs font-semibold tracking-wide text-[#F4F3EF]">
+                Intelligence
+              </h3>
+              <ul className="mt-4 space-y-3 text-sm">
+                <li>
+                  <Link
+                    href="/hackathons"
+                    className="inline-flex items-center gap-2 text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
+                  >
+                    <span>Hackathon Radar</span>
+                    <span
+                      aria-label="Live"
+                      className="h-1.5 w-1.5 rounded-full bg-[#10B981]"
+                    />
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/journal"
+                    className="text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
+                  >
+                    Journal &amp; Wire
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/admin"
+                    className="text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
+                  >
+                    Curator Console
+                  </Link>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/Aka4real"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
+                  >
+                    <span>GitHub</span>
+                    <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.6} />
+                  </a>
+                </li>
+              </ul>
             </div>
           </div>
 
-          {/* Column 2: Four-Unit Operating Architecture */}
-          <div className="p-6 lg:p-8">
-            <h3 className="font-mono-telemetry text-[11px] text-[#71717A]">
-              01 // OPERATING DIVISIONS
+          {/* Weekly Orbital Brief Capture */}
+          <div className="lg:col-span-4">
+            <h3 className="text-sm font-semibold text-[#F4F3EF]">
+              Weekly Orbital Brief
             </h3>
-            <ul className="mt-4 space-y-2.5 text-xs">
-              <li>
-                <Link
-                  href="/systems"
-                  className="flex items-center justify-between text-[#A1A1AA] hover:text-[#F3F2EE]"
-                >
-                  <span>G-Gravitator Systems (B2B Foundry)</span>
-                  <span className="font-mono-telemetry text-[10px] text-[#71717A]">/systems</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/labs"
-                  className="flex items-center justify-between text-[#A1A1AA] hover:text-[#F3F2EE]"
-                >
-                  <span>G-Gravitator Labs (G-01..G-04)</span>
-                  <span className="font-mono-telemetry text-[10px] text-[#71717A]">/labs</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/skunkworks"
-                  className="flex items-center justify-between text-[#A1A1AA] hover:text-[#F3F2EE]"
-                >
-                  <span>OXAKALABS // Skunkworks R&amp;D</span>
-                  <span className="font-mono-telemetry text-[10px] text-[#71717A]">
-                    /skunkworks
-                  </span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/orbit"
-                  className="flex items-center justify-between text-[#A1A1AA] hover:text-[#F3F2EE]"
-                >
-                  <span>G-Gravitator Orbit (Gravity Cycles)</span>
-                  <span className="font-mono-telemetry text-[10px] text-[#71717A]">/orbit</span>
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Column 3: Live Intelligence & Foundry Links */}
-          <div className="p-6 lg:p-8">
-            <h3 className="font-mono-telemetry text-[11px] text-[#71717A]">
-              02 // LIVE INTELLIGENCE &amp; NETWORK
-            </h3>
-            <ul className="mt-4 space-y-2.5 text-xs">
-              <li>
-                <Link
-                  href="/hackathons"
-                  className="flex items-center justify-between text-[#A1A1AA] hover:text-[#F3F2EE]"
-                >
-                  <span>Global + X Hackathon Radar</span>
-                  <span className="font-mono-telemetry text-[10px] text-[#FF3B1F]">LIVE</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/journal"
-                  className="flex items-center justify-between text-[#A1A1AA] hover:text-[#F3F2EE]"
-                >
-                  <span>Lab Dispatches &amp; The Orbital Wire</span>
-                  <span className="font-mono-telemetry text-[10px] text-[#71717A]">/journal</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/admin"
-                  className="flex items-center justify-between text-[#A1A1AA] hover:text-[#F3F2EE]"
-                >
-                  <span>Curator Command Console</span>
-                  <span className="font-mono-telemetry text-[10px] text-[#71717A]">/admin</span>
-                </Link>
-              </li>
-              <li>
-                <a
-                  href="https://github.com/Aka4real"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center justify-between text-[#A1A1AA] hover:text-[#F3F2EE]"
-                >
-                  <span>GitHub Foundry (Aka4real / OXAKALABS)</span>
-                  <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.5} />
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Column 4: Weekly Orbital Brief Dispatch Capture */}
-          <div className="p-6 lg:p-8">
-            <h3 className="font-mono-telemetry text-[11px] text-[#71717A]">
-              03 // WEEKLY ORBITAL BRIEF
-            </h3>
-            <p className="mt-3 text-xs text-[#A1A1AA]">
-              One sharp weekly digest of AI breakthroughs, winning hackathon builds, and Lab
-              Dispatches. Zero fluff.
+            <p className="mt-2 max-w-[38ch] text-sm leading-relaxed text-[#A1A1AA]">
+              One sharp weekly digest covering AI breakthroughs, winning hackathon
+              builds, and lab dispatches.
             </p>
+
             {subStatus === "DONE" ? (
-              <div className="mt-4 flex items-center gap-2 border border-[#10B981]/50 bg-[#111114] p-3 text-xs text-[#10B981]">
-                <CheckCircle2 className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-                <span className="font-mono-telemetry text-[10px]">
-                  ORBITAL DISPATCH LOCKED
-                </span>
+              <div
+                role="status"
+                className="mt-5 flex items-center gap-2.5 rounded-xl border border-[#10B981]/30 bg-[#10B981]/10 px-4 py-3 text-sm text-[#34D399]"
+              >
+                <CheckCircle2 className="h-4 w-4 shrink-0" strokeWidth={1.8} />
+                <span>You are subscribed to the Weekly Orbital Brief.</span>
               </div>
             ) : (
-              <form onSubmit={handleSubscribe} className="mt-4 flex flex-col gap-2">
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="engineer@domain.com"
-                  id="footer-newsletter-email"
-                  className="w-full border border-[#27272A] bg-[#111114] px-3 py-2 text-xs text-[#F3F2EE] placeholder-[#71717A] focus:border-[#FF3B1F] focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  disabled={subStatus === "LOADING"}
-                  id="footer-newsletter-submit"
-                  className="font-mono-telemetry bg-[#F3F2EE] px-3 py-2 text-[11px] font-semibold text-[#09090B] transition-colors hover:bg-[#FF3B1F]"
+              <form onSubmit={handleSubscribe} className="mt-5" noValidate>
+                <label
+                  htmlFor="footer-newsletter-email"
+                  className="block text-xs font-medium text-[#D4D4D8]"
                 >
-                  {subStatus === "LOADING" ? "REGISTERING..." : "SUBSCRIBE TO DISPATCH →"}
-                </button>
+                  Email address
+                </label>
+                <div className="mt-2 flex flex-col gap-2.5 sm:flex-row sm:items-center">
+                  <input
+                    id="footer-newsletter-email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (subStatus === "ERROR") {
+                        setSubStatus("IDLE");
+                        setErrorMessage(null);
+                      }
+                    }}
+                    placeholder="engineer@company.com"
+                    className="h-11 flex-1 rounded-xl border border-white/[0.12] bg-[#111114] px-4 text-sm text-[#F4F3EF] placeholder:text-[#8B8B94] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/30 focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={subStatus === "LOADING"}
+                    id="footer-newsletter-submit"
+                    className="inline-flex h-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#FF3B1F] px-5 text-sm font-semibold whitespace-nowrap text-[#08080A] transition-[background-color,transform] duration-150 hover:bg-[#FF5238] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {subStatus === "LOADING" ? "Subscribing..." : "Subscribe"}
+                  </button>
+                </div>
+                {subStatus === "ERROR" && errorMessage && (
+                  <p role="alert" className="mt-2 text-xs text-[#FF8A7A]">
+                    {errorMessage}
+                  </p>
+                )}
               </form>
             )}
           </div>
         </div>
 
-        {/* Bottom Telemetry & Legal Bar */}
-        <div className="flex flex-col items-start justify-between gap-3 border-x border-t border-[#27272A] bg-[#111114]/60 px-6 py-4 text-[11px] text-[#71717A] sm:flex-row sm:items-center">
-          <div className="font-mono-telemetry flex items-center gap-2">
-            <span>G-GRAVITATOR LABS LTD • OPERATING OXAKALABS</span>
-            <span className="text-[#3F3F46]">|</span>
-            <span className="text-[#A1A1AA]">BUILD WITH WEIGHT.</span>
-          </div>
-          <div className="font-mono-telemetry flex items-center gap-2 text-[#A1A1AA]">
-            <Clock className="h-3.5 w-3.5 text-[#FF3B1F]" strokeWidth={1.5} />
-            <span>{timeTelemetry} // LAGOS-GLOBAL</span>
-          </div>
+        {/* Clean Bottom Legal Line */}
+        <div className="mt-16 flex flex-col items-start justify-between gap-3 border-t border-white/[0.07] pt-8 text-xs text-[#8B8B94] sm:flex-row sm:items-center">
+          <p>
+            &copy; {new Date().getFullYear()} G-Gravitator Labs Ltd. Operating OXAKALABS.
+          </p>
+          <p className="text-[#A1A1AA]">Build with weight.</p>
         </div>
       </div>
     </footer>

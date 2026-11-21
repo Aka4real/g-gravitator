@@ -1,40 +1,49 @@
 import React from "react";
 import type { Metadata } from "next";
+import { ArrowDown, ArrowRight } from "lucide-react";
 import { PricingMatrix } from "@/components/systems/PricingMatrix";
 
 export const metadata: Metadata = {
-  title: "G-Gravitator Systems — High-Ticket B2B AI & Software Foundry",
+  title: "G-Gravitator Systems | B2B AI & Software Foundry",
   description:
-    "Bespoke AI systems shipped at lab speed. Commission a 5-day Gravity Audit, 4-week Velocity MVP, or fractional Lab Retainer.",
+    "Software systems shipped in weeks, not quarters. Commission a 5-day Gravity Audit, 4-week Velocity MVP, or fractional Lab Retainer.",
 };
 
 export default function SystemsPage() {
   return (
-    <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
-      <div className="border-x border-[#27272A]">
-        {/* Hero Banner */}
-        <section className="border-b border-[#27272A] bg-[#09090B] px-6 py-16 sm:px-10 lg:px-14 lg:py-24">
-          <div className="font-mono-telemetry inline-flex items-center gap-2 border border-[#27272A] bg-[#111114] px-3 py-1 text-[11px] text-[#FF3B1F]">
-            <span>UNIT 01 // G-GRAVITATOR SYSTEMS</span>
-            <span className="text-[#3F3F46]">|</span>
-            <span className="text-[#A1A1AA]">ENTERPRISE &amp; HIGH-TICKET B2B FOUNDRY</span>
-          </div>
+    <div className="mx-auto max-w-[1360px] px-5 pt-12 pb-24 sm:px-8 lg:px-12 lg:pt-16 lg:pb-32">
+      {/* Open Editorial Hero */}
+      <header className="max-w-4xl">
+        <h1 className="font-display text-[clamp(2.35rem,5vw,4.6rem)] font-bold leading-[1.04] tracking-[-0.03em] text-[#F4F3EF]">
+          Software systems shipped in weeks, not quarters.
+        </h1>
 
-          <h1 className="font-display mt-6 max-w-4xl text-[clamp(2.5rem,5.5vw,5rem)] font-extrabold tracking-[-0.035em] text-[#F3F2EE] uppercase">
-            BESPOKE AI SYSTEMS. SHIPPED AT LAB SPEED.
-          </h1>
+        <p className="mt-6 max-w-[62ch] text-base leading-relaxed text-[#A1A1AA] sm:text-lg">
+          Principal engineers and battle-tested OXAKALABS agent kernels delivering
+          production web platforms, internal operations agents, and custom AI
+          infrastructure without agency handoffs.
+        </p>
 
-          <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#A1A1AA]">
-            Traditional agencies bill for bloated slide decks and hand your architecture to
-            juniors. G-Gravitator Systems deploys principal engineers and battle-tested
-            OXAKALABS agent kernels to ship production web platforms, internal operations
-            agents, and custom AI infrastructure in weeks—not quarters.
-          </p>
-        </section>
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          <a
+            href="#scope-intake"
+            className="press-tactile inline-flex h-11 items-center gap-2 rounded-full bg-[#FF3B1F] px-6 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238]"
+          >
+            <span>Initiate build</span>
+            <ArrowRight className="h-4 w-4" strokeWidth={2} />
+          </a>
+          <a
+            href="#engagement-tiers"
+            className="press-tactile inline-flex h-11 items-center gap-2 rounded-full border border-white/[0.12] bg-[#18181D] px-6 text-sm font-medium whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.2] hover:bg-white/[0.08]"
+          >
+            <span>Compare tiers</span>
+            <ArrowDown className="h-4 w-4 text-[#A1A1AA]" strokeWidth={1.8} />
+          </a>
+        </div>
+      </header>
 
-        {/* Interactive 3-Tier Matrix, Capabilities, Protocol & Scoping Form */}
-        <PricingMatrix />
-      </div>
+      {/* Interactive 3-Tier Matrix, Capabilities, Protocol & Scoping Form */}
+      <PricingMatrix />
     </div>
   );
 }
