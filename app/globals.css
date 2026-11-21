@@ -1,26 +1,134 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Core Surfaces */
+  --bg-primary: #09090B;        /* Event Horizon — Primary dark canvas */
+  --bg-elevated: #111114;       /* Deep Obsidian — Cards, drawers, modals */
+  --bg-subtle: #18181B;         /* Machined Zinc — Interactive hover fills */
+
+  /* Typography & Light Surfaces */
+  --text-primary: #F3F2EE;      /* Alabaster Bone — Primary ink on dark */
+  --text-secondary: #A1A1AA;    /* Muted Titanium — Body & descriptions */
+  --text-tertiary: #71717A;     /* Telemetry Slate — Timestamps, captions */
+
+  /* Structural Geometry */
+  --border-structural: #27272A; /* Brushed Tungsten — 1px exposed gridlines */
+  --border-active: #3F3F46;     /* Illuminated Edge — Focused states */
+
+  /* Kinetic Accent (Use Surgically — Max 15% of viewport) */
+  --accent-ion: #FF3B1F;        /* Ion Signal — Primary CTAs, live dots, active filters */
+  --accent-ion-glow: rgba(255, 59, 31, 0.16);
+
+  /* Semantic Telemetry Status */
+  --status-live: #10B981;       /* Active / Live Feed / Open Hackathon */
+  --status-warning: #F59E0B;    /* Closing Soon (<72h) / Scouting */
+  --status-cobalt: #3B82F6;     /* Research / Papers / Systems B2B */
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+[data-reading-theme="light"] {
+  --reading-bg: #F3F2EE;
+  --reading-elevated: #E7E5DE;
+  --reading-subtle: #DCD9CF;
+  --reading-text: #09090B;
+  --reading-secondary: #27272A;
+  --reading-tertiary: #52525B;
+  --reading-border: #C8C5BA;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 15.5px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  selection-background-color: var(--accent-ion);
+  selection-color: #09090B;
+}
+
+::selection {
+  background: var(--accent-ion);
+  color: #09090B;
+}
+
+/* Typography Helpers */
+.font-display {
+  font-family: var(--font-display), sans-serif;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+}
+
+.font-mono-telemetry {
+  font-family: var(--font-mono), monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* Exposed 1px Architectural Grid & Crosshairs */
+.arch-frame {
+  border: 1px solid var(--border-structural);
+  background-color: var(--bg-primary);
+}
+
+.arch-cell {
+  position: relative;
+  border-color: var(--border-structural);
+  transition: background-color 180ms ease, border-color 180ms ease;
+}
+
+.arch-cell:hover {
+  border-color: var(--border-active);
+}
+
+.crosshair-marker {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.crosshair-marker::before,
+.crosshair-marker::after {
+  content: "";
+  position: absolute;
+  background-color: #52525B;
+}
+
+.crosshair-marker::before {
+  top: 4px;
+  left: 0;
+  width: 9px;
+  height: 1px;
+}
+
+.crosshair-marker::after {
+  top: 0;
+  left: 4px;
+  width: 1px;
+  height: 9px;
+}
+
+/* Custom Machined Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-structural);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-ion);
 }

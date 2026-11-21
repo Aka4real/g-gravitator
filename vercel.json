@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/ingest-hackathons",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/ingest-news",
+      "schedule": "0 */3 * * *"
+    }
+  ]
+}
