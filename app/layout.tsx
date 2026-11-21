@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Syne, Inter, JetBrains_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { ArchitecturalShell } from "@/components/layout/ArchitecturalShell";
 import { getHackathons } from "@/lib/db/repository";
@@ -62,6 +63,7 @@ export default async function RootLayout({
         <ArchitecturalShell activeHackathonCount={hackathons.length}>
           {children}
         </ArchitecturalShell>
+        <Analytics />
       </body>
     </html>
   );
