@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { runNewsIngestionPipeline } from "@/lib/ingestion/news";
 
+export const maxDuration = 60;
+
 async function isAuthorizedCronOrAdmin(request: Request): Promise<boolean> {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
