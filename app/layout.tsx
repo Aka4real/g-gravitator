@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { ArchitecturalShell } from "@/components/layout/ArchitecturalShell";
 import { getHackathons } from "@/lib/db/repository";
+import { BRAND } from "@/lib/brand/mark";
 
 const bricolageGrotesque = Bricolage_Grotesque({
   variable: "--font-display",
@@ -24,7 +25,17 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://ggravitator.com";
+
+export const viewport: Viewport = {
+  themeColor: BRAND.obsidian,
+  colorScheme: "dark",
+};
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  applicationName: BRAND.name,
+  appleWebApp: { title: BRAND.name, capable: true, statusBarStyle: "black-translucent" },
   title: {
     default: "G-Gravitator | Build With Weight",
     template: "%s | G-Gravitator",
@@ -45,6 +56,14 @@ export const metadata: Metadata = {
     description:
       "Software and AI engineered to pull markets. Operating Systems, Labs (G-01..G-04), OXAKALABS Skunkworks, and Orbit.",
     type: "website",
+    siteName: BRAND.name,
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "G-Gravitator: Where Ideas Gain Mass",
+    description:
+      "Software and AI engineered to pull markets. Operating Systems, Labs (G-01..G-04), OXAKALABS Skunkworks, and Orbit.",
   },
 };
 

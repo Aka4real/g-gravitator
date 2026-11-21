@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import Link from "next/link";
+import { PreloadLink } from "@/components/layout/PreloadLink";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, Sun, Moon, Clock, Copy, Check } from "lucide-react";
 import { NewsletterBar } from "@/components/journal/NewsletterBar";
@@ -173,7 +173,7 @@ export function DispatchReaderClient({
                 : "glass-chrome text-[#F4F3EF]"
             }`}
           >
-            <Link
+            <PreloadLink
               href="/journal"
               className={`press-tactile inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm font-medium transition-colors ${
                 isLight
@@ -186,7 +186,7 @@ export function DispatchReaderClient({
                 strokeWidth={1.8}
               />
               <span>Journal</span>
-            </Link>
+            </PreloadLink>
 
             <div className="flex items-center gap-3 sm:gap-4">
               <span
@@ -483,7 +483,7 @@ export function DispatchReaderClient({
             </h2>
             <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-3">
               {otherDispatches.map((other) => (
-                <Link
+                <PreloadLink
                   key={other.id}
                   href={`/journal/${other.slug}`}
                   className={`group flex flex-col justify-between rounded-2xl border p-6 transition-[background-color,border-color,transform] duration-200 ${
@@ -518,7 +518,7 @@ export function DispatchReaderClient({
                   >
                     {other.reading_time_mins} min read
                   </span>
-                </Link>
+                </PreloadLink>
               ))}
             </div>
           </section>

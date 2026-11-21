@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
+import { PreloadLink } from "@/components/layout/PreloadLink";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import { EASE_OUT_EXPO, SPRING_UI } from "@/lib/motion";
@@ -240,22 +240,22 @@ export function FlywheelMatrix() {
 
             {/* Direct Division CTAs */}
             <div className="mt-9 flex flex-wrap items-center gap-3">
-              <Link
+              <PreloadLink
                 href={activeUnit.href}
                 className="inline-flex h-11 items-center gap-2 rounded-full bg-[#FF3B1F] px-5 text-sm font-semibold whitespace-nowrap text-[#08080A] transition-[background-color,transform] duration-150 hover:bg-[#FF5238] active:scale-[0.97]"
               >
                 <span>{activeUnit.ctaLabel}</span>
                 <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
-              </Link>
+              </PreloadLink>
 
               {activeUnit.secondaryHref && (
-                <Link
+                <PreloadLink
                   href={activeUnit.secondaryHref.href}
                   className="inline-flex h-11 items-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.04] px-5 text-sm font-medium whitespace-nowrap text-[#F4F3EF] transition-[background-color,border-color,transform] duration-150 hover:border-white/[0.22] hover:bg-white/[0.09] active:scale-[0.97]"
                 >
                   <span>{activeUnit.secondaryHref.label}</span>
                   <ArrowUpRight className="h-4 w-4 text-[#A1A1AA]" strokeWidth={1.8} />
-                </Link>
+                </PreloadLink>
               )}
             </div>
           </motion.div>

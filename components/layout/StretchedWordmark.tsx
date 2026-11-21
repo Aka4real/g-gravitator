@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
+import { PreloadLink } from "@/components/layout/PreloadLink";
 import { motion, useReducedMotion } from "framer-motion";
 import { SPRING_UI } from "@/lib/motion";
+import { BrandMark } from "@/lib/brand/mark";
 
 interface StretchedWordmarkProps {
   compact?: boolean;
@@ -16,7 +17,7 @@ export function StretchedWordmark({ compact = false }: StretchedWordmarkProps) {
   const stretchActive = !prefersReducedMotion && hovered;
 
   return (
-    <Link
+    <PreloadLink
       href="/"
       id="nav-brand-wordmark"
       onPointerEnter={(e) => {
@@ -25,21 +26,12 @@ export function StretchedWordmark({ compact = false }: StretchedWordmarkProps) {
       onPointerLeave={() => setHovered(false)}
       className="group inline-flex shrink-0 items-center gap-2.5 rounded-full py-0.5 pr-1 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF3B1F]"
     >
-      {/* Sculpted Gravity Monogram */}
-      <span
-        className={`relative flex shrink-0 items-center justify-center rounded-lg bg-[#FF3B1F] text-[#08080A] shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] transition-[background-color,transform] duration-150 group-hover:bg-[#FF5238] group-active:scale-[0.95] ${
-          compact ? "h-7 w-7" : "h-8 w-8"
-        }`}
-      >
-        <span
-          className={`font-display font-extrabold tracking-[-0.04em] select-none ${
-            compact ? "text-[11px]" : "text-[12.5px]"
-          }`}
-        >
-          GG
-        </span>
-      </span>
-
+      {/* Universal brand mark (same geometry as favicon and link previews) */}
+      <BrandMark
+        size={compact ? 28 : 32}
+        title="G-Gravitator"
+        className="shrink-0 transition-[filter,transform] duration-150 group-hover:brightness-110 group-active:scale-[0.95]"
+      />
       {/* Sculpted Wordmark */}
       <span
         className={`font-display inline-flex items-center font-bold tracking-[-0.03em] text-[#F4F3EF] ${
@@ -58,6 +50,6 @@ export function StretchedWordmark({ compact = false }: StretchedWordmarkProps) {
         />
         <span>Gravitator</span>
       </span>
-    </Link>
+    </PreloadLink>
   );
 }

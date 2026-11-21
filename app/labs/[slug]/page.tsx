@@ -81,6 +81,17 @@ export async function generateMetadata({
   return {
     title: `${project.code} ${displayName} | G-Gravitator Labs`,
     description: sanitizeText(project.tagline),
+    openGraph: {
+      title: `${project.code} ${displayName}`,
+      description: sanitizeText(project.tagline),
+      type: "website",
+      siteName: "G-Gravitator",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${project.code} ${displayName}`,
+      description: sanitizeText(project.tagline),
+    },
   };
 }
 

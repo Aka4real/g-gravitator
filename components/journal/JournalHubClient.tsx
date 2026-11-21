@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { PreloadLink } from "@/components/layout/PreloadLink";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Search,
@@ -220,12 +220,12 @@ export function JournalHubClient({
             </span>
           </div>
 
-          <Link
+          <PreloadLink
             href={`/journal/${featuredDispatch.slug}`}
             className="font-display mt-5 block max-w-4xl text-[clamp(1.75rem,3.4vw,2.875rem)] leading-[1.1] font-bold tracking-[-0.025em] text-[#F4F3EF] transition-colors hover:text-[#FF6B54]"
           >
             {featuredDispatch.title}
-          </Link>
+          </PreloadLink>
 
           <p className="mt-4 max-w-[65ch] text-base leading-relaxed text-[#A1A1AA] sm:text-lg">
             {sanitizeProse(featuredDispatch.subtitle)}
@@ -243,13 +243,13 @@ export function JournalHubClient({
               ))}
             </div>
 
-            <Link
+            <PreloadLink
               href={`/journal/${featuredDispatch.slug}`}
               className="press-tactile inline-flex h-11 shrink-0 items-center justify-center gap-2 self-start rounded-full bg-[#F4F3EF] px-6 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF3B1F] sm:self-auto"
             >
               <span>Read dispatch</span>
               <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
-            </Link>
+            </PreloadLink>
           </div>
         </article>
       )}
@@ -382,12 +382,12 @@ export function JournalHubClient({
                     </span>
                   </div>
 
-                  <Link
+                  <PreloadLink
                     href={`/journal/${disp.slug}`}
                     className="font-display mt-4 block text-xl leading-snug font-semibold tracking-[-0.02em] text-[#F4F3EF] transition-colors hover:text-[#FF6B54] sm:text-2xl"
                   >
                     {disp.title}
-                  </Link>
+                  </PreloadLink>
 
                   <p className="mt-2.5 max-w-[65ch] text-sm leading-relaxed text-[#A1A1AA]">
                     {sanitizeProse(disp.subtitle)}
@@ -405,7 +405,7 @@ export function JournalHubClient({
                       ))}
                     </div>
 
-                    <Link
+                    <PreloadLink
                       href={`/journal/${disp.slug}`}
                       className="group inline-flex items-center gap-1.5 text-sm font-medium text-[#F4F3EF] transition-colors hover:text-[#FF6B54]"
                     >
@@ -414,7 +414,7 @@ export function JournalHubClient({
                         className="h-4 w-4 text-[#FF6B54] transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
                         strokeWidth={1.8}
                       />
-                    </Link>
+                    </PreloadLink>
                   </div>
                 </article>
               ))}

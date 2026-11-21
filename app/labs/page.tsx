@@ -1,7 +1,7 @@
 import React from "react";
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
+import { PreloadLink } from "@/components/layout/PreloadLink";
 import { ArrowRight, ArrowUpRight, GitBranch, Layers } from "lucide-react";
 import { Reveal, StaggerGroup, StaggerItem } from "@/lib/motion";
 import { getLabProjects } from "@/lib/db/repository";
@@ -88,19 +88,19 @@ export default async function LabsCatalogPage() {
           <p className="mt-6 max-w-[56ch] text-base leading-relaxed text-[#A1A1AA] sm:text-lg">
             Every G-Gravitator Labs release starts as an acute operational bottleneck
             inside{" "}
-            <Link
+            <PreloadLink
               href="/systems"
               className="text-[#F4F3EF] underline decoration-white/30 underline-offset-4 transition-colors hover:text-[#FF8A7A] hover:decoration-[#FF3B1F]"
             >
               Systems
-            </Link>{" "}
+            </PreloadLink>{" "}
             or a 48-hour build graduating from{" "}
-            <Link
+            <PreloadLink
               href="/skunkworks"
               className="text-[#F4F3EF] underline decoration-white/30 underline-offset-4 transition-colors hover:text-[#FF8A7A] hover:decoration-[#FF3B1F]"
             >
               OXAKALABS Skunkworks
-            </Link>{" "}
+            </PreloadLink>{" "}
             after clearing our 20/25 graduation filter.
           </p>
 
@@ -112,13 +112,13 @@ export default async function LabsCatalogPage() {
               <span>Explore drops</span>
               <ArrowRight className="h-4 w-4" strokeWidth={2} />
             </a>
-            <Link
+            <PreloadLink
               href="/skunkworks"
               className="press-tactile inline-flex h-11 items-center gap-2 rounded-full border border-white/[0.12] bg-[#18181D] px-5 text-sm font-medium whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.22] hover:bg-white/[0.08]"
             >
               <span>Inspect Skunkworks pipeline</span>
               <ArrowUpRight className="h-4 w-4 text-[#A1A1AA]" strokeWidth={1.8} />
-            </Link>
+            </PreloadLink>
           </div>
         </div>
 
@@ -208,13 +208,13 @@ export default async function LabsCatalogPage() {
                     </div>
 
                     <div className="mt-8 flex flex-wrap items-center gap-3">
-                      <Link
+                      <PreloadLink
                         href={`/labs/${flagship.slug}`}
                         className="press-tactile inline-flex h-11 items-center gap-2 rounded-full bg-[#F4F3EF] px-5 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF3B1F]"
                       >
                         <span>Inspect {flagship.code} dossier</span>
                         <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
-                      </Link>
+                      </PreloadLink>
 
                       {flagship.repo_url && (
                         <a
@@ -357,13 +357,13 @@ export default async function LabsCatalogPage() {
                       </div>
 
                       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                        <Link
+                        <PreloadLink
                           href={`/labs/${drop.slug}`}
                           className="press-tactile inline-flex h-10 items-center gap-1.5 rounded-full bg-[#18181D] border border-white/[0.12] px-4 text-xs font-semibold whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.24] hover:bg-white/[0.08]"
                         >
                           <span>Inspect {drop.code}</span>
                           <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
-                        </Link>
+                        </PreloadLink>
 
                         {drop.repo_url && (
                           <a

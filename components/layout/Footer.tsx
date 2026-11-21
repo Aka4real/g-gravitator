@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
+import { PreloadLink } from "@/components/layout/PreloadLink";
 import { ArrowUpRight, CheckCircle2 } from "lucide-react";
 import { StretchedWordmark } from "@/components/layout/StretchedWordmark";
 
@@ -58,36 +58,36 @@ export function Footer() {
               </h3>
               <ul className="mt-4 space-y-3 text-sm">
                 <li>
-                  <Link
+                  <PreloadLink
                     href="/systems"
                     className="text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
                   >
                     Systems
-                  </Link>
+                  </PreloadLink>
                 </li>
                 <li>
-                  <Link
+                  <PreloadLink
                     href="/labs"
                     className="text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
                   >
                     Labs
-                  </Link>
+                  </PreloadLink>
                 </li>
                 <li>
-                  <Link
+                  <PreloadLink
                     href="/skunkworks"
                     className="text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
                   >
                     Skunkworks
-                  </Link>
+                  </PreloadLink>
                 </li>
                 <li>
-                  <Link
+                  <PreloadLink
                     href="/orbit"
                     className="text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
                   >
                     Orbit
-                  </Link>
+                  </PreloadLink>
                 </li>
               </ul>
             </div>
@@ -98,7 +98,7 @@ export function Footer() {
               </h3>
               <ul className="mt-4 space-y-3 text-sm">
                 <li>
-                  <Link
+                  <PreloadLink
                     href="/hackathons"
                     className="inline-flex items-center gap-2 text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
                   >
@@ -107,23 +107,23 @@ export function Footer() {
                       aria-label="Live"
                       className="h-1.5 w-1.5 rounded-full bg-[#10B981]"
                     />
-                  </Link>
+                  </PreloadLink>
                 </li>
                 <li>
-                  <Link
+                  <PreloadLink
                     href="/journal"
                     className="text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
                   >
                     Journal &amp; Wire
-                  </Link>
+                  </PreloadLink>
                 </li>
                 <li>
-                  <Link
+                  <PreloadLink
                     href="/admin"
                     className="text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
                   >
                     Curator Console
-                  </Link>
+                  </PreloadLink>
                 </li>
                 <li>
                   <a

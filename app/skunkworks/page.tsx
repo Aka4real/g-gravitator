@@ -1,7 +1,7 @@
 import React from "react";
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
+import { PreloadLink } from "@/components/layout/PreloadLink";
 import { ArrowUpRight, GitBranch, Radar } from "lucide-react";
 import { GraduationScorecard } from "@/components/skunkworks/GraduationScorecard";
 import { Reveal, StaggerGroup, StaggerItem } from "@/lib/motion";
@@ -73,14 +73,14 @@ export default async function SkunkworksPage() {
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link
+            <PreloadLink
               href="/hackathons"
               className="press-tactile inline-flex h-11 items-center gap-2 rounded-full bg-[#FF3B1F] px-6 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238]"
             >
               <Radar className="h-4 w-4 shrink-0" strokeWidth={2} />
               <span>Open Hackathon Radar</span>
               <ArrowUpRight className="h-4 w-4 shrink-0" strokeWidth={2} />
-            </Link>
+            </PreloadLink>
             <a
               href="https://github.com/Aka4real"
               target="_blank"

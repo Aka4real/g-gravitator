@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Link from "next/link";
+import { PreloadLink } from "@/components/layout/PreloadLink";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Search, Menu, X, ArrowUpRight } from "lucide-react";
@@ -61,7 +61,7 @@ export function Navbar({
                 (item.href !== "/" && pathname?.startsWith(item.href));
 
               return (
-                <Link
+                <PreloadLink
                   key={item.href}
                   href={item.href}
                   id={`nav-link-${item.label.toLowerCase()}`}
@@ -90,7 +90,7 @@ export function Navbar({
                       {activeHackathonCount}
                     </span>
                   )}
-                </Link>
+                </PreloadLink>
               );
             })}
           </nav>
@@ -174,7 +174,7 @@ export function Navbar({
                     (item.href !== "/" && pathname?.startsWith(item.href));
 
                   return (
-                    <Link
+                    <PreloadLink
                       key={item.href}
                       href={item.href}
                       onClick={() => setOpenedAtPath(null)}
@@ -196,7 +196,7 @@ export function Navbar({
                           {activeHackathonCount}
                         </span>
                       )}
-                    </Link>
+                    </PreloadLink>
                   );
                 })}
               </nav>
@@ -213,13 +213,13 @@ export function Navbar({
                   <span>Initiate build</span>
                   <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
                 </button>
-                <Link
+                <PreloadLink
                   href="/admin"
                   onClick={() => setOpenedAtPath(null)}
                   className="inline-flex h-11 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.04] px-4 text-sm font-medium text-[#A1A1AA] transition-[background-color,color,transform] duration-150 hover:bg-white/[0.09] hover:text-[#F4F3EF] active:scale-[0.98]"
                 >
                   Console
-                </Link>
+                </PreloadLink>
               </div>
             </motion.div>
           )}

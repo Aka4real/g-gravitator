@@ -1,6 +1,6 @@
 import React from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { PreloadLink } from "@/components/layout/PreloadLink";
 import { ArrowUpRight } from "lucide-react";
 import { GravityFieldCanvas } from "@/components/kinetic/GravityFieldCanvas";
 import { FlywheelMatrix } from "@/components/kinetic/FlywheelMatrix";
@@ -143,26 +143,26 @@ export default async function HomePage() {
               <p className="mt-6 max-w-[44ch] text-base leading-relaxed text-[#A1A1AA] sm:text-lg">
                 A software and AI lab engineering enterprise systems, commercial
                 drops, and 48-hour prototypes through{" "}
-                <Link
+                <PreloadLink
                   href="/skunkworks"
                   className="font-medium text-[#F4F3EF] underline decoration-[#FF3B1F]/70 underline-offset-4 transition-colors hover:decoration-[#FF3B1F]"
                 >
                   OXAKALABS
-                </Link>
+                </PreloadLink>
                 .
               </p>
 
               <div className="mt-9 flex flex-wrap items-center gap-3.5">
-                <Link
+                <PreloadLink
                   href="/systems"
                   id="hero-cta-commission-system"
                   className="press-tactile inline-flex h-12 items-center gap-2 rounded-full bg-[#FF3B1F] px-6 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238]"
                 >
                   <span>Commission a system</span>
                   <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
-                </Link>
+                </PreloadLink>
 
-                <Link
+                <PreloadLink
                   href="/labs"
                   id="hero-cta-explore-lab"
                   className="press-tactile inline-flex h-12 items-center gap-2 rounded-full border border-white/[0.14] bg-[#18181D]/85 px-6 text-sm font-medium whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.24] hover:bg-white/[0.1]"
@@ -172,7 +172,7 @@ export default async function HomePage() {
                     className="h-4 w-4 text-[#A1A1AA]"
                     strokeWidth={1.8}
                   />
-                </Link>
+                </PreloadLink>
               </div>
             </div>
 
@@ -247,7 +247,7 @@ export default async function HomePage() {
               </p>
             </div>
 
-            <Link
+            <PreloadLink
               href="/labs"
               className="press-tactile inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-white/[0.12] bg-[#18181D] px-5 text-sm font-medium whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.22] hover:bg-white/[0.1]"
             >
@@ -256,7 +256,7 @@ export default async function HomePage() {
                 className="h-4 w-4 text-[#A1A1AA]"
                 strokeWidth={1.8}
               />
-            </Link>
+            </PreloadLink>
           </Reveal>
 
           <div className="mt-12 grid grid-cols-1 gap-8 lg:mt-14 lg:grid-cols-12 lg:items-start">
@@ -303,12 +303,12 @@ export default async function HomePage() {
               {labsDrops.length === 0 ? (
                 <div className="surface-card rounded-2xl p-8 text-sm text-[#A1A1AA]">
                   Labs catalog releases are currently syncing.{" "}
-                  <Link
+                  <PreloadLink
                     href="/labs"
                     className="font-medium text-[#F4F3EF] underline underline-offset-4"
                   >
                     Open Labs catalog
-                  </Link>
+                  </PreloadLink>
                 </div>
               ) : (
                 <StaggerGroup className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -318,7 +318,7 @@ export default async function HomePage() {
 
                     return (
                       <StaggerItem key={drop.id} className="min-w-0">
-                        <Link
+                        <PreloadLink
                           href={`/labs/${drop.slug}`}
                           className="surface-card surface-card-interactive group flex h-full flex-col justify-between rounded-2xl p-6 lg:p-7"
                         >
@@ -369,7 +369,7 @@ export default async function HomePage() {
                               />
                             </span>
                           </div>
-                        </Link>
+                        </PreloadLink>
                       </StaggerItem>
                     );
                   })}
@@ -413,12 +413,12 @@ export default async function HomePage() {
                     </div>
 
                     <h3 className="font-display mt-5 text-2xl font-semibold leading-[1.16] tracking-[-0.02em] text-[#F4F3EF] sm:text-[1.75rem]">
-                      <Link
+                      <PreloadLink
                         href={`/journal/${featuredDispatch.slug}`}
                         className="transition-colors hover:text-[#FF8A7A]"
                       >
                         {cleanCopy(featuredDispatch.title)}
-                      </Link>
+                      </PreloadLink>
                     </h3>
 
                     <p className="mt-3 max-w-[60ch] text-sm leading-relaxed text-[#A1A1AA]">
@@ -426,7 +426,7 @@ export default async function HomePage() {
                     </p>
 
                     <div className="mt-6">
-                      <Link
+                      <PreloadLink
                         href={`/journal/${featuredDispatch.slug}`}
                         className="inline-flex items-center gap-1.5 text-sm font-medium text-[#F4F3EF] transition-colors hover:text-[#FF8A7A]"
                       >
@@ -435,7 +435,7 @@ export default async function HomePage() {
                           className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:group-hover:translate-x-0 motion-reduce:group-hover:translate-y-0"
                           strokeWidth={1.8}
                         />
-                      </Link>
+                      </PreloadLink>
                     </div>
                   </article>
                 </Reveal>
@@ -447,7 +447,7 @@ export default async function HomePage() {
                   <h3 className="font-display text-lg font-semibold tracking-[-0.015em] text-[#F4F3EF]">
                     The Orbital Wire
                   </h3>
-                  <Link
+                  <PreloadLink
                     href="/journal"
                     className="inline-flex items-center gap-1 text-sm font-medium text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
                   >
@@ -456,7 +456,7 @@ export default async function HomePage() {
                       signals
                     </span>
                     <ArrowUpRight className="h-4 w-4" strokeWidth={1.8} />
-                  </Link>
+                  </PreloadLink>
                 </Reveal>
 
                 {topNews.length === 0 ? (
@@ -505,7 +505,7 @@ export default async function HomePage() {
                 )}
 
                 <div className="border-t border-white/[0.06] pt-6">
-                  <Link
+                  <PreloadLink
                     href="/journal"
                     className="press-tactile inline-flex h-11 items-center gap-2 rounded-full border border-white/[0.12] bg-[#18181D] px-5 text-sm font-medium whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.22] hover:bg-white/[0.1]"
                   >
@@ -514,7 +514,7 @@ export default async function HomePage() {
                       className="h-4 w-4 text-[#A1A1AA]"
                       strokeWidth={1.8}
                     />
-                  </Link>
+                  </PreloadLink>
                 </div>
               </div>
             </div>
@@ -539,13 +539,13 @@ export default async function HomePage() {
                     </p>
                   </div>
 
-                  <Link
+                  <PreloadLink
                     href="/hackathons"
                     className="press-tactile inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-white/[0.1] bg-white/[0.04] px-3 text-xs font-medium whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.2] hover:bg-white/[0.09]"
                   >
                     <span>Full radar</span>
                     <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.8} />
-                  </Link>
+                  </PreloadLink>
                 </div>
 
                 {topHackathons.length === 0 ? (
@@ -567,12 +567,12 @@ export default async function HomePage() {
                         </div>
 
                         <h4 className="font-display mt-3 text-[17px] font-semibold leading-snug tracking-[-0.015em] text-[#F4F3EF]">
-                          <Link
+                          <PreloadLink
                             href={`/hackathons?q=${encodeURIComponent(hack.title)}`}
                             className="transition-colors hover:text-[#FF8A7A]"
                           >
                             {cleanCopy(hack.title)}
-                          </Link>
+                          </PreloadLink>
                         </h4>
 
                         <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[#A1A1AA]">
@@ -609,7 +609,7 @@ export default async function HomePage() {
                 )}
 
                 <div className="border-t border-white/[0.08] pt-5">
-                  <Link
+                  <PreloadLink
                     href="/hackathons"
                     id="hero-cta-hackathon-radar"
                     className="press-tactile flex h-11 w-full items-center justify-between gap-3 rounded-full border border-white/[0.12] bg-[#18181D] px-5 text-sm font-medium text-[#F4F3EF] hover:border-white/[0.22] hover:bg-white/[0.1]"
@@ -621,7 +621,7 @@ export default async function HomePage() {
                       className="h-4 w-4 shrink-0 text-[#FF8A7A]"
                       strokeWidth={1.8}
                     />
-                  </Link>
+                  </PreloadLink>
                 </div>
               </div>
             </Reveal>
@@ -652,7 +652,7 @@ export default async function HomePage() {
           <StaggerGroup className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-3 lg:mt-20">
             {/* Pathway 1: Sculpted Obsidian Architectural Card with Warm Specular Rim */}
             <StaggerItem className="min-w-0">
-              <Link
+              <PreloadLink
                 href="/systems"
                 className="group relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-[#FF3B1F]/25 bg-gradient-to-b from-[#161417] via-[#111114] to-[#0E0E11] p-7 transition-[border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-[#FF3B1F]/50 motion-reduce:hover:translate-y-0"
               >
@@ -704,12 +704,12 @@ export default async function HomePage() {
                     <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
                   </span>
                 </div>
-              </Link>
+              </PreloadLink>
             </StaggerItem>
 
             {/* Pathway 2: Clean Photographic Media Header (Skunkworks Forge) */}
             <StaggerItem className="min-w-0">
-              <Link
+              <PreloadLink
                 href="/skunkworks"
                 className="surface-card surface-card-interactive group flex h-full flex-col overflow-hidden rounded-2xl"
               >
@@ -744,12 +744,12 @@ export default async function HomePage() {
                     />
                   </span>
                 </div>
-              </Link>
+              </PreloadLink>
             </StaggerItem>
 
             {/* Pathway 3: Clean Photographic Media Header (Orbit Atelier) */}
             <StaggerItem className="min-w-0">
-              <Link
+              <PreloadLink
                 href="/orbit"
                 className="surface-card surface-card-interactive group flex h-full flex-col overflow-hidden rounded-2xl"
               >
@@ -784,7 +784,7 @@ export default async function HomePage() {
                     />
                   </span>
                 </div>
-              </Link>
+              </PreloadLink>
             </StaggerItem>
           </StaggerGroup>
         </div>
