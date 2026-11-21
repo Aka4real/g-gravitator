@@ -1,4 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { HarmBlockThreshold } from "@google/genai";
+import {
+  buildMaxPermissionConfig,
+  GEMINI_DEFAULT_MODEL,
+  GEMINI_MAX_OUTPUT_TOKENS,
+  GEMINI_MAX_PERMISSION_SAFETY_SETTINGS,
+  getGeminiModelName,
+} from "@/lib/gemini/client";
 import { evaluateGraduationScorecard } from "@/lib/scorecard";
 import {
   computeHackathonFingerprint,
@@ -128,4 +136,17 @@ describe("G-Gravitator Core Platform Verification Suite", () => {
     expect(item.impact_score).toBeGreaterThanOrEqual(80);
     expect(item.gravity_take.length).toBeGreaterThan(40);
   });
+
+  it("configures Gemini 3.8 Flash with maximum permission safety settings (HarmBlockThreshold.OFF) and 65,536 maxOutputTokens", () => {
+    expect(GEMINI_DEFAULT_MODEL).toBe("gemini-3.8-flash");
+    expect(getGeminiModelName()).toBe("gemini-3.8-flash");
+    expect(GEMINI_MAX_PERMISSION_SAFETY_SETTINGS.length).toBe(5);
+    for (const setting of GEMINI_MAX_PERMISSION_SAFETY_SETTINGS) {
+      expect(setting.threshold).toBe(HarmBlockThreshold.OFF);
+    }
+    const cfg = buildMaxPermissionConfig();
+    expect(cfg.maxOutputTokens).toBe(GEMINI_MAX_OUTPUT_TOKENS);
+    expect(cfg.safetySettings).toEqual(GEMINI_MAX_PERMISSION_SAFETY_SETTINGS);
+  });
 });
+

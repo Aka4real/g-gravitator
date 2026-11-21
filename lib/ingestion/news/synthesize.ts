@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { generateGeminiStructuredJSON } from "@/lib/gemini/client";
 import type { NewsCategory, NewsItem } from "@/lib/supabase/types";
 
 export interface RawNewsCandidate {
@@ -107,41 +108,36 @@ export async function synthesizeNewsCandidate(
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `Synthesize this AI/tech news item for G-Gravitator's "The Orbital Wire". Provide a category, an impact_score (1-100), and a sharp 2-sentence "gravity_take" explaining why this matters to software & AI builders (zero clickbait).\n\nTitle: ${raw.title}\nSource: ${raw.sourceName}\nSummary: ${raw.rawSummary ?? ""}`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            category: {
-              type: Type.STRING,
-              enum: [
-                "MODELS",
-                "AGENTS",
-                "DEVTOOLS",
-                "RESEARCH",
-                "BUSINESS",
-                "OPEN_SOURCE",
-              ],
-            },
-            gravity_take: { type: Type.STRING },
-            impact_score: { type: Type.INTEGER },
-          },
-          required: ["category", "gravity_take", "impact_score"],
-        },
-      },
-    });
-
-    const parsed = JSON.parse(response.text || "{}") as {
+    const parsed = await generateGeminiStructuredJSON<{
       category: NewsCategory;
       gravity_take: string;
       impact_score: number;
-    };
+    }>({
+      contents: `Synthesize this AI/tech news item for G-Gravitator's "The Orbital Wire". Provide a category, an impact_score (1-100), and a sharp 2-sentence "gravity_take" explaining why this matters to software & AI builders (zero clickbait).\n\nTitle: ${raw.title}\nSource: ${raw.sourceName}\nSummary: ${raw.rawSummary ?? ""}`,
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          category: {
+            type: Type.STRING,
+            enum: [
+              "MODELS",
+              "AGENTS",
+              "DEVTOOLS",
+              "RESEARCH",
+              "BUSINESS",
+              "OPEN_SOURCE",
+            ],
+          },
+          gravity_take: { type: Type.STRING },
+          impact_score: { type: Type.INTEGER },
+        },
+        required: ["category", "gravity_take", "impact_score"],
+      },
+    });
 
     const fallback = heuristicSynthesizeNews(raw);
+    if (!parsed) return fallback;
+
     return {
       ...fallback,
       category: parsed.category || fallback.category,

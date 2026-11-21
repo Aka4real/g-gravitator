@@ -1,4 +1,5 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { generateGeminiStructuredJSON } from "@/lib/gemini/client";
 import type {
   Hackathon,
   HackathonFormat,
@@ -317,52 +318,7 @@ export async function normalizeHackathonCandidate(
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `Analyze this raw hackathon / X post payload and extract canonical hackathon telemetry. Reject if it is merely recapping a past event, a joke, or a scam.\n\nProvider: ${raw.provider}\nURL: ${raw.url}\nTitle Hint: ${raw.titleHint ?? ""}\nOrganizer Hint: ${raw.organizerHint ?? ""}\nPrize Hint: ${raw.prizeHint ?? ""}\nDeadline Hint: ${raw.deadlineHint ?? ""}\nRaw Text:\n${raw.rawText}`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            is_valid_upcoming_hackathon: { type: Type.BOOLEAN },
-            title: { type: Type.STRING },
-            organizer: { type: Type.STRING },
-            summary: { type: Type.STRING },
-            prize_pool_usd: { type: Type.INTEGER, nullable: true },
-            prize_display: { type: Type.STRING },
-            deadline_at: { type: Type.STRING },
-            format: {
-              type: Type.STRING,
-              enum: ["ONLINE", "IN_PERSON", "HYBRID"],
-            },
-            location: { type: Type.STRING },
-            themes: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-            },
-            registration_url: { type: Type.STRING },
-            confidence_score: { type: Type.NUMBER },
-          },
-          required: [
-            "is_valid_upcoming_hackathon",
-            "title",
-            "organizer",
-            "summary",
-            "prize_display",
-            "deadline_at",
-            "format",
-            "location",
-            "themes",
-            "registration_url",
-            "confidence_score",
-          ],
-        },
-      },
-    });
-
-    const parsed = JSON.parse(response.text || "{}") as {
+    const parsed = await generateGeminiStructuredJSON<{
       is_valid_upcoming_hackathon: boolean;
       title: string;
       organizer: string;
@@ -375,12 +331,54 @@ export async function normalizeHackathonCandidate(
       themes: string[];
       registration_url: string;
       confidence_score: number;
-    };
+    }>({
+      contents: `Analyze this raw hackathon / X post payload and extract canonical hackathon telemetry. Reject if it is merely recapping a past event, a joke, or a scam.\n\nProvider: ${raw.provider}\nURL: ${raw.url}\nTitle Hint: ${raw.titleHint ?? ""}\nOrganizer Hint: ${raw.organizerHint ?? ""}\nPrize Hint: ${raw.prizeHint ?? ""}\nDeadline Hint: ${raw.deadlineHint ?? ""}\nRaw Text:\n${raw.rawText}`,
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          is_valid_upcoming_hackathon: { type: Type.BOOLEAN },
+          title: { type: Type.STRING },
+          organizer: { type: Type.STRING },
+          summary: { type: Type.STRING },
+          prize_pool_usd: { type: Type.INTEGER, nullable: true },
+          prize_display: { type: Type.STRING },
+          deadline_at: { type: Type.STRING },
+          format: {
+            type: Type.STRING,
+            enum: ["ONLINE", "IN_PERSON", "HYBRID"],
+          },
+          location: { type: Type.STRING },
+          themes: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+          },
+          registration_url: { type: Type.STRING },
+          confidence_score: { type: Type.NUMBER },
+        },
+        required: [
+          "is_valid_upcoming_hackathon",
+          "title",
+          "organizer",
+          "summary",
+          "prize_display",
+          "deadline_at",
+          "format",
+          "location",
+          "themes",
+          "registration_url",
+          "confidence_score",
+        ],
+      },
+    });
+
+    if (!parsed) {
+      return heuristicNormalizeHackathon(raw);
+    }
 
     if (!parsed.is_valid_upcoming_hackathon || parsed.confidence_score < 0.5) {
       return {
         is_valid_upcoming_hackathon: false,
-        rejection_reason: "Gemini Flash verification gate rejected candidate (<0.50 confidence).",
+        rejection_reason: "Gemini 3.8 Flash verification gate rejected candidate (<0.50 confidence).",
       };
     }
 
