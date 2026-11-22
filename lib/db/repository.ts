@@ -234,6 +234,55 @@ function slugifyText(input: string): string {
     .slice(0, 72);
 }
 
+type SyncMeta = LocalStoreState["meta"];
+
+function logSupabaseError(context: string, error: unknown): void {
+  if (error) {
+    console.error(`[supabase:${context}]`, error);
+  }
+}
+
+async function readSupabaseSyncMeta(fallback: SyncMeta): Promise<SyncMeta> {
+  if (!isSupabaseConfigured()) return fallback;
+  const sb = getSupabaseAdminClient();
+  if (!sb) return fallback;
+  const { data, error } = await sb
+    .from("system_settings")
+    .select("value")
+    .eq("key", "sync_meta")
+    .maybeSingle();
+  if (error) {
+    logSupabaseError("readSupabaseSyncMeta", error);
+    return fallback;
+  }
+  const value = (data?.value ?? {}) as Partial<SyncMeta>;
+  return {
+    last_hackathon_sync_at: value.last_hackathon_sync_at || fallback.last_hackathon_sync_at,
+    last_news_sync_at: value.last_news_sync_at || fallback.last_news_sync_at,
+  };
+}
+
+async function writeSupabaseSyncMeta(
+  patch: Partial<SyncMeta>,
+  fallback: SyncMeta
+): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  const sb = getSupabaseAdminClient();
+  if (!sb) return;
+  const current = await readSupabaseSyncMeta(fallback);
+  const next: SyncMeta = {
+    last_hackathon_sync_at: patch.last_hackathon_sync_at || current.last_hackathon_sync_at,
+    last_news_sync_at: patch.last_news_sync_at || current.last_news_sync_at,
+  };
+  const { error } = await sb
+    .from("system_settings")
+    .upsert(
+      { key: "sync_meta", value: next, updated_at: new Date().toISOString() },
+      { onConflict: "key" }
+    );
+  logSupabaseError("writeSupabaseSyncMeta", error);
+}
+
 // =============================================================================
 // HACKATHONS
 // =============================================================================
@@ -262,7 +311,9 @@ export async function getHackathons(
         query = query.eq("is_published", true);
       }
       const { data, error } = await query;
-      if (!error && data && data.length > 0) {
+      if (error) {
+        logSupabaseError("getHackathons", error);
+      } else if (data !== null) {
         list = data as Hackathon[];
       }
     }
@@ -322,9 +373,11 @@ export async function getHackathons(
     return new Date(a.deadline_at).getTime() - new Date(b.deadline_at).getTime();
   });
 
+  const meta = await readSupabaseSyncMeta(store.meta);
+
   return {
     items: filtered,
-    lastSyncAt: store.meta.last_hackathon_sync_at,
+    lastSyncAt: meta.last_hackathon_sync_at,
   };
 }
 
@@ -380,7 +433,7 @@ export async function upsertHackathons(
         approval_status:
           cand.approval_status ?? (cand.is_published ? "APPROVED" : "PENDING_REVIEW"),
         created_by: cand.created_by ?? "ingestion",
-        id: `hack-${crypto.randomUUID().slice(0, 8)}`,
+        id: crypto.randomUUID(),
         created_at: nowIso,
         updated_at: nowIso,
       };
@@ -392,19 +445,113 @@ export async function upsertHackathons(
   store.meta.last_hackathon_sync_at = nowIso;
   writeLocalStore(store);
 
+  let total = store.hackathons.length;
+
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
-    if (sb && candidates.length > 0) {
-      for (const cand of candidates) {
-        await sb.from("hackathons").upsert(cand, { onConflict: "fingerprint" });
+    if (sb) {
+      const { data: existingRows, error: fetchError } = await sb
+        .from("hackathons")
+        .select(
+          "id, fingerprint, slug, primary_url, sources, themes, prize_pool_usd, prize_display, source_tweet_url, confidence_score"
+        );
+      if (fetchError) {
+        logSupabaseError("upsertHackathons:fetch", fetchError);
+      } else {
+        let sbInserted = 0;
+        let sbMerged = 0;
+        const rows = (existingRows ?? []) as Pick<
+          Hackathon,
+          | "id"
+          | "fingerprint"
+          | "slug"
+          | "primary_url"
+          | "sources"
+          | "themes"
+          | "prize_pool_usd"
+          | "prize_display"
+          | "source_tweet_url"
+          | "confidence_score"
+        >[];
+
+        for (const cand of candidates) {
+          const candNormUrl = normalizeUrlForDedup(cand.primary_url);
+          const match = rows.find((h) => {
+            if (h.fingerprint === cand.fingerprint) return true;
+            if (
+              candNormUrl.length > 14 &&
+              !candNormUrl.endsWith("/hackathons") &&
+              !candNormUrl.endsWith("/events") &&
+              normalizeUrlForDedup(h.primary_url) === candNormUrl
+            ) {
+              return true;
+            }
+            return false;
+          });
+
+          if (match) {
+            const mergedSources = mergeHackathonSources(match.sources ?? [], cand.sources);
+            const mergedThemes = Array.from(new Set([...(match.themes ?? []), ...cand.themes]));
+            const { error } = await sb
+              .from("hackathons")
+              .update({
+                prize_pool_usd: match.prize_pool_usd ?? cand.prize_pool_usd,
+                prize_display:
+                  match.prize_display && match.prize_display !== "TBA"
+                    ? match.prize_display
+                    : cand.prize_display,
+                sources: mergedSources,
+                themes: mergedThemes,
+                source_tweet_url: match.source_tweet_url ?? cand.source_tweet_url,
+                confidence_score: Math.max(match.confidence_score ?? 0, cand.confidence_score),
+                updated_at: nowIso,
+              })
+              .eq("id", match.id);
+            if (error) {
+              logSupabaseError("upsertHackathons:update", error);
+            } else {
+              match.sources = mergedSources;
+              match.themes = mergedThemes;
+              sbMerged++;
+            }
+          } else {
+            const safeSlug = rows.some((r) => r.slug === cand.slug)
+              ? `${cand.slug}-${crypto.randomUUID().slice(0, 6)}`
+              : cand.slug;
+            const newId = crypto.randomUUID();
+            const insertPayload: Hackathon = {
+              ...cand,
+              slug: safeSlug,
+              approval_status:
+                cand.approval_status ?? (cand.is_published ? "APPROVED" : "PENDING_REVIEW"),
+              created_by: cand.created_by ?? "ingestion",
+              id: newId,
+              created_at: nowIso,
+              updated_at: nowIso,
+            };
+            const { error } = await sb
+              .from("hackathons")
+              .upsert(insertPayload, { onConflict: "fingerprint" });
+            if (error) {
+              logSupabaseError("upsertHackathons:insert", error);
+            } else {
+              rows.push(insertPayload);
+              sbInserted++;
+            }
+          }
+        }
+        inserted = sbInserted;
+        merged = sbMerged;
+        total = rows.length;
       }
+      await writeSupabaseSyncMeta({ last_hackathon_sync_at: nowIso }, store.meta);
     }
   }
 
   return {
     inserted,
     merged,
-    total: store.hackathons.length,
+    total,
   };
 }
 
@@ -424,7 +571,7 @@ export async function createHackathon(
 
   const isPublished = payload.is_published ?? true;
   const record: Hackathon = {
-    id: `hack-${crypto.randomUUID().slice(0, 8)}`,
+    id: crypto.randomUUID(),
     fingerprint,
     title: payload.title.trim(),
     slug,
@@ -464,7 +611,16 @@ export async function createHackathon(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      await sb.from("hackathons").upsert(record, { onConflict: "fingerprint" });
+      const { data, error } = await sb
+        .from("hackathons")
+        .upsert(record, { onConflict: "fingerprint" })
+        .select("*")
+        .maybeSingle();
+      if (error) {
+        logSupabaseError("createHackathon", error);
+      } else if (data) {
+        return data as Hackathon;
+      }
     }
   }
 
@@ -493,13 +649,15 @@ export async function updateHackathon(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { data } = await sb
+      const { data, error } = await sb
         .from("hackathons")
         .update({ ...patch, updated_at: nowIso })
         .eq("id", id)
         .select("*")
         .maybeSingle();
-      if (data && !updatedRecord) {
+      if (error) {
+        logSupabaseError("updateHackathon", error);
+      } else if (data) {
         updatedRecord = data as Hackathon;
       }
     }
@@ -560,7 +718,9 @@ export async function getNewsItems(
         query = query.eq("is_published", true);
       }
       const { data, error } = await query;
-      if (!error && data && data.length > 0) {
+      if (error) {
+        logSupabaseError("getNewsItems", error);
+      } else if (data !== null) {
         list = data as NewsItem[];
       }
     }
@@ -584,9 +744,11 @@ export async function getNewsItems(
     return new Date(b.published_at).getTime() - new Date(a.published_at).getTime();
   });
 
+  const meta = await readSupabaseSyncMeta(store.meta);
+
   return {
     items: filtered,
-    lastSyncAt: store.meta.last_news_sync_at,
+    lastSyncAt: meta.last_news_sync_at,
   };
 }
 
@@ -614,7 +776,7 @@ export async function upsertNewsItems(
         approval_status:
           item.approval_status ?? (item.is_published ? "APPROVED" : "PENDING_REVIEW"),
         created_by: item.created_by ?? "ingestion",
-        id: `news-${crypto.randomUUID().slice(0, 8)}`,
+        id: crypto.randomUUID(),
         created_at: nowIso,
       });
       inserted++;
@@ -624,18 +786,55 @@ export async function upsertNewsItems(
   store.meta.last_news_sync_at = nowIso;
   writeLocalStore(store);
 
+  let total = store.news_items.length;
+
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
-    if (sb && items.length > 0) {
-      for (const item of items) {
-        await sb.from("news_items").upsert(item, { onConflict: "url_hash" });
+    if (sb) {
+      const { data: existingRows, error: fetchError } = await sb
+        .from("news_items")
+        .select("url_hash, source_url");
+      if (fetchError) {
+        logSupabaseError("upsertNewsItems:fetch", fetchError);
+      } else {
+        const seen = existingRows ?? [];
+        let sbInserted = 0;
+        for (const item of items) {
+          const existsInSb = seen.some(
+            (n) =>
+              n.url_hash === item.url_hash ||
+              normalizeUrlForDedup(n.source_url) === normalizeUrlForDedup(item.source_url)
+          );
+          if (!existsInSb) {
+            const payload: NewsItem = {
+              ...item,
+              approval_status:
+                item.approval_status ?? (item.is_published ? "APPROVED" : "PENDING_REVIEW"),
+              created_by: item.created_by ?? "ingestion",
+              id: crypto.randomUUID(),
+              created_at: nowIso,
+            };
+            const { error } = await sb
+              .from("news_items")
+              .upsert(payload, { onConflict: "url_hash", ignoreDuplicates: true });
+            if (error) {
+              logSupabaseError("upsertNewsItems:insert", error);
+            } else {
+              seen.push({ url_hash: payload.url_hash, source_url: payload.source_url });
+              sbInserted++;
+            }
+          }
+        }
+        inserted = sbInserted;
+        total = seen.length;
       }
+      await writeSupabaseSyncMeta({ last_news_sync_at: nowIso }, store.meta);
     }
   }
 
   return {
     inserted,
-    total: store.news_items.length,
+    total,
   };
 }
 
@@ -654,7 +853,7 @@ export async function createNewsItem(
   const isPublished = payload.is_published ?? true;
 
   const record: NewsItem = {
-    id: `news-${crypto.randomUUID().slice(0, 8)}`,
+    id: crypto.randomUUID(),
     url_hash: urlHash,
     title: payload.title.trim(),
     source_name: payload.source_name.trim(),
@@ -680,7 +879,16 @@ export async function createNewsItem(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      await sb.from("news_items").upsert(record, { onConflict: "url_hash" });
+      const { data, error } = await sb
+        .from("news_items")
+        .upsert(record, { onConflict: "url_hash" })
+        .select("*")
+        .maybeSingle();
+      if (error) {
+        logSupabaseError("createNewsItem", error);
+      } else if (data) {
+        return data as NewsItem;
+      }
     }
   }
 
@@ -707,13 +915,15 @@ export async function updateNewsItem(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { data } = await sb
+      const { data, error } = await sb
         .from("news_items")
         .update(patch)
         .eq("id", id)
         .select("*")
         .maybeSingle();
-      if (data && !updatedRecord) {
+      if (error) {
+        logSupabaseError("updateNewsItem", error);
+      } else if (data) {
         updatedRecord = data as NewsItem;
       }
     }
@@ -743,7 +953,11 @@ export async function deleteNewsItem(id: string): Promise<boolean> {
     const sb = getSupabaseAdminClient();
     if (sb) {
       const { error } = await sb.from("news_items").delete().eq("id", id);
-      if (!error) removedSb = true;
+      if (error) {
+        logSupabaseError("deleteNewsItem", error);
+      } else {
+        removedSb = true;
+      }
     }
   }
 
@@ -769,7 +983,9 @@ export async function getDispatches(
         .from("dispatches")
         .select("*")
         .order("published_at", { ascending: false });
-      if (!error && data && data.length > 0) {
+      if (error) {
+        logSupabaseError("getDispatches", error);
+      } else if (data !== null) {
         list = data as Dispatch[];
       }
     }
@@ -809,15 +1025,31 @@ export async function createDispatch(
   const store = readLocalStore();
   const nowIso = new Date().toISOString();
 
-  const maxIssue = store.dispatches.reduce((max, d) => {
-    const n = Number.parseInt(d.issue_number, 10);
+  let issueCandidates = store.dispatches.map((d) => d.issue_number);
+  let existingSlugs = store.dispatches.map((d) => d.slug);
+
+  if (isSupabaseConfigured()) {
+    const sb = getSupabaseAdminClient();
+    if (sb) {
+      const { data, error } = await sb.from("dispatches").select("issue_number, slug");
+      if (error) {
+        logSupabaseError("createDispatch:fetchMeta", error);
+      } else if (data) {
+        issueCandidates = data.map((d) => String(d.issue_number));
+        existingSlugs = data.map((d) => String(d.slug));
+      }
+    }
+  }
+
+  const maxIssue = issueCandidates.reduce((max, raw) => {
+    const n = Number.parseInt(raw, 10);
     return Number.isFinite(n) && n > max ? n : max;
   }, 0);
   const issueNumber =
     payload.issue_number || String(maxIssue + 1).padStart(3, "0");
 
   const baseSlug = slugifyText(payload.slug || payload.title) || `dispatch-${issueNumber}`;
-  const slug = store.dispatches.some((d) => d.slug === baseSlug)
+  const slug = existingSlugs.includes(baseSlug)
     ? `${baseSlug}-${crypto.randomUUID().slice(0, 4)}`
     : baseSlug;
 
@@ -826,7 +1058,7 @@ export async function createDispatch(
   const isPublished = payload.is_published ?? true;
 
   const record: Dispatch = {
-    id: `disp-${crypto.randomUUID().slice(0, 8)}`,
+    id: crypto.randomUUID(),
     issue_number: issueNumber,
     slug,
     title: payload.title.trim(),
@@ -856,7 +1088,16 @@ export async function createDispatch(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      await sb.from("dispatches").upsert(record, { onConflict: "slug" });
+      const { data, error } = await sb
+        .from("dispatches")
+        .upsert(record, { onConflict: "slug" })
+        .select("*")
+        .maybeSingle();
+      if (error) {
+        logSupabaseError("createDispatch", error);
+      } else if (data) {
+        return data as Dispatch;
+      }
     }
   }
 
@@ -885,13 +1126,15 @@ export async function updateDispatch(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { data } = await sb
+      const { data, error } = await sb
         .from("dispatches")
         .update({ ...patch, updated_at: nowIso })
         .eq("id", id)
         .select("*")
         .maybeSingle();
-      if (data && !updatedRecord) {
+      if (error) {
+        logSupabaseError("updateDispatch", error);
+      } else if (data) {
         updatedRecord = data as Dispatch;
       }
     }
@@ -936,7 +1179,9 @@ export async function getLabProjects(division?: LabDivision): Promise<LabProject
         .from("lab_projects")
         .select("*")
         .order("sort_order", { ascending: true });
-      if (!error && data && data.length > 0) {
+      if (error) {
+        logSupabaseError("getLabProjects", error);
+      } else if (data !== null) {
         list = data as LabProject[];
       }
     }
@@ -966,7 +1211,7 @@ export async function createLabProject(
   const slug = slugifyText(payload.slug || payload.name) || `lab-${Date.now()}`;
 
   const record: LabProject = {
-    id: `proj-${crypto.randomUUID().slice(0, 8)}`,
+    id: crypto.randomUUID(),
     code: payload.code.trim().toUpperCase(),
     division: payload.division,
     name: payload.name.trim(),
@@ -992,7 +1237,16 @@ export async function createLabProject(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      await sb.from("lab_projects").upsert(record, { onConflict: "code" });
+      const { data, error } = await sb
+        .from("lab_projects")
+        .upsert(record, { onConflict: "code" })
+        .select("*")
+        .maybeSingle();
+      if (error) {
+        logSupabaseError("createLabProject", error);
+      } else if (data) {
+        return data as LabProject;
+      }
     }
   }
 
@@ -1019,13 +1273,15 @@ export async function updateLabProject(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { data } = await sb
+      const { data, error } = await sb
         .from("lab_projects")
         .update(patch)
         .eq("id", id)
         .select("*")
         .maybeSingle();
-      if (data && !updatedRecord) {
+      if (error) {
+        logSupabaseError("updateLabProject", error);
+      } else if (data) {
         updatedRecord = data as LabProject;
       }
     }
@@ -1048,7 +1304,11 @@ export async function deleteLabProject(id: string): Promise<boolean> {
     const sb = getSupabaseAdminClient();
     if (sb) {
       const { error } = await sb.from("lab_projects").delete().eq("id", id);
-      if (!error) removedSb = true;
+      if (error) {
+        logSupabaseError("deleteLabProject", error);
+      } else {
+        removedSb = true;
+      }
     }
   }
 
@@ -1065,7 +1325,7 @@ export async function createClientInquiry(
   const store = readLocalStore();
   const record: ClientInquiry = {
     ...payload,
-    id: `inq-${crypto.randomUUID().slice(0, 8)}`,
+    id: crypto.randomUUID(),
     status: "NEW",
     created_at: new Date().toISOString(),
   };
@@ -1076,7 +1336,16 @@ export async function createClientInquiry(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      await sb.from("client_inquiries").insert(payload);
+      const { data, error } = await sb
+        .from("client_inquiries")
+        .insert(record)
+        .select("*")
+        .maybeSingle();
+      if (error) {
+        logSupabaseError("createClientInquiry", error);
+      } else if (data) {
+        return data as ClientInquiry;
+      }
     }
   }
 
@@ -1092,7 +1361,9 @@ export async function getClientInquiries(): Promise<ClientInquiry[]> {
         .from("client_inquiries")
         .select("*")
         .order("created_at", { ascending: false });
-      if (!error && data && data.length > 0) {
+      if (error) {
+        logSupabaseError("getClientInquiries", error);
+      } else if (data !== null) {
         return data as ClientInquiry[];
       }
     }
@@ -1116,13 +1387,17 @@ export async function updateClientInquiryStatus(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { data } = await sb
+      const { data, error } = await sb
         .from("client_inquiries")
         .update({ status })
         .eq("id", id)
         .select("*")
         .maybeSingle();
-      if (data && !updated) updated = data as ClientInquiry;
+      if (error) {
+        logSupabaseError("updateClientInquiryStatus", error);
+      } else if (data) {
+        updated = data as ClientInquiry;
+      }
     }
   }
 
@@ -1141,7 +1416,11 @@ export async function deleteClientInquiry(id: string): Promise<boolean> {
     const sb = getSupabaseAdminClient();
     if (sb) {
       const { error } = await sb.from("client_inquiries").delete().eq("id", id);
-      if (!error) removedSb = true;
+      if (error) {
+        logSupabaseError("deleteClientInquiry", error);
+      } else {
+        removedSb = true;
+      }
     }
   }
   return removedLocal || removedSb;
@@ -1155,36 +1434,60 @@ export async function createOrbitApplication(
   payload: Omit<OrbitApplication, "id" | "created_at">
 ): Promise<OrbitApplication> {
   const store = readLocalStore();
+  const normalizedEmail = payload.email.trim().toLowerCase();
   const existing = store.orbit_waitlist.find(
-    (o) => o.email.toLowerCase() === payload.email.toLowerCase()
+    (o) => o.email.toLowerCase() === normalizedEmail
   );
+
+  let localRecord: OrbitApplication;
   if (existing) {
     existing.full_name = payload.full_name;
     existing.track = payload.track;
     existing.portfolio_url = payload.portfolio_url;
     existing.proof_of_work = payload.proof_of_work;
     writeLocalStore(store);
-    return existing;
+    localRecord = existing;
+  } else {
+    localRecord = {
+      ...payload,
+      email: normalizedEmail,
+      status: payload.status ?? "NEW",
+      notes: payload.notes ?? null,
+      id: crypto.randomUUID(),
+      created_at: new Date().toISOString(),
+    };
+    store.orbit_waitlist.unshift(localRecord);
+    writeLocalStore(store);
   }
-
-  const record: OrbitApplication = {
-    ...payload,
-    status: payload.status ?? "NEW",
-    notes: payload.notes ?? null,
-    id: `orb-${crypto.randomUUID().slice(0, 8)}`,
-    created_at: new Date().toISOString(),
-  };
-  store.orbit_waitlist.unshift(record);
-  writeLocalStore(store);
 
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      await sb.from("orbit_waitlist").upsert(payload, { onConflict: "email" });
+      const { data, error } = await sb
+        .from("orbit_waitlist")
+        .upsert(
+          {
+            full_name: payload.full_name,
+            email: normalizedEmail,
+            track: payload.track,
+            portfolio_url: payload.portfolio_url,
+            proof_of_work: payload.proof_of_work,
+            status: localRecord.status,
+            notes: localRecord.notes,
+          },
+          { onConflict: "email" }
+        )
+        .select("*")
+        .maybeSingle();
+      if (error) {
+        logSupabaseError("createOrbitApplication", error);
+      } else if (data) {
+        return data as OrbitApplication;
+      }
     }
   }
 
-  return record;
+  return localRecord;
 }
 
 export async function getOrbitApplications(): Promise<OrbitApplication[]> {
@@ -1196,7 +1499,9 @@ export async function getOrbitApplications(): Promise<OrbitApplication[]> {
         .from("orbit_waitlist")
         .select("*")
         .order("created_at", { ascending: false });
-      if (!error && data && data.length > 0) {
+      if (error) {
+        logSupabaseError("getOrbitApplications", error);
+      } else if (data !== null) {
         return data as OrbitApplication[];
       }
     }
@@ -1220,13 +1525,17 @@ export async function updateOrbitApplication(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { data } = await sb
+      const { data, error } = await sb
         .from("orbit_waitlist")
         .update(patch)
         .eq("id", id)
         .select("*")
         .maybeSingle();
-      if (data && !updated) updated = data as OrbitApplication;
+      if (error) {
+        logSupabaseError("updateOrbitApplication", error);
+      } else if (data) {
+        updated = data as OrbitApplication;
+      }
     }
   }
   return updated;
@@ -1244,7 +1553,11 @@ export async function deleteOrbitApplication(id: string): Promise<boolean> {
     const sb = getSupabaseAdminClient();
     if (sb) {
       const { error } = await sb.from("orbit_waitlist").delete().eq("id", id);
-      if (!error) removedSb = true;
+      if (error) {
+        logSupabaseError("deleteOrbitApplication", error);
+      } else {
+        removedSb = true;
+      }
     }
   }
   return removedLocal || removedSb;
@@ -1255,26 +1568,41 @@ export async function createNewsletterSubscriber(payload: {
   source?: string;
 }): Promise<NewsletterSubscriber> {
   const store = readLocalStore();
+  const normalizedEmail = payload.email.trim().toLowerCase();
   const existing = store.newsletter_subscribers.find(
-    (s) => s.email.toLowerCase() === payload.email.toLowerCase()
+    (s) => s.email.toLowerCase() === normalizedEmail
   );
-  if (existing) return existing;
 
-  const record: NewsletterSubscriber = {
-    id: `sub-${crypto.randomUUID().slice(0, 8)}`,
-    email: payload.email.toLowerCase(),
-    source: payload.source ?? "journal",
-    created_at: new Date().toISOString(),
-  };
-  store.newsletter_subscribers.unshift(record);
-  writeLocalStore(store);
+  let record: NewsletterSubscriber;
+  if (existing) {
+    record = existing;
+  } else {
+    record = {
+      id: crypto.randomUUID(),
+      email: normalizedEmail,
+      source: payload.source ?? "journal",
+      created_at: new Date().toISOString(),
+    };
+    store.newsletter_subscribers.unshift(record);
+    writeLocalStore(store);
+  }
 
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      await sb
+      const { data, error } = await sb
         .from("newsletter_subscribers")
-        .upsert({ email: record.email, source: record.source }, { onConflict: "email" });
+        .upsert(
+          { email: normalizedEmail, source: payload.source ?? record.source },
+          { onConflict: "email" }
+        )
+        .select("*")
+        .maybeSingle();
+      if (error) {
+        logSupabaseError("createNewsletterSubscriber", error);
+      } else if (data) {
+        return data as NewsletterSubscriber;
+      }
     }
   }
 
@@ -1290,7 +1618,9 @@ export async function getNewsletterSubscribers(): Promise<NewsletterSubscriber[]
         .from("newsletter_subscribers")
         .select("*")
         .order("created_at", { ascending: false });
-      if (!error && data && data.length > 0) {
+      if (error) {
+        logSupabaseError("getNewsletterSubscribers", error);
+      } else if (data !== null) {
         return data as NewsletterSubscriber[];
       }
     }
@@ -1329,7 +1659,9 @@ export async function listMediaAssets(): Promise<MediaAsset[]> {
         .from("media_assets")
         .select("*")
         .order("created_at", { ascending: false });
-      if (!error && data && data.length > 0) {
+      if (error) {
+        logSupabaseError("listMediaAssets", error);
+      } else if (data !== null) {
         return data as MediaAsset[];
       }
     }
@@ -1345,12 +1677,16 @@ export async function getMediaAssetById(id: string): Promise<MediaAsset | null> 
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { data } = await sb
+      const { data, error } = await sb
         .from("media_assets")
         .select("*")
         .eq("id", id)
         .maybeSingle();
-      if (data) return data as MediaAsset;
+      if (error) {
+        logSupabaseError("getMediaAssetById", error);
+      } else if (data) {
+        return data as MediaAsset;
+      }
     }
   }
   return null;
@@ -1378,7 +1714,10 @@ export async function createMediaAsset(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      await sb.from("media_assets").upsert(record, { onConflict: "id" });
+      const { error } = await sb
+        .from("media_assets")
+        .upsert(record, { onConflict: "id" });
+      logSupabaseError("createMediaAsset", error);
     }
   }
 
@@ -1397,7 +1736,11 @@ export async function deleteMediaAsset(id: string): Promise<boolean> {
     const sb = getSupabaseAdminClient();
     if (sb) {
       const { error } = await sb.from("media_assets").delete().eq("id", id);
-      if (!error) removedSb = true;
+      if (error) {
+        logSupabaseError("deleteMediaAsset", error);
+      } else {
+        removedSb = true;
+      }
     }
   }
   return removedLocal || removedSb;
@@ -1412,12 +1755,14 @@ export async function getAiPermissions(): Promise<AiPermissionsPolicy> {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { data } = await sb
+      const { data, error } = await sb
         .from("system_settings")
         .select("value")
         .eq("key", "ai_permissions")
         .maybeSingle();
-      if (data?.value) {
+      if (error) {
+        logSupabaseError("getAiPermissions", error);
+      } else if (data?.value) {
         return {
           ...DEFAULT_AI_PERMISSIONS,
           ...(data.value as Partial<AiPermissionsPolicy>),
@@ -1435,9 +1780,9 @@ export async function updateAiPermissions(
   patch: Partial<AiPermissionsPolicy>
 ): Promise<AiPermissionsPolicy> {
   const store = readLocalStore();
+  const base = await getAiPermissions();
   const next: AiPermissionsPolicy = {
-    ...DEFAULT_AI_PERMISSIONS,
-    ...store.ai_permissions,
+    ...base,
     ...patch,
   };
   store.ai_permissions = next;
@@ -1446,7 +1791,7 @@ export async function updateAiPermissions(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      await sb.from("system_settings").upsert(
+      const { error } = await sb.from("system_settings").upsert(
         {
           key: "ai_permissions",
           value: next,
@@ -1454,6 +1799,7 @@ export async function updateAiPermissions(
         },
         { onConflict: "key" }
       );
+      logSupabaseError("updateAiPermissions", error);
     }
   }
 
@@ -1473,7 +1819,9 @@ export async function listAdminUsers(): Promise<AdminUser[]> {
         .from("admin_users")
         .select("*")
         .order("created_at", { ascending: true });
-      if (!error && data && data.length > 0) {
+      if (error) {
+        logSupabaseError("listAdminUsers", error);
+      } else if (data !== null) {
         return data as AdminUser[];
       }
     }
@@ -1516,7 +1864,8 @@ export async function createAdminUser(payload: {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      await sb.from("admin_users").insert(record);
+      const { error } = await sb.from("admin_users").insert(record);
+      logSupabaseError("createAdminUser", error);
     }
   }
 
@@ -1783,7 +2132,7 @@ export async function appendAuditLog(
   const store = readLocalStore();
   const record: AuditLogEntry = {
     ...entry,
-    id: `aud-${crypto.randomUUID().slice(0, 8)}`,
+    id: crypto.randomUUID(),
     created_at: new Date().toISOString(),
   };
 
@@ -1796,7 +2145,8 @@ export async function appendAuditLog(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      await sb.from("audit_logs").insert(record);
+      const { error } = await sb.from("audit_logs").insert(record);
+      logSupabaseError("appendAuditLog", error);
     }
   }
 
@@ -1813,7 +2163,9 @@ export async function getAuditLogs(limit = 80): Promise<AuditLogEntry[]> {
         .select("*")
         .order("created_at", { ascending: false })
         .limit(limit);
-      if (!error && data && data.length > 0) {
+      if (error) {
+        logSupabaseError("getAuditLogs", error);
+      } else if (data !== null) {
         return data as AuditLogEntry[];
       }
     }
@@ -1827,7 +2179,12 @@ export async function getAuditLogs(limit = 80): Promise<AuditLogEntry[]> {
 
 export async function searchGlobal(query: string): Promise<GlobalSearchResult[]> {
   const q = query.trim().toLowerCase();
-  const store = readLocalStore();
+  const [labProjects, hackathonResult, dispatches, newsResult] = await Promise.all([
+    getLabProjects(),
+    getHackathons({ includeExpired: true }),
+    getDispatches(),
+    getNewsItems(),
+  ]);
 
   const staticRoutes: GlobalSearchResult[] = [
     {
@@ -1922,7 +2279,7 @@ export async function searchGlobal(query: string): Promise<GlobalSearchResult[]>
     },
   ];
 
-  const projectItems: GlobalSearchResult[] = store.lab_projects.map((p) => ({
+  const projectItems: GlobalSearchResult[] = labProjects.map((p) => ({
     id: `proj-${p.id}`,
     type: p.division === "LABS" ? "LAB_DROP" : "SKUNKWORKS",
     code: p.code,
@@ -1932,7 +2289,7 @@ export async function searchGlobal(query: string): Promise<GlobalSearchResult[]>
     badge: p.status,
   }));
 
-  const hackathonItems: GlobalSearchResult[] = store.hackathons
+  const hackathonItems: GlobalSearchResult[] = hackathonResult.items
     .filter((h) => h.is_published)
     .map((h) => ({
       id: `hack-${h.id}`,
@@ -1944,7 +2301,7 @@ export async function searchGlobal(query: string): Promise<GlobalSearchResult[]>
       badge: h.prize_display,
     }));
 
-  const dispatchItems: GlobalSearchResult[] = store.dispatches
+  const dispatchItems: GlobalSearchResult[] = dispatches
     .filter((d) => d.is_published !== false)
     .map((d) => ({
       id: `disp-${d.id}`,
@@ -1956,7 +2313,7 @@ export async function searchGlobal(query: string): Promise<GlobalSearchResult[]>
       badge: d.category,
     }));
 
-  const newsItems: GlobalSearchResult[] = store.news_items
+  const newsItems: GlobalSearchResult[] = newsResult.items
     .filter((n) => n.is_published)
     .map((n) => ({
       id: `news-${n.id}`,

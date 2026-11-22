@@ -27,6 +27,15 @@ ALTER TABLE orbit_waitlist
   ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'NEW',
   ADD COLUMN IF NOT EXISTS notes TEXT;
 
+ALTER TABLE lab_projects
+  ADD COLUMN IF NOT EXISTS thesis TEXT,
+  ADD COLUMN IF NOT EXISTS architecture_notes TEXT[] DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS changelog JSONB DEFAULT '[]';
+
+ALTER POLICY "Public can view published dispatches"
+  ON dispatches
+  USING (COALESCE(is_published, TRUE) = TRUE AND published_at IS NOT NULL);
+
 -- Admin user accounts (service-role access only)
 CREATE TABLE IF NOT EXISTS admin_users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
