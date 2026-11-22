@@ -3,7 +3,17 @@
 import React, { useMemo, useState } from "react";
 import { PreloadLink } from "@/components/layout/PreloadLink";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowLeft, Sun, Moon, Clock, Copy, Check } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Sun,
+  Moon,
+  Clock,
+  Copy,
+  Check,
+  Sparkles,
+  ExternalLink,
+} from "lucide-react";
 import { NewsletterBar } from "@/components/journal/NewsletterBar";
 import { SPRING_UI } from "@/lib/motion";
 import type { Dispatch, DispatchCategory } from "@/lib/supabase/types";
@@ -14,11 +24,14 @@ interface DispatchReaderClientProps {
 }
 
 interface ParsedBlock {
-  type: "h2" | "code" | "ul" | "p";
+  type: "h2" | "h3" | "code" | "ul" | "image" | "callout" | "p";
   id?: string;
   lang?: string;
   content: string;
   items?: string[];
+  alt?: string;
+  url?: string;
+  calloutKind?: "ACCENT" | "NOTE" | "TIP" | "WARNING" | "QUOTE";
 }
 
 const DISPATCH_CATEGORY_LABELS: Record<DispatchCategory, string> = {
@@ -31,6 +44,17 @@ const DISPATCH_CATEGORY_LABELS: Record<DispatchCategory, string> = {
 
 function sanitizeProse(text: string): string {
   return text.replaceAll(" // ", " · ").replaceAll("—", ", ");
+}
+
+function isSafeHref(url: string): boolean {
+  const trimmed = url.trim();
+  if (trimmed.startsWith("/") || trimmed.startsWith("#")) return true;
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function parseMdxBlocks(mdx: string): ParsedBlock[] {
@@ -48,11 +72,49 @@ function parseMdxBlocks(mdx: string): ParsedBlock[] {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "");
       blocks.push({ type: "h2", id, content: title });
+    } else if (trimmed.startsWith("### ")) {
+      const title = sanitizeProse(trimmed.replace(/^###\s+/, "").trim());
+      const id = title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+      blocks.push({ type: "h3", id, content: title });
     } else if (trimmed.startsWith("```")) {
       const lines = trimmed.split("\n");
       const lang = lines[0].replace("```", "").trim() || "text";
-      const code = lines.slice(1, -1).join("\n");
+      const code = lines.slice(1, lines[lines.length - 1]?.startsWith("```") ? -1 : undefined).join("\n");
       blocks.push({ type: "code", lang, content: code });
+    } else if (/^!\[([^\]]*)\]\(([^)\s]+)\)$/.test(trimmed)) {
+      const match = trimmed.match(/^!\[([^\]]*)\]\(([^)\s]+)\)$/);
+      if (match) {
+        blocks.push({
+          type: "image",
+          alt: match[1] || "Dispatch visual",
+          url: match[2],
+          content: match[1] || "",
+        });
+      }
+    } else if (
+      trimmed
+        .split("\n")
+        .every((line) => line.trim().startsWith(">"))
+    ) {
+      const lines = trimmed
+        .split("\n")
+        .map((line) => line.trim().replace(/^>\s?/, ""));
+      const firstLine = lines[0] || "";
+      const tagMatch = firstLine.match(/^\[!(ACCENT|NOTE|TIP|WARNING)\]\s*(.*)$/i);
+      let calloutKind: ParsedBlock["calloutKind"] = "QUOTE";
+      let contentLines = lines;
+      if (tagMatch) {
+        calloutKind = tagMatch[1].toUpperCase() as ParsedBlock["calloutKind"];
+        contentLines = [tagMatch[2], ...lines.slice(1)].filter(Boolean);
+      }
+      blocks.push({
+        type: "callout",
+        calloutKind,
+        content: sanitizeProse(contentLines.join(" ").trim()),
+      });
     } else if (
       trimmed
         .split("\n")
@@ -73,20 +135,44 @@ function parseMdxBlocks(mdx: string): ParsedBlock[] {
 }
 
 /**
- * Pure React inline markdown formatter for **bold**, `code`, and *italic* spans.
+ * Pure React inline markdown formatter for **bold**, `code`, *italic*, and [label](url) links.
  */
-function renderInlineText(text: string, isLight: boolean): React.ReactNode[] {
-  const tokenRegex = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g;
+function renderInlineText(
+  text: string,
+  isLight: boolean,
+  accentColor: string
+): React.ReactNode[] {
+  const tokenRegex = /(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g;
   const parts = text.split(tokenRegex);
 
   return parts.map((part, idx) => {
+    const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (linkMatch) {
+      const [, label, href] = linkMatch;
+      if (isSafeHref(href)) {
+        const isExternal = href.startsWith("http://") || href.startsWith("https://");
+        return (
+          <a
+            key={idx}
+            href={href}
+            target={isExternal ? "_blank" : undefined}
+            rel={isExternal ? "noreferrer noopener" : undefined}
+            className="inline-flex items-baseline gap-0.5 font-medium underline decoration-2 underline-offset-4 transition-opacity hover:opacity-80"
+            style={{ color: accentColor, textDecorationColor: `${accentColor}88` }}
+          >
+            <span>{label}</span>
+          </a>
+        );
+      }
+    }
+
     if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
       return (
         <strong
           key={idx}
           className={isLight ? "font-semibold text-[#08080A]" : "font-semibold text-[#F4F3EF]"}
         >
-          {renderInlineText(part.slice(2, -2), isLight)}
+          {renderInlineText(part.slice(2, -2), isLight, accentColor)}
         </strong>
       );
     }
@@ -126,9 +212,17 @@ export function DispatchReaderClient({
   otherDispatches,
 }: DispatchReaderClientProps) {
   const prefersReducedMotion = useReducedMotion();
-  // Obsidian Dark (#08080A) vs Editorial Alabaster Light (#F4F3EF) reading mode
   const [readingMode, setReadingMode] = useState<"DARK" | "LIGHT">("DARK");
   const [copiedCodeIdx, setCopiedCodeIdx] = useState<number | null>(null);
+
+  const accentColor =
+    /^#[0-9a-fA-F]{3,8}$/.test(dispatch.design?.accent_color || "")
+      ? dispatch.design!.accent_color!
+      : "#FF3B1F";
+  const heroLayout = dispatch.design?.hero_layout || "editorial";
+  const calloutStyle = dispatch.design?.callout_style || "left-bar";
+  const galleryImages = dispatch.design?.gallery_images ?? [];
+  const featuredLinks = dispatch.design?.featured_links ?? [];
 
   const blocks = useMemo(
     () => parseMdxBlocks(dispatch.mdx_content),
@@ -157,6 +251,13 @@ export function DispatchReaderClient({
   return (
     <div
       data-reading-theme={isLight ? "light" : "dark"}
+      style={
+        !isLight && dispatch.design?.surface_tint
+          ? {
+              backgroundImage: `radial-gradient(circle at 82% 8%, ${dispatch.design.surface_tint}22, transparent 42%)`,
+            }
+          : undefined
+      }
       className={`min-h-screen transition-colors duration-300 ${
         isLight
           ? "bg-[#F4F3EF] text-[#111114]"
@@ -182,7 +283,8 @@ export function DispatchReaderClient({
               }`}
             >
               <ArrowLeft
-                className="h-4 w-4 text-[#FF3B1F]"
+                className="h-4 w-4"
+                style={{ color: accentColor }}
                 strokeWidth={1.8}
               />
               <span>Journal</span>
@@ -194,7 +296,11 @@ export function DispatchReaderClient({
                   isLight ? "text-[#52525B]" : "text-[#A1A1AA]"
                 }`}
               >
-                <Clock className="h-3.5 w-3.5 text-[#FF3B1F]" strokeWidth={1.6} />
+                <Clock
+                  className="h-3.5 w-3.5"
+                  style={{ color: accentColor }}
+                  strokeWidth={1.6}
+                />
                 <span>
                   Issue {dispatch.issue_number} · {dispatch.reading_time_mins} min read
                 </span>
@@ -264,69 +370,112 @@ export function DispatchReaderClient({
             isLight ? "border-black/[0.1]" : "border-white/[0.08]"
           }`}
         >
-          <div className="max-w-4xl">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="font-mono-telemetry inline-flex items-center rounded-full bg-[#FF3B1F] px-3 py-1 text-xs font-semibold text-[#08080A]">
-                Issue {dispatch.issue_number}
-              </span>
-              <span
-                className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
-                  isLight
-                    ? "border-black/[0.12] bg-[#E8E6DF] text-[#111114]"
-                    : "border-white/[0.1] bg-[#18181D] text-[#D4D4D8]"
-                }`}
-              >
-                {DISPATCH_CATEGORY_LABELS[dispatch.category] ?? dispatch.category}
-              </span>
-              <span
-                className={`font-mono-telemetry text-xs ${
-                  isLight ? "text-[#52525B]" : "text-[#8B8B94]"
-                }`}
-              >
-                {dispatch.reading_time_mins} min read
-              </span>
-            </div>
-
-            <h1 className="font-display mt-6 text-[clamp(2rem,4.4vw,3.5rem)] leading-[1.08] font-bold tracking-[-0.03em]">
-              {sanitizeProse(dispatch.title)}
-            </h1>
-
-            <p
-              className={`mt-5 max-w-[65ch] text-lg leading-relaxed sm:text-xl ${
-                isLight ? "text-[#27272A]" : "text-[#A1A1AA]"
-              }`}
-            >
-              {sanitizeProse(dispatch.subtitle)}
-            </p>
-
-            <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <div className="text-sm font-semibold">{dispatch.author_name}</div>
-                <div
-                  className={`mt-0.5 text-xs ${
+          <div
+            className={
+              heroLayout === "split" && dispatch.cover_image_url
+                ? "grid grid-cols-1 items-center gap-8 lg:grid-cols-12"
+                : "max-w-4xl"
+            }
+          >
+            <div className={heroLayout === "split" && dispatch.cover_image_url ? "lg:col-span-7" : ""}>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span
+                  className="font-mono-telemetry inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold text-[#08080A]"
+                  style={{ backgroundColor: accentColor }}
+                >
+                  Issue {dispatch.issue_number}
+                </span>
+                <span
+                  className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
+                    isLight
+                      ? "border-black/[0.12] bg-[#E8E6DF] text-[#111114]"
+                      : "border-white/[0.1] bg-[#18181D] text-[#D4D4D8]"
+                  }`}
+                >
+                  {DISPATCH_CATEGORY_LABELS[dispatch.category] ?? dispatch.category}
+                </span>
+                <span
+                  className={`font-mono-telemetry text-xs ${
                     isLight ? "text-[#52525B]" : "text-[#8B8B94]"
                   }`}
                 >
-                  {dispatch.author_role.replace(/\s*\/\/\s*/g, ", ")}
-                </div>
+                  {dispatch.reading_time_mins} min read
+                </span>
               </div>
 
-              <div className="flex flex-wrap gap-1.5">
-                {dispatch.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className={`rounded-full px-3 py-1 text-xs font-medium ${
-                      isLight
-                        ? "bg-black/[0.06] text-[#27272A]"
-                        : "bg-white/[0.06] text-[#A1A1AA]"
+              <h1 className="font-display mt-6 text-[clamp(2rem,4.4vw,3.5rem)] leading-[1.08] font-bold tracking-[-0.03em]">
+                {sanitizeProse(dispatch.title)}
+              </h1>
+
+              <p
+                className={`mt-5 max-w-[65ch] text-lg leading-relaxed sm:text-xl ${
+                  isLight ? "text-[#27272A]" : "text-[#A1A1AA]"
+                }`}
+              >
+                {sanitizeProse(dispatch.subtitle)}
+              </p>
+
+              <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <div className="text-sm font-semibold">{dispatch.author_name}</div>
+                  <div
+                    className={`mt-0.5 text-xs ${
+                      isLight ? "text-[#52525B]" : "text-[#8B8B94]"
                     }`}
                   >
-                    {formatTagLabel(tag)}
-                  </span>
-                ))}
+                    {dispatch.author_role.replace(/\s*\/\/\s*/g, ", ")}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {dispatch.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className={`rounded-full px-3 py-1 text-xs font-medium ${
+                        isLight
+                          ? "bg-black/[0.06] text-[#27272A]"
+                          : "bg-white/[0.06] text-[#A1A1AA]"
+                      }`}
+                    >
+                      {formatTagLabel(tag)}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
+
+            {dispatch.cover_image_url && heroLayout === "split" && (
+              <div className="lg:col-span-5">
+                <div
+                  className={`overflow-hidden rounded-2xl border ${
+                    isLight ? "border-black/[0.12]" : "border-white/[0.1]"
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={dispatch.cover_image_url}
+                    alt={dispatch.title}
+                    className="h-auto w-full object-cover"
+                  />
+                </div>
+              </div>
+            )}
           </div>
+
+          {dispatch.cover_image_url && heroLayout !== "split" && heroLayout !== "minimal" && (
+            <div
+              className={`mt-10 overflow-hidden rounded-2xl border ${
+                heroLayout === "fullbleed" ? "max-h-[480px]" : "max-w-4xl"
+              } ${isLight ? "border-black/[0.12]" : "border-white/[0.1]"}`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={dispatch.cover_image_url}
+                alt={dispatch.title}
+                className="w-full object-cover"
+              />
+            </div>
+          )}
         </header>
 
         {/* Open 12-Column Reading Layout: Sticky Minimal TOC + 68ch Essay */}
@@ -376,6 +525,89 @@ export function DispatchReaderClient({
                     >
                       {block.content}
                     </h2>
+                  );
+                }
+
+                if (block.type === "h3") {
+                  return (
+                    <h3
+                      key={idx}
+                      id={block.id}
+                      className="font-display scroll-mt-36 pt-3 text-xl leading-[1.2] font-semibold tracking-[-0.02em]"
+                    >
+                      {block.content}
+                    </h3>
+                  );
+                }
+
+                if (block.type === "image" && block.url) {
+                  return (
+                    <figure
+                      key={idx}
+                      className={`overflow-hidden rounded-2xl border ${
+                        isLight
+                          ? "border-black/[0.1] bg-[#E8E6DF]"
+                          : "border-white/[0.1] bg-[#111114]"
+                      }`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={block.url}
+                        alt={block.alt || "Dispatch visual"}
+                        className="w-full object-cover"
+                      />
+                      {block.alt && (
+                        <figcaption
+                          className={`px-4 py-2.5 text-xs ${
+                            isLight ? "text-[#52525B]" : "text-[#8B8B94]"
+                          }`}
+                        >
+                          {block.alt}
+                        </figcaption>
+                      )}
+                    </figure>
+                  );
+                }
+
+                if (block.type === "callout") {
+                  const calloutBorderColor =
+                    block.calloutKind === "WARNING"
+                      ? "#F59E0B"
+                      : block.calloutKind === "TIP"
+                      ? "#10B981"
+                      : accentColor;
+                  return (
+                    <aside
+                      key={idx}
+                      style={{
+                        borderColor:
+                          calloutStyle === "left-bar"
+                            ? calloutBorderColor
+                            : `${calloutBorderColor}44`,
+                        backgroundColor:
+                          calloutStyle === "tinted-banner"
+                            ? `${calloutBorderColor}18`
+                            : isLight
+                            ? "#E8E6DF"
+                            : "#111114",
+                      }}
+                      className={`rounded-2xl p-5 text-[15px] leading-relaxed ${
+                        calloutStyle === "left-bar"
+                          ? "rounded-l-md border-l-4"
+                          : "border"
+                      } ${isLight ? "text-[#111114]" : "text-[#E4E4E7]"}`}
+                    >
+                      {block.calloutKind && block.calloutKind !== "QUOTE" && (
+                        <div
+                          className="mb-1.5 flex items-center gap-1.5 font-mono text-xs font-semibold uppercase tracking-wider"
+                          style={{ color: calloutBorderColor }}
+                        >
+                          <Sparkles className="h-3.5 w-3.5" strokeWidth={1.8} />
+                          <span>{block.calloutKind}</span>
+                        </div>
+                      )}
+                      <div>{renderInlineText(block.content, isLight, accentColor)}</div>
+                    </aside>
                   );
                 }
 
@@ -432,14 +664,15 @@ export function DispatchReaderClient({
                         <li key={i} className="flex items-start gap-3">
                           <span
                             aria-hidden="true"
-                            className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-[#FF3B1F]"
+                            className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: accentColor }}
                           />
                           <span
                             className={
                               isLight ? "text-[#1C1C20]" : "text-[#D4D4D8]"
                             }
                           >
-                            {renderInlineText(item, isLight)}
+                            {renderInlineText(item, isLight, accentColor)}
                           </span>
                         </li>
                       ))}
@@ -454,10 +687,84 @@ export function DispatchReaderClient({
                       isLight ? "text-[#1C1C20]" : "text-[#D4D4D8]"
                     }`}
                   >
-                    {renderInlineText(block.content, isLight)}
+                    {renderInlineText(block.content, isLight, accentColor)}
                   </p>
                 );
               })}
+
+              {/* Visual Gallery */}
+              {galleryImages.length > 0 && (
+                <div className="grid grid-cols-1 gap-4 pt-4 sm:grid-cols-2">
+                  {galleryImages.map((img, i) => (
+                    <figure
+                      key={i}
+                      className={`overflow-hidden rounded-2xl border ${
+                        isLight
+                          ? "border-black/[0.1] bg-[#E8E6DF]"
+                          : "border-white/[0.1] bg-[#111114]"
+                      }`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={img.url}
+                        alt={img.alt || img.caption || "Gallery visual"}
+                        className="h-48 w-full object-cover"
+                      />
+                      {img.caption && (
+                        <figcaption
+                          className={`px-4 py-2.5 text-xs ${
+                            isLight ? "text-[#52525B]" : "text-[#8B8B94]"
+                          }`}
+                        >
+                          {img.caption}
+                        </figcaption>
+                      )}
+                    </figure>
+                  ))}
+                </div>
+              )}
+
+              {/* Featured Reference Links */}
+              {featuredLinks.length > 0 && (
+                <section
+                  className={`rounded-2xl border p-6 ${
+                    isLight
+                      ? "border-black/[0.1] bg-[#E8E6DF]"
+                      : "border-white/[0.08] bg-[#111114]"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider opacity-75">
+                    <ExternalLink className="h-3.5 w-3.5" style={{ color: accentColor }} />
+                    <span>Referenced Resources &amp; Links</span>
+                  </div>
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {featuredLinks.map((lnk, i) => (
+                      <a
+                        key={i}
+                        href={lnk.url}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className={`group flex flex-col justify-between rounded-xl border p-4 transition-colors ${
+                          isLight
+                            ? "border-black/[0.1] bg-[#F4F3EF] hover:border-black/[0.25]"
+                            : "border-white/[0.08] bg-[#18181D] hover:border-white/[0.2]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-semibold">{lnk.label}</span>
+                          <ArrowUpRight
+                            className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                            style={{ color: accentColor }}
+                          />
+                        </div>
+                        {lnk.description && (
+                          <p className="mt-1.5 text-xs opacity-75">{lnk.description}</p>
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               {/* Theme-Adaptive Newsletter Capture */}
               <div className="pt-10">

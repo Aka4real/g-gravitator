@@ -40,7 +40,7 @@ export default async function DispatchArticlePage({
     getDispatches(),
   ]);
 
-  if (!dispatch) {
+  if (!dispatch || dispatch.is_published === false) {
     notFound();
   }
 

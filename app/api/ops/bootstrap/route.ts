@@ -1,0 +1,104 @@
+import { NextResponse } from "next/server";
+import { getAuthenticatedAdmin } from "@/lib/auth/admin-auth";
+import {
+  getAiPermissions,
+  getAuditLogs,
+  getClientInquiries,
+  getDispatches,
+  getHackathons,
+  getLabProjects,
+  getNewsItems,
+  getNewsletterSubscribers,
+  getOrbitApplications,
+  listAdminInvites,
+  listAdminUsers,
+  listMcpTokens,
+  listMediaAssets,
+} from "@/lib/db/repository";
+
+export async function GET(request: Request) {
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const [
+    dispatches,
+    { items: news },
+    { items: hackathons },
+    labs,
+    inquiries,
+    orbit,
+    subscribers,
+    media,
+    aiPermissions,
+    mcpTokens,
+    adminUsers,
+    adminInvites,
+    auditLogs,
+  ] = await Promise.all([
+    getDispatches(undefined, undefined, { includeUnpublished: true }),
+    getNewsItems({ includeUnpublished: true }),
+    getHackathons({ includeUnpublished: true, includeExpired: true }),
+    getLabProjects(),
+    getClientInquiries(),
+    getOrbitApplications(),
+    getNewsletterSubscribers(),
+    listMediaAssets(),
+    getAiPermissions(),
+    listMcpTokens(),
+    listAdminUsers(),
+    listAdminInvites(),
+    getAuditLogs(100),
+  ]);
+
+  const url = new URL(request.url);
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
+    `${url.protocol}//${url.host}`;
+
+  return NextResponse.json({
+    user: admin,
+    dispatches,
+    news,
+    hackathons,
+    labs,
+    inquiries,
+    orbit,
+    subscribers,
+    mediaAssets: media.map((m) => ({
+      id: m.id,
+      filename: m.filename,
+      mime_type: m.mime_type,
+      url: m.url,
+      source_type: m.source_type,
+      source_url: m.source_url,
+      prompt: m.prompt,
+      alt_text: m.alt_text,
+      created_by: m.created_by,
+      created_at: m.created_at,
+    })),
+    aiPermissions,
+    mcpTokens: mcpTokens.map((t) => ({
+      id: t.id,
+      name: t.name,
+      prefix: t.prefix,
+      permissions_mode: t.permissions_mode,
+      created_by: t.created_by,
+      created_at: t.created_at,
+      last_used_at: t.last_used_at,
+      is_active: t.is_active,
+    })),
+    adminUsers: adminUsers.map((u) => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      role: u.role,
+      created_at: u.created_at,
+      last_login_at: u.last_login_at,
+    })),
+    adminInvites,
+    auditLogs,
+    mcpEndpointUrl: `${baseUrl}/api/mcp`,
+  });
+}

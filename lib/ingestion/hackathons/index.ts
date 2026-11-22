@@ -7,7 +7,7 @@ import {
   normalizeHackathonCandidate,
   type RawHackathonCandidate,
 } from "@/lib/ingestion/hackathons/normalize";
-import { upsertHackathons } from "@/lib/db/repository";
+import { getAiPermissions, upsertHackathons } from "@/lib/db/repository";
 
 export async function runHackathonIngestionPipeline(): Promise<{
   fetchedRaw: number;
@@ -76,10 +76,17 @@ export async function submitAndVerifyHackathonUrl(params: {
     };
   }
 
-  // Community submissions go into moderation queue unless confidence >= 0.85
+  const perms = await getAiPermissions();
+  const requiresApproval = perms.community_hackathons_require_approval;
+  const shouldPublish = requiresApproval
+    ? false
+    : norm.candidate.confidence_score >= 0.85;
+
   const recordToSave = {
     ...norm.candidate,
-    is_published: norm.candidate.confidence_score >= 0.85,
+    created_by: "community" as const,
+    approval_status: shouldPublish ? ("APPROVED" as const) : ("PENDING_REVIEW" as const),
+    is_published: shouldPublish,
   };
 
   const stats = await upsertHackathons([recordToSave]);

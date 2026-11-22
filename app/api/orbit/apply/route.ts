@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
+import { getAuthenticatedAdmin } from "@/lib/auth/admin-auth";
 import { orbitApplicationSchema } from "@/lib/validators";
 import { createOrbitApplication, getOrbitApplications } from "@/lib/db/repository";
 
 export async function GET() {
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const applications = await getOrbitApplications();
   return NextResponse.json({ applications });
 }

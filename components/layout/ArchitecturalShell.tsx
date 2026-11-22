@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { MotionConfig } from "framer-motion";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -18,11 +19,14 @@ export function ArchitecturalShell({
   children,
   activeHackathonCount,
 }: ArchitecturalShellProps) {
+  const pathname = usePathname();
+  const isDisconnectedAdmin = pathname?.startsWith("/gg-command") ?? false;
   const [commandOpen, setCommandOpen] = useState(false);
   const [scopeOpen, setScopeOpen] = useState(false);
   const [scopeTier, setScopeTier] = useState<ServiceTierKey>("VELOCITY_MVP");
 
   useEffect(() => {
+    if (isDisconnectedAdmin) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -42,7 +46,11 @@ export function ArchitecturalShell({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("gg:open-scope-drawer", handleCustomScope);
     };
-  }, []);
+  }, [isDisconnectedAdmin]);
+
+  if (isDisconnectedAdmin) {
+    return <MotionConfig reducedMotion="user">{children}</MotionConfig>;
+  }
 
   return (
     <MotionConfig reducedMotion="user">

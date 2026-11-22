@@ -363,61 +363,85 @@ export function JournalHubClient({
             </div>
           ) : (
             <div className="mt-6 space-y-5">
-              {filteredDispatches.map((disp) => (
-                <article
-                  key={disp.id}
-                  className="surface-card surface-card-interactive p-6 sm:p-8"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono-telemetry inline-flex items-center rounded-full bg-white/[0.08] px-2.5 py-0.5 text-xs font-semibold text-[#F4F3EF]">
-                        Issue {disp.issue_number}
-                      </span>
-                      <span className="inline-flex items-center rounded-full border border-[#FF3B1F]/30 bg-[#FF3B1F]/10 px-2.5 py-0.5 text-xs font-medium text-[#FF8A7A]">
-                        {DISPATCH_CATEGORY_LABELS[disp.category] ?? disp.category}
-                      </span>
-                    </div>
-                    <span className="font-mono-telemetry text-xs text-[#8B8B94]">
-                      {disp.reading_time_mins} min read · {disp.author_name}
-                    </span>
-                  </div>
-
-                  <PreloadLink
-                    href={`/journal/${disp.slug}`}
-                    className="font-display mt-4 block text-xl leading-snug font-semibold tracking-[-0.02em] text-[#F4F3EF] transition-colors hover:text-[#FF6B54] sm:text-2xl"
+              {filteredDispatches.map((disp) => {
+                const dispAccent =
+                  /^#[0-9a-fA-F]{3,8}$/.test(disp.design?.accent_color || "")
+                    ? disp.design!.accent_color!
+                    : "#FF3B1F";
+                return (
+                  <article
+                    key={disp.id}
+                    className="surface-card surface-card-interactive overflow-hidden p-6 sm:p-8"
                   >
-                    {disp.title}
-                  </PreloadLink>
-
-                  <p className="mt-2.5 max-w-[65ch] text-sm leading-relaxed text-[#A1A1AA]">
-                    {sanitizeProse(disp.subtitle)}
-                  </p>
-
-                  <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.07] pt-4">
-                    <div className="flex flex-wrap gap-1.5">
-                      {disp.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="rounded-full bg-white/[0.04] px-2.5 py-0.5 text-xs text-[#8B8B94]"
-                        >
-                          {formatTagLabel(tag)}
+                    {disp.cover_image_url && (
+                      <div className="mb-5 overflow-hidden rounded-xl border border-white/[0.08] bg-[#0B0B0E]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={disp.cover_image_url}
+                          alt={disp.title}
+                          className="h-48 w-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono-telemetry inline-flex items-center rounded-full bg-white/[0.08] px-2.5 py-0.5 text-xs font-semibold text-[#F4F3EF]">
+                          Issue {disp.issue_number}
                         </span>
-                      ))}
+                        <span
+                          style={{
+                            borderColor: `${dispAccent}55`,
+                            backgroundColor: `${dispAccent}1A`,
+                            color: dispAccent,
+                          }}
+                          className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium"
+                        >
+                          {DISPATCH_CATEGORY_LABELS[disp.category] ?? disp.category}
+                        </span>
+                      </div>
+                      <span className="font-mono-telemetry text-xs text-[#8B8B94]">
+                        {disp.reading_time_mins} min read · {disp.author_name}
+                      </span>
                     </div>
 
                     <PreloadLink
                       href={`/journal/${disp.slug}`}
-                      className="group inline-flex items-center gap-1.5 text-sm font-medium text-[#F4F3EF] transition-colors hover:text-[#FF6B54]"
+                      className="font-display mt-4 block text-xl leading-snug font-semibold tracking-[-0.02em] text-[#F4F3EF] transition-colors hover:text-[#FF6B54] sm:text-2xl"
                     >
-                      <span>Open reader</span>
-                      <ArrowUpRight
-                        className="h-4 w-4 text-[#FF6B54] transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-                        strokeWidth={1.8}
-                      />
+                      {disp.title}
                     </PreloadLink>
-                  </div>
-                </article>
-              ))}
+
+                    <p className="mt-2.5 max-w-[65ch] text-sm leading-relaxed text-[#A1A1AA]">
+                      {sanitizeProse(disp.subtitle)}
+                    </p>
+
+                    <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.07] pt-4">
+                      <div className="flex flex-wrap gap-1.5">
+                        {disp.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded-full bg-white/[0.04] px-2.5 py-0.5 text-xs text-[#8B8B94]"
+                          >
+                            {formatTagLabel(tag)}
+                          </span>
+                        ))}
+                      </div>
+
+                      <PreloadLink
+                        href={`/journal/${disp.slug}`}
+                        className="group inline-flex items-center gap-1.5 text-sm font-medium text-[#F4F3EF] transition-colors hover:text-[#FF6B54]"
+                      >
+                        <span>Open reader</span>
+                        <ArrowUpRight
+                          className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                          style={{ color: dispAccent }}
+                          strokeWidth={1.8}
+                        />
+                      </PreloadLink>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           )}
 
@@ -514,8 +538,22 @@ export function JournalHubClient({
                       {item.title}
                     </a>
 
+                    {item.image_url && (
+                      <div className="mt-3 overflow-hidden rounded-xl border border-white/[0.08] bg-[#0B0B0E]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.image_url}
+                          alt={item.title}
+                          className="h-32 w-full object-cover"
+                        />
+                      </div>
+                    )}
+
                     <div className="mt-4 flex items-center justify-between gap-3">
-                      <span className="font-mono-telemetry text-xs font-medium text-[#34D399]">
+                      <span
+                        className="font-mono-telemetry text-xs font-medium"
+                        style={{ color: item.design?.accent_color || "#34D399" }}
+                      >
                         Impact {item.impact_score}/100
                       </span>
 
@@ -552,7 +590,23 @@ export function JournalHubClient({
                           transition={{ duration: 0.18, ease: EASE_OUT_EXPO }}
                           className="mt-3 rounded-xl border border-white/[0.07] bg-[#18181D] p-4 text-sm leading-relaxed text-[#D4D4D8]"
                         >
-                          {sanitizeProse(item.gravity_take)}
+                          <div>{sanitizeProse(item.gravity_take)}</div>
+                          {item.related_links && item.related_links.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2 border-t border-white/[0.07] pt-2.5">
+                              {item.related_links.map((lnk, i) => (
+                                <a
+                                  key={i}
+                                  href={lnk.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-xs font-medium text-[#FF8A7A] underline underline-offset-2 hover:text-[#F4F3EF]"
+                                >
+                                  <span>{lnk.label}</span>
+                                  <ArrowUpRight className="h-3 w-3" strokeWidth={1.7} />
+                                </a>
+                              ))}
+                            </div>
+                          )}
                         </motion.div>
                       )}
                     </AnimatePresence>

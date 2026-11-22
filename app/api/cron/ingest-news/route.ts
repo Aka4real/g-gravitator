@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { getAuthenticatedAdmin } from "@/lib/auth/admin-auth";
 import { runNewsIngestionPipeline } from "@/lib/ingestion/news";
 
 export const maxDuration = 60;
@@ -10,11 +10,11 @@ async function isAuthorizedCronOrAdmin(request: Request): Promise<boolean> {
   if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
     return true;
   }
-  const cookieStore = await cookies();
-  if (cookieStore.get("gg_admin_session")?.value === "authenticated") {
+  const admin = await getAuthenticatedAdmin();
+  if (admin) {
     return true;
   }
-  if (!cronSecret) return true;
+  if (!cronSecret && process.env.NODE_ENV !== "production") return true;
   return false;
 }
 

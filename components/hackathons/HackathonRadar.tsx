@@ -698,6 +698,17 @@ export function HackathonRadar({
                     <OxakalabsStatusBadge status={hack.oxakalabs_status} />
                   </div>
 
+                  {hack.image_url && (
+                    <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.08] bg-[#0B0B0E]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={hack.image_url}
+                        alt={hack.title}
+                        className="h-40 w-full object-cover"
+                      />
+                    </div>
+                  )}
+
                   {/* Title & Organizer */}
                   <h2 className="font-display mt-4 text-xl leading-snug font-semibold tracking-[-0.02em] text-[#F4F3EF] sm:text-2xl">
                     {hack.title}
@@ -714,6 +725,24 @@ export function HackathonRadar({
                   <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-[#A1A1AA]">
                     {hack.summary}
                   </p>
+
+                  {hack.related_links && hack.related_links.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {hack.related_links.slice(0, 3).map((lnk, i) => (
+                        <a
+                          key={i}
+                          href={lnk.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-medium underline underline-offset-2 hover:opacity-80"
+                          style={{ color: hack.design?.accent_color || "#FF8A7A" }}
+                        >
+                          <span>{lnk.label}</span>
+                          <ArrowUpRight className="h-3 w-3" strokeWidth={1.8} />
+                        </a>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Theme Tags */}
                   <div className="mt-4 flex flex-wrap gap-1.5">
@@ -991,8 +1020,8 @@ export function HackathonRadar({
                     </p>
                     <p className="mt-2.5 text-sm leading-relaxed text-[#D4D4D8]">
                       {submittedCandidate.is_published
-                        ? "Published straight to the live radar after passing the 85% confidence threshold."
-                        : "Queued in the Curator Console (/admin) for founder review."}
+                        ? "Published straight to the live radar."
+                        : "Submitted to the editorial review queue. Once approved, it will go live on the radar."}
                     </p>
                     <button
                       type="button"

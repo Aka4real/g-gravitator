@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
+import { getAuthenticatedAdmin } from "@/lib/auth/admin-auth";
 import { clientInquirySchema } from "@/lib/validators";
 import { createClientInquiry, getClientInquiries } from "@/lib/db/repository";
 
 export async function GET() {
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const inquiries = await getClientInquiries();
   return NextResponse.json({ inquiries });
 }

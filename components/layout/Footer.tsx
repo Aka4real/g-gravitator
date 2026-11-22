@@ -118,14 +118,6 @@ export function Footer() {
                   </PreloadLink>
                 </li>
                 <li>
-                  <PreloadLink
-                    href="/admin"
-                    className="text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
-                  >
-                    Curator Console
-                  </PreloadLink>
-                </li>
-                <li>
                   <a
                     href="https://github.com/Aka4real"
                     target="_blank"

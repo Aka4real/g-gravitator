@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { HarmBlockThreshold } from "@google/genai";
 import {
   buildMaxPermissionConfig,
@@ -14,7 +14,22 @@ import {
   isRetrospectiveOrSpamNoise,
   parsePrizeFromText,
 } from "@/lib/ingestion/hackathons/normalize";
-import { mergeHackathonSources } from "@/lib/db/repository";
+import {
+  getAiPermissions,
+  mergeHackathonSources,
+  readLocalStore,
+  updateAiPermissions,
+  writeLocalStore,
+  type LocalStoreState,
+} from "@/lib/db/repository";
+import {
+  hashPassword,
+  signSessionToken,
+  verifyPassword,
+  verifySessionToken,
+} from "@/lib/auth/admin-auth";
+import { submitAndVerifyHackathonUrl } from "@/lib/ingestion/hackathons";
+import { executeOpsTool, OPS_TOOLS } from "@/lib/ops/tools";
 import { generateHackathonIcs } from "@/lib/ics";
 import { heuristicSynthesizeNews } from "@/lib/ingestion/news/synthesize";
 import { SEED_HACKATHONS } from "@/lib/seed-fallback";
@@ -147,6 +162,160 @@ describe("G-Gravitator Core Platform Verification Suite", () => {
     const cfg = buildMaxPermissionConfig();
     expect(cfg.maxOutputTokens).toBe(GEMINI_MAX_OUTPUT_TOKENS);
     expect(cfg.safetySettings).toEqual(GEMINI_MAX_PERMISSION_SAFETY_SETTINGS);
+  });
+});
+
+describe("Disconnected Ops Auth, Moderation Gate & Unified Tool Registry", () => {
+  let snapshot: LocalStoreState;
+
+  beforeAll(() => {
+    snapshot = structuredClone(readLocalStore());
+  });
+
+  afterAll(() => {
+    writeLocalStore(snapshot);
+  });
+
+  it("hashes passwords with scrypt and signs/verifies HMAC admin session tokens", () => {
+    const hash = hashPassword("StrongPass!2026");
+    expect(verifyPassword("StrongPass!2026", hash)).toBe(true);
+    expect(verifyPassword("WrongPass", hash)).toBe(false);
+
+    const token = signSessionToken({
+      id: "admin-1",
+      email: "founder@ggravitator.com",
+      name: "Founder",
+      role: "SUPER_ADMIN",
+    });
+    const verified = verifySessionToken(token);
+    expect(verified?.email).toBe("founder@ggravitator.com");
+    expect(verified?.role).toBe("SUPER_ADMIN");
+    expect(verifySessionToken(`${token}tampered`)).toBeNull();
+  });
+
+  it("holds community-submitted hackathons in PENDING_REVIEW until approved", async () => {
+    await updateAiPermissions({ community_hackathons_require_approval: true });
+    const prevKey = process.env.GEMINI_API_KEY;
+    delete process.env.GEMINI_API_KEY;
+    try {
+      const submission = await submitAndVerifyHackathonUrl({
+        url: "https://example.com/ai-frontier-hackathon-2026-test",
+        rawContext:
+          "Announcing the $45,000 Frontier AI Agents Hackathon! Register now before Dec 20, 2026.",
+      });
+      expect(submission.accepted).toBe(true);
+      expect(submission.candidate?.is_published).toBe(false);
+      expect(submission.candidate?.approval_status).toBe("PENDING_REVIEW");
+      expect(submission.candidate?.created_by).toBe("community");
+    } finally {
+      if (prevKey !== undefined) process.env.GEMINI_API_KEY = prevKey;
+    }
+  });
+
+  it("queues AI-created dispatches for review by default, allows direct publish when granted, and supports approve/revoke", async () => {
+    await updateAiPermissions({
+      ai_enabled: true,
+      can_create_posts: true,
+      can_publish_directly_journal: false,
+      can_approve_posts: true,
+      can_revoke_approval: true,
+    });
+
+    const queuedRes = await executeOpsTool(
+      "create_dispatch",
+      {
+        title: "AI Drafted Dispatch Pending Review",
+        subtitle: "Testing review queue gating",
+        category: "AI SYSTEMS",
+        mdx_content: "## Architecture\n\nBody text.",
+        accent_color: "#10B981",
+      },
+      { actorType: "ai_assistant", actorLabel: "AI Operator" }
+    );
+    expect(queuedRes.ok).toBe(true);
+    expect(queuedRes.data?.queued_for_review).toBe(true);
+    const createdDisp = queuedRes.data?.dispatch as {
+      id: string;
+      is_published: boolean;
+      approval_status: string;
+    };
+    expect(createdDisp.is_published).toBe(false);
+    expect(createdDisp.approval_status).toBe("PENDING_REVIEW");
+
+    // Approve it
+    const approveRes = await executeOpsTool(
+      "approve_content",
+      { entity: "dispatch", id: createdDisp.id },
+      { actorType: "admin", actorLabel: "admin@test.com" }
+    );
+    expect(approveRes.ok).toBe(true);
+    expect((approveRes.data?.item as { is_published: boolean }).is_published).toBe(true);
+
+    // Revoke approval
+    const revokeRes = await executeOpsTool(
+      "revoke_approval",
+      { entity: "dispatch", id: createdDisp.id },
+      { actorType: "ai_assistant", actorLabel: "AI Operator" }
+    );
+    expect(revokeRes.ok).toBe(true);
+    expect((revokeRes.data?.item as { is_published: boolean }).is_published).toBe(false);
+
+    // Grant direct publishing permission to AI
+    await updateAiPermissions({ can_publish_directly_journal: true });
+    const directRes = await executeOpsTool(
+      "create_dispatch",
+      {
+        title: "AI Direct Published Dispatch",
+        subtitle: "Direct publish permission active",
+        category: "AI SYSTEMS",
+        mdx_content: "## Direct Publish\n\nVerified.",
+      },
+      { actorType: "ai_assistant", actorLabel: "AI Operator" }
+    );
+    expect(directRes.ok).toBe(true);
+    expect(directRes.data?.queued_for_review).toBe(false);
+    expect((directRes.data?.dispatch as { is_published: boolean }).is_published).toBe(true);
+  });
+
+  it("enforces OPS_TOOLS permissions cleanly across AI, MCP, and Admin actors", async () => {
+    expect(OPS_TOOLS.length).toBeGreaterThanOrEqual(25);
+    await updateAiPermissions({ can_delete_posts: false, mcp_enabled: true });
+
+    const deniedAiDelete = await executeOpsTool(
+      "delete_dispatch",
+      { id: "non-existent" },
+      { actorType: "ai_assistant", actorLabel: "AI Operator" }
+    );
+    expect(deniedAiDelete.ok).toBe(false);
+    expect(deniedAiDelete.error).toContain("can_delete_posts");
+
+    const deniedAiPolicyChange = await executeOpsTool(
+      "update_ai_permissions",
+      { patch: { can_delete_posts: true } },
+      { actorType: "ai_assistant", actorLabel: "AI Operator" }
+    );
+    expect(deniedAiPolicyChange.ok).toBe(false);
+
+    const deniedReadonlyMcp = await executeOpsTool(
+      "create_news_item",
+      {
+        title: "Readonly test",
+        source_name: "Test",
+        source_url: "https://example.com",
+        category: "MODELS",
+        gravity_take: "Test.",
+      },
+      {
+        actorType: "mcp",
+        actorLabel: "ReadOnly Token",
+        permissionsMode: "readonly",
+      }
+    );
+    expect(deniedReadonlyMcp.ok).toBe(false);
+    expect(deniedReadonlyMcp.error).toContain("read-only");
+
+    const policy = await getAiPermissions();
+    expect(policy.can_delete_posts).toBe(false);
   });
 });
 

@@ -213,13 +213,6 @@ export function Navbar({
                   <span>Initiate build</span>
                   <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
                 </button>
-                <PreloadLink
-                  href="/admin"
-                  onClick={() => setOpenedAtPath(null)}
-                  className="inline-flex h-11 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.04] px-4 text-sm font-medium text-[#A1A1AA] transition-[background-color,color,transform] duration-150 hover:bg-white/[0.09] hover:text-[#F4F3EF] active:scale-[0.98]"
-                >
-                  Console
-                </PreloadLink>
               </div>
             </motion.div>
           )}
