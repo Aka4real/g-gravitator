@@ -3,8 +3,12 @@ import { cookies } from "next/headers";
 import {
   findActiveMcpTokenByHash,
   listAdminUsers,
-  touchMcpTokenLastUsed,
 } from "@/lib/db/repository";
+import type {
+  McpPermissionsMode,
+  McpRolePreset,
+  McpScopeMap,
+} from "@/lib/supabase/types";
 
 export const ADMIN_SESSION_COOKIE = "gg_ops_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
@@ -160,11 +164,18 @@ export async function getAuthenticatedAdmin(): Promise<AuthenticatedAdmin | null
   }
 }
 
-export async function verifyMcpAuth(request: Request): Promise<{
+export interface VerifiedMcpAuth {
   authorized: boolean;
+  tokenId?: string;
   label: string;
-  permissionsMode: "inherit" | "full" | "readonly";
-}> {
+  permissionsMode: McpPermissionsMode;
+  rolePreset?: McpRolePreset;
+  customScopes?: McpScopeMap;
+  expiresAt?: string | null;
+  rateLimitRpm?: number;
+}
+
+export async function verifyMcpAuth(request: Request): Promise<VerifiedMcpAuth> {
   const authHeader = request.headers.get("authorization") || "";
   const apiKeyHeader = request.headers.get("x-mcp-api-key") || "";
   let token = "";
@@ -186,8 +197,11 @@ export async function verifyMcpAuth(request: Request): Promise<{
     if (crypto.timingSafeEqual(providedDigest, expectedDigest)) {
       return {
         authorized: true,
+        tokenId: "env-master",
         label: "Env Master MCP Key",
         permissionsMode: "inherit",
+        rolePreset: "inherit",
+        rateLimitRpm: 120,
       };
     }
   }
@@ -195,11 +209,15 @@ export async function verifyMcpAuth(request: Request): Promise<{
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
   const matched = await findActiveMcpTokenByHash(tokenHash);
   if (matched) {
-    await touchMcpTokenLastUsed(matched.id).catch(() => null);
     return {
       authorized: true,
+      tokenId: matched.id,
       label: `MCP:${matched.name}`,
       permissionsMode: matched.permissions_mode,
+      rolePreset: matched.role_preset,
+      customScopes: matched.custom_scopes,
+      expiresAt: matched.expires_at ?? null,
+      rateLimitRpm: matched.rate_limit_rpm ?? 60,
     };
   }
 

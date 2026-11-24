@@ -6,6 +6,9 @@ import type {
   Dispatch,
   Hackathon,
   LabProject,
+  McpPermissionsMode,
+  McpRolePreset,
+  McpScopeMap,
   NewsItem,
   NewsletterSubscriber,
   OrbitApplication,
@@ -35,11 +38,20 @@ export interface OpsMcpTokenSummary {
   id: string;
   name: string;
   prefix: string;
-  permissions_mode: "inherit" | "full" | "readonly";
+  permissions_mode: McpPermissionsMode;
+  role_preset?: McpRolePreset;
+  custom_scopes?: McpScopeMap;
+  expires_at?: string | null;
+  rate_limit_rpm?: number;
+  request_count?: number;
+  denied_count?: number;
+  last_client_info?: string | null;
+  notes?: string | null;
   created_by: string;
   created_at: string;
   last_used_at?: string | null;
   is_active: boolean;
+  is_expired?: boolean;
 }
 
 export interface OpsAdminSummary {

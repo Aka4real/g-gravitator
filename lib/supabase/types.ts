@@ -277,6 +277,51 @@ export interface MediaAsset {
   created_at: string;
 }
 
+export type McpPermissionsMode = "inherit" | "full" | "readonly" | "custom";
+
+export type McpRolePreset =
+  | "inherit"
+  | "readonly_public"
+  | "editorial_writer"
+  | "hackathon_scout"
+  | "labs_copilot"
+  | "crm_operator"
+  | "full_ops"
+  | "custom";
+
+export type McpScopeKey =
+  | "can_read_public_content"
+  | "can_read_drafts_and_pending"
+  | "can_read_media_library"
+  | "can_read_inquiries_pii"
+  | "can_read_orbit_pii"
+  | "can_read_subscribers_pii"
+  | "can_read_audit_logs"
+  | "can_create_journal"
+  | "can_create_news"
+  | "can_create_hackathons"
+  | "can_edit_posts"
+  | "can_publish_directly_journal"
+  | "can_publish_directly_news"
+  | "can_publish_directly_hackathons"
+  | "can_approve_posts"
+  | "can_revoke_approval"
+  | "can_bulk_moderate"
+  | "can_delete_posts"
+  | "can_purge_expired_posts"
+  | "can_manage_labs"
+  | "can_score_lab_graduation"
+  | "can_promote_to_skunkworks"
+  | "can_manage_inquiries"
+  | "can_manage_orbit_and_subscribers"
+  | "can_export_crm_data"
+  | "can_trigger_ingestion"
+  | "can_web_research"
+  | "can_use_ai_drafter"
+  | "can_manage_media";
+
+export type McpScopeMap = Partial<Record<McpScopeKey, boolean>>;
+
 export interface AiPermissionsPolicy {
   ai_enabled: boolean;
   full_admin_parity: boolean;
@@ -287,16 +332,25 @@ export interface AiPermissionsPolicy {
   can_edit_posts: boolean;
   can_approve_posts: boolean;
   can_revoke_approval: boolean;
+  can_bulk_moderate?: boolean;
   can_delete_posts: boolean;
   can_manage_labs: boolean;
   can_manage_inquiries: boolean;
   can_manage_orbit_and_subscribers: boolean;
   can_trigger_ingestion: boolean;
   can_web_research: boolean;
+  can_use_ai_drafter?: boolean;
   can_manage_media: boolean;
   community_hackathons_require_approval: boolean;
   mcp_enabled: boolean;
   mcp_inherit_ai_permissions: boolean;
+  mcp_allow_pii_over_mcp?: boolean;
+  mcp_allow_full_parity_tokens?: boolean;
+  mcp_require_dry_run_for_bulk_delete?: boolean;
+  mcp_expose_prompts?: boolean;
+  mcp_expose_resources?: boolean;
+  mcp_read_audit_logs?: boolean;
+  mcp_default_rate_limit_rpm?: number;
 }
 
 export interface McpToken {
@@ -304,7 +358,15 @@ export interface McpToken {
   name: string;
   token_hash: string;
   prefix: string;
-  permissions_mode: "inherit" | "full" | "readonly";
+  permissions_mode: McpPermissionsMode;
+  role_preset?: McpRolePreset;
+  custom_scopes?: McpScopeMap;
+  expires_at?: string | null;
+  rate_limit_rpm?: number;
+  request_count?: number;
+  denied_count?: number;
+  last_client_info?: string | null;
+  notes?: string | null;
   created_by: string;
   created_at: string;
   last_used_at?: string | null;

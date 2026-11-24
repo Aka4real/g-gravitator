@@ -16,7 +16,6 @@ import {
   FileText,
   FlaskConical,
   Image as ImageIcon,
-  KeyRound,
   Layers,
   Loader2,
   LogOut,
@@ -38,6 +37,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { AiVoiceAssistantPanel } from "@/components/ops/AiVoiceAssistantPanel";
+import { McpGovernanceSection } from "@/components/ops/McpGovernanceSection";
 import { OpsAuthScreen } from "@/components/ops/OpsAuthScreen";
 import {
   PostDesignerModal,
@@ -80,12 +80,14 @@ const PARITY_CAPABILITY_KEYS: (keyof AiPermissionsPolicy)[] = [
   "can_edit_posts",
   "can_approve_posts",
   "can_revoke_approval",
+  "can_bulk_moderate",
   "can_delete_posts",
   "can_manage_labs",
   "can_manage_inquiries",
   "can_manage_orbit_and_subscribers",
   "can_trigger_ingestion",
   "can_web_research",
+  "can_use_ai_drafter",
   "can_manage_media",
 ];
 
@@ -164,12 +166,7 @@ export function OpsConsoleClient({
   // Subscriber add
   const [newSubEmail, setNewSubEmail] = useState("");
 
-  // MCP Token & Invite State
-  const [mcpTokenName, setMcpTokenName] = useState("");
-  const [mcpTokenMode, setMcpTokenMode] = useState<"inherit" | "full" | "readonly">(
-    "inherit"
-  );
-  const [newPlaintextToken, setNewPlaintextToken] = useState<string | null>(null);
+  // Invite & Audit State
   const [newInviteCode, setNewInviteCode] = useState<string | null>(null);
   const [auditFilter, setAuditFilter] = useState<"ALL" | "admin" | "ai_assistant" | "mcp">("ALL");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -586,7 +583,7 @@ export function OpsConsoleClient({
       if (value) {
         const patch: Partial<AiPermissionsPolicy> = { full_admin_parity: true };
         for (const cap of PARITY_CAPABILITY_KEYS) {
-          patch[cap] = true;
+          (patch as Record<string, boolean>)[cap] = true;
         }
         await runAction(
           "update_ai_permissions",
@@ -708,21 +705,6 @@ export function OpsConsoleClient({
 
   const filteredAudit = data.auditLogs.filter((l) =>
     auditFilter === "ALL" ? true : l.actor_type === auditFilter
-  );
-
-  const mcpClientConfigSnippet = JSON.stringify(
-    {
-      mcpServers: {
-        "g-gravitator-ops": {
-          url: data.mcpEndpointUrl,
-          headers: {
-            Authorization: "Bearer YOUR_MCP_TOKEN",
-          },
-        },
-      },
-    },
-    null,
-    2
   );
 
   return (
@@ -2503,146 +2485,293 @@ export function OpsConsoleClient({
 
           {/* TAB 8: AI PERMISSIONS & GOVERNANCE */}
           {activeTab === "PERMISSIONS" && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="font-display text-xl font-semibold text-[#F4F3EF]">
-                  AI Permissions &amp; Approval Governance
-                </h2>
-                <p className="text-xs text-[#8B8B94]">
-                  Control full system-wide AI execution parity, direct publishing vs. admin review queue, community hackathon gating, and MCP inheritance.
-                </p>
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <div>
+                  <h2 className="font-display text-xl font-semibold text-[#F4F3EF]">
+                    AI Operator Permissions &amp; Approval Governance
+                  </h2>
+                  <p className="text-xs text-[#8B8B94]">
+                    Control system-wide AI execution parity, direct publishing vs. admin review queue, and community hackathon gating.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {(
+                    [
+                      [
+                        "ai_enabled",
+                        "AI Operator Enabled",
+                        "Allow the Admin AI Operator (voice + text) to execute commands.",
+                        true,
+                      ],
+                      [
+                        "full_admin_parity",
+                        "Full Admin Parity Mode",
+                        "Master preset: enables all operational AI capabilities (create, edit, approve, revoke, delete, labs, CRM, ingestion, research, media).",
+                        true,
+                      ],
+                      [
+                        "community_hackathons_require_approval",
+                        "Require Approval for Community Hackathons",
+                        "Publicly submitted hackathons stay in Pending Review until Admin or AI approves them.",
+                        true,
+                      ],
+                      [
+                        "can_publish_directly_journal",
+                        "Direct-Publish: Journal Dispatches",
+                        "If OFF, AI/inherited drafts go to Pending Review for Admin approval first.",
+                        false,
+                      ],
+                      [
+                        "can_publish_directly_news",
+                        "Direct-Publish: Orbital Wire News",
+                        "If OFF, AI/inherited news posts go to Pending Review first.",
+                        false,
+                      ],
+                      [
+                        "can_publish_directly_hackathons",
+                        "Direct-Publish: Hackathons",
+                        "If OFF, AI/inherited hackathons go to Pending Review first.",
+                        false,
+                      ],
+                      [
+                        "can_create_posts",
+                        "Create Posts (Journal / Wire / Hackathons)",
+                        "Allow AI to draft and design new posts.",
+                        true,
+                      ],
+                      [
+                        "can_edit_posts",
+                        "Edit Existing Posts",
+                        "Allow AI to modify copy, colors, images, and metadata.",
+                        true,
+                      ],
+                      [
+                        "can_approve_posts",
+                        "Approve Pending Posts",
+                        "Allow AI to review and publish pending items.",
+                        true,
+                      ],
+                      [
+                        "can_revoke_approval",
+                        "Revoke Approval / Reject Posts",
+                        "Allow AI to unpublish approved items back to review.",
+                        true,
+                      ],
+                      [
+                        "can_bulk_moderate",
+                        "Bulk Moderate Pending Queue",
+                        "Allow batch approve/revoke/reject of up to 25 items per call.",
+                        true,
+                      ],
+                      [
+                        "can_delete_posts",
+                        "Delete & Clean Old Posts",
+                        "Allow AI to delete specific or expired posts.",
+                        true,
+                      ],
+                      [
+                        "can_manage_labs",
+                        "Manage Labs & Skunkworks",
+                        "Allow AI to create, score, update, or delete Labs/Skunkworks projects.",
+                        true,
+                      ],
+                      [
+                        "can_manage_inquiries",
+                        "Manage B2B Inquiries",
+                        "Allow AI to triage inquiry pipeline status or delete spam.",
+                        true,
+                      ],
+                      [
+                        "can_manage_orbit_and_subscribers",
+                        "Manage Orbit & Subscribers",
+                        "Allow AI to review Orbit applicants and manage newsletter subscribers.",
+                        true,
+                      ],
+                      [
+                        "can_trigger_ingestion",
+                        "Trigger Live Ingestion Pipelines",
+                        "Allow AI to run hackathon and news sync pipelines.",
+                        true,
+                      ],
+                      [
+                        "can_web_research",
+                        "Live Web Research & URL Inspection",
+                        "Allow AI to search HN, arXiv, Devpost, Google, and read URLs.",
+                        true,
+                      ],
+                      [
+                        "can_use_ai_drafter",
+                        "AI Structured Drafter Engine",
+                        "Allow generating full structured post previews via Gemini.",
+                        true,
+                      ],
+                      [
+                        "can_manage_media",
+                        "Generate, Import & Delete Media",
+                        "Allow AI to create cover art and import/manage images.",
+                        true,
+                      ],
+                    ] as [keyof AiPermissionsPolicy, string, string, boolean][]
+                  ).map(([key, label, desc, defaultVal]) => {
+                    const rawVal = data.aiPermissions[key];
+                    const enabled =
+                      typeof rawVal === "boolean" ? rawVal : defaultVal;
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between gap-4 rounded-2xl border border-white/[0.08] bg-[#111114] p-4"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-[#F4F3EF]">
+                            {label}
+                          </div>
+                          <div className="mt-0.5 text-xs text-[#8B8B94]">{desc}</div>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={enabled}
+                          onClick={() => void togglePermission(key, !enabled)}
+                          className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+                            enabled ? "bg-[#10B981]" : "bg-white/[0.15]"
+                          }`}
+                        >
+                          <span
+                            className={`block h-5 w-5 rounded-full bg-[#08080A] transition-transform ${
+                              enabled ? "translate-x-5" : "translate-x-0.5"
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                {(
-                  [
-                    [
-                      "ai_enabled",
-                      "AI Operator Enabled",
-                      "Allow the Admin AI Operator (voice + text) to execute commands.",
-                    ],
-                    [
-                      "full_admin_parity",
-                      "Full Admin Parity Mode",
-                      "Master preset: enables all operational AI capabilities (create, edit, approve, revoke, delete, labs, CRM, ingestion, research, media).",
-                    ],
-                    [
-                      "community_hackathons_require_approval",
-                      "Require Approval for Community Hackathons",
-                      "Publicly submitted hackathons stay in Pending Review until Admin or AI approves them.",
-                    ],
-                    [
-                      "can_publish_directly_journal",
-                      "AI Direct-Publish: Journal Dispatches",
-                      "If OFF, AI-created dispatches go to Pending Review for Admin approval first.",
-                    ],
-                    [
-                      "can_publish_directly_news",
-                      "AI Direct-Publish: Orbital Wire News",
-                      "If OFF, AI-created news posts go to Pending Review first.",
-                    ],
-                    [
-                      "can_publish_directly_hackathons",
-                      "AI Direct-Publish: Hackathons",
-                      "If OFF, AI-created hackathons go to Pending Review first.",
-                    ],
-                    [
-                      "can_create_posts",
-                      "Create Posts (Journal / Wire / Hackathons)",
-                      "Allow AI to draft and design new posts.",
-                    ],
-                    [
-                      "can_edit_posts",
-                      "Edit Existing Posts",
-                      "Allow AI to modify copy, colors, images, and metadata.",
-                    ],
-                    [
-                      "can_approve_posts",
-                      "Approve Pending Posts",
-                      "Allow AI to review and publish pending items.",
-                    ],
-                    [
-                      "can_revoke_approval",
-                      "Revoke Approval / Reject Posts",
-                      "Allow AI to unpublish approved items back to review.",
-                    ],
-                    [
-                      "can_delete_posts",
-                      "Delete & Clean Old Posts",
-                      "Allow AI to delete specific or expired posts.",
-                    ],
-                    [
-                      "can_manage_labs",
-                      "Manage Labs & Skunkworks",
-                      "Allow AI to create, score, update, or delete Labs/Skunkworks projects.",
-                    ],
-                    [
-                      "can_manage_inquiries",
-                      "Manage B2B Inquiries",
-                      "Allow AI to triage inquiry pipeline status or delete spam.",
-                    ],
-                    [
-                      "can_manage_orbit_and_subscribers",
-                      "Manage Orbit & Subscribers",
-                      "Allow AI to review Orbit applicants and manage newsletter subscribers.",
-                    ],
-                    [
-                      "can_trigger_ingestion",
-                      "Trigger Live Ingestion Pipelines",
-                      "Allow AI to run hackathon and news sync pipelines.",
-                    ],
-                    [
-                      "can_web_research",
-                      "Live Web Research & URL Inspection",
-                      "Allow AI to search HN, arXiv, Devpost, Google, and read URLs.",
-                    ],
-                    [
-                      "can_manage_media",
-                      "Generate, Import & Delete Media",
-                      "Allow AI to create cover art and import/manage images.",
-                    ],
-                    [
-                      "mcp_enabled",
-                      "External MCP HTTP Server Enabled",
-                      "Allow external AI models to connect to /api/mcp.",
-                    ],
-                    [
-                      "mcp_inherit_ai_permissions",
-                      "MCP Tokens Inherit AI Policy",
-                      "Apply these permission toggles to external MCP clients using inherit mode.",
-                    ],
-                  ] as [keyof AiPermissionsPolicy, string, string][]
-                ).map(([key, label, desc]) => {
-                  const enabled = Boolean(data.aiPermissions[key]);
-                  return (
-                    <div
-                      key={key}
-                      className="flex items-center justify-between gap-4 rounded-2xl border border-white/[0.08] bg-[#111114] p-4"
+              {/* External MCP Security Ceilings */}
+              <div className="space-y-4 border-t border-white/[0.08] pt-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-display text-lg font-semibold text-[#F4F3EF]">
+                      External MCP Server Security Ceilings
+                    </h3>
+                    <p className="text-xs text-[#8B8B94]">
+                      Global hard guardrails enforced across all external MCP tokens regardless of preset or mode.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-[#8B8B94]">Default Token RPM:</span>
+                    <select
+                      value={data.aiPermissions.mcp_default_rate_limit_rpm ?? 60}
+                      onChange={(e) =>
+                        void runAction(
+                          "update_ai_permissions",
+                          {
+                            patch: {
+                              mcp_default_rate_limit_rpm: Number(e.target.value),
+                            },
+                          },
+                          "Updated default MCP RPM limit."
+                        )
+                      }
+                      className="h-8 rounded-xl border border-white/[0.12] bg-[#111114] px-2.5 text-xs text-[#F4F3EF]"
                     >
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-[#F4F3EF]">
-                          {label}
-                        </div>
-                        <div className="mt-0.5 text-xs text-[#8B8B94]">{desc}</div>
-                      </div>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={enabled}
-                        onClick={() => void togglePermission(key, !enabled)}
-                        className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
-                          enabled ? "bg-[#10B981]" : "bg-white/[0.15]"
-                        }`}
+                      <option value={30}>30 req/min</option>
+                      <option value={60}>60 req/min</option>
+                      <option value={120}>120 req/min</option>
+                      <option value={300}>300 req/min</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {(
+                    [
+                      [
+                        "mcp_enabled",
+                        "External MCP HTTP Server Enabled",
+                        "Master kill-switch for external clients connecting to /api/mcp.",
+                        true,
+                      ],
+                      [
+                        "mcp_inherit_ai_permissions",
+                        "Inherit-Mode Tokens Follow AI Policy",
+                        "Apply the AI Operator toggles above to tokens in inherit mode.",
+                        true,
+                      ],
+                      [
+                        "mcp_allow_pii_over_mcp",
+                        "Global PII Ceiling: Allow Inquiries, Orbit & Subscribers over MCP",
+                        "Hard lock: keep OFF to block all external tokens (even Full Ops) from reading emails/briefs.",
+                        false,
+                      ],
+                      [
+                        "mcp_allow_full_parity_tokens",
+                        "Allow Full-Parity MCP Tokens",
+                        "If OFF, any legacy Full Ops token is automatically downgraded to Inherit mode.",
+                        true,
+                      ],
+                      [
+                        "mcp_require_dry_run_for_bulk_delete",
+                        "Require Dry-Run Confirm Token for Bulk Purge",
+                        "Forces external MCP agents to preview remove_old_posts via dry_run: true before deleting.",
+                        true,
+                      ],
+                      [
+                        "mcp_expose_resources",
+                        "Expose MCP Resources & URI Templates",
+                        "Enable resources/list, resources/templates/list, and resources/read.",
+                        true,
+                      ],
+                      [
+                        "mcp_expose_prompts",
+                        "Expose MCP Workflow Prompts",
+                        "Enable prompts/list and prompts/get workflow playbooks.",
+                        true,
+                      ],
+                      [
+                        "mcp_read_audit_logs",
+                        "Allow Inherit Tokens to Read Audit Logs",
+                        "Expose get_audit_logs and ggravitator://audit/{actor} to inherit tokens.",
+                        false,
+                      ],
+                    ] as [keyof AiPermissionsPolicy, string, string, boolean][]
+                  ).map(([key, label, desc, defaultVal]) => {
+                    const rawVal = data.aiPermissions[key];
+                    const enabled =
+                      typeof rawVal === "boolean" ? rawVal : defaultVal;
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between gap-4 rounded-2xl border border-white/[0.08] bg-[#111114] p-4"
                       >
-                        <span
-                          className={`block h-5 w-5 rounded-full bg-[#08080A] transition-transform ${
-                            enabled ? "translate-x-5" : "translate-x-0.5"
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-[#F4F3EF]">
+                            {label}
+                          </div>
+                          <div className="mt-0.5 text-xs text-[#8B8B94]">{desc}</div>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={enabled}
+                          onClick={() => void togglePermission(key, !enabled)}
+                          className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+                            enabled ? "bg-[#10B981]" : "bg-white/[0.15]"
                           }`}
-                        />
-                      </button>
-                    </div>
-                  );
-                })}
+                        >
+                          <span
+                            className={`block h-5 w-5 rounded-full bg-[#08080A] transition-transform ${
+                              enabled ? "translate-x-5" : "translate-x-0.5"
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
@@ -2650,184 +2779,15 @@ export function OpsConsoleClient({
           {/* TAB 9: MCP, TEAM & AUDIT LOG */}
           {activeTab === "MCP_TEAM" && (
             <div className="space-y-8">
-              {/* External MCP Endpoint */}
-              <section className="space-y-4 rounded-2xl border border-white/[0.08] bg-[#111114] p-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="font-display text-xl font-semibold text-[#F4F3EF]">
-                      External MCP Server Endpoint
-                    </h2>
-                    <p className="mt-1 text-xs text-[#8B8B94]">
-                      Connect Claude, Cursor, Antigravity, or custom AI agents from outside via JSON-RPC 2.0 HTTP MCP.
-                    </p>
-                  </div>
-                  <span
-                    className={`rounded-full px-3 py-1 font-mono text-xs font-semibold ${
-                      data.aiPermissions.mcp_enabled
-                        ? "bg-[#10B981]/15 text-[#34D399]"
-                        : "bg-[#FF3B1F]/15 text-[#FF8A7A]"
-                    }`}
-                  >
-                    {data.aiPermissions.mcp_enabled ? "MCP ONLINE" : "MCP DISABLED"}
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.1] bg-[#0B0B0E] p-3">
-                  <code className="flex-1 truncate font-mono text-xs text-[#34D399]">
-                    {data.mcpEndpointUrl}
-                  </code>
-                  <button
-                    type="button"
-                    onClick={() => void handleCopy("mcp-url", data.mcpEndpointUrl)}
-                    className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full bg-[#18181D] px-3 text-xs text-[#F4F3EF]"
-                  >
-                    <Copy className="h-3 w-3" />
-                    <span>{copiedKey === "mcp-url" ? "Copied" : "Copy URL"}</span>
-                  </button>
-                </div>
-
-                {/* Create Token */}
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    const res = (await runAction(
-                      "create_mcp_token",
-                      {
-                        name: mcpTokenName || "External AI Agent",
-                        permissions_mode: mcpTokenMode,
-                      },
-                      "Created new MCP bearer token."
-                    )) as { plaintextToken?: string } | null;
-                    if (res?.plaintextToken) {
-                      setNewPlaintextToken(res.plaintextToken);
-                    }
-                    setMcpTokenName("");
-                  }}
-                  className="flex flex-wrap gap-2"
-                >
-                  <input
-                    type="text"
-                    value={mcpTokenName}
-                    onChange={(e) => setMcpTokenName(e.target.value)}
-                    placeholder="Client name (e.g. Claude Desktop, Cursor)"
-                    className="h-9 min-w-[200px] flex-1 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
-                  />
-                  <select
-                    value={mcpTokenMode}
-                    onChange={(e) =>
-                      setMcpTokenMode(e.target.value as typeof mcpTokenMode)
-                    }
-                    className="h-9 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
-                  >
-                    <option value="inherit">Inherit AI Policy</option>
-                    <option value="full">Full Admin Parity</option>
-                    <option value="readonly">Read-Only</option>
-                  </select>
-                  <button
-                    type="submit"
-                    className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full bg-[#FF3B1F] px-4 text-xs font-semibold text-[#08080A]"
-                  >
-                    <KeyRound className="h-3.5 w-3.5" />
-                    <span>Issue MCP Token</span>
-                  </button>
-                </form>
-
-                {newPlaintextToken && (
-                  <div className="rounded-xl border border-[#10B981]/40 bg-[#10B981]/12 p-4 text-xs">
-                    <div className="font-semibold text-[#34D399]">
-                      Copy this token now (it will not be shown again):
-                    </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <code className="flex-1 break-all rounded-lg bg-[#08080A] p-2 font-mono text-[#F4F3EF]">
-                        {newPlaintextToken}
-                      </code>
-                      <button
-                        type="button"
-                        onClick={() => void handleCopy("mcp-tok", newPlaintextToken)}
-                        className="h-8 cursor-pointer rounded-full bg-[#10B981] px-3 font-semibold text-[#08080A]"
-                      >
-                        {copiedKey === "mcp-tok" ? "Copied" : "Copy"}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {data.mcpTokens.length > 0 && (
-                  <div className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.08] bg-[#0B0B0E]">
-                    {data.mcpTokens.map((t) => {
-                      const delKey = `mcp-${t.id}`;
-                      return (
-                        <div
-                          key={t.id}
-                          className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-xs"
-                        >
-                          <div>
-                            <span className="font-semibold text-[#F4F3EF]">{t.name}</span>
-                            <span className="ml-2 font-mono text-[#8B8B94]">
-                              {t.prefix}...
-                            </span>
-                            <span className="ml-2 rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] text-[#D4D4D8]">
-                              {t.permissions_mode}
-                            </span>
-                            {!t.is_active && (
-                              <span className="ml-2 text-[#FF8A7A]">Revoked</span>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            {t.is_active && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  void runAction("revoke_mcp_token", { id: t.id })
-                                }
-                                className="cursor-pointer text-xs text-[#FBBF24] hover:underline"
-                              >
-                                Revoke
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleConfirmedDelete(
-                                  delKey,
-                                  "delete_mcp_token",
-                                  { id: t.id },
-                                  `Deleted MCP token "${t.name}"`
-                                )
-                              }
-                              className={`cursor-pointer text-xs hover:underline ${
-                                confirmDeleteKey === delKey
-                                  ? "font-semibold text-[#FF3B1F]"
-                                  : "text-[#FF8A7A]"
-                              }`}
-                            >
-                              {confirmDeleteKey === delKey ? "Confirm?" : "Delete"}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <div>
-                  <div className="mb-1.5 flex items-center justify-between text-xs text-[#A1A1AA]">
-                    <span>MCP Client Config Snippet</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void handleCopy("mcp-cfg", mcpClientConfigSnippet)
-                      }
-                      className="text-[#F4F3EF] hover:underline"
-                    >
-                      {copiedKey === "mcp-cfg" ? "Copied JSON" : "Copy JSON"}
-                    </button>
-                  </div>
-                  <pre className="overflow-x-auto rounded-xl border border-white/[0.08] bg-[#08080A] p-3 font-mono text-[11px] text-[#A1A1AA]">
-                    {mcpClientConfigSnippet}
-                  </pre>
-                </div>
-              </section>
+              <McpGovernanceSection
+                endpointUrl={data.mcpEndpointUrl}
+                aiPermissions={data.aiPermissions}
+                tokens={data.mcpTokens}
+                runAction={runAction}
+                confirmDeleteKey={confirmDeleteKey}
+                onConfirmedDelete={handleConfirmedDelete}
+                onJumpToPermissions={() => setActiveTab("PERMISSIONS")}
+              />
 
               {/* Admin Team & Invites */}
               <section className="space-y-4 rounded-2xl border border-white/[0.08] bg-[#111114] p-6">

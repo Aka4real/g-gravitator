@@ -18,6 +18,9 @@ import type {
   InquiryStatus,
   LabDivision,
   LabProject,
+  McpPermissionsMode,
+  McpRolePreset,
+  McpScopeMap,
   McpToken,
   MediaAsset,
   NewsCategory,
@@ -46,16 +49,25 @@ export const DEFAULT_AI_PERMISSIONS: AiPermissionsPolicy = {
   can_edit_posts: true,
   can_approve_posts: true,
   can_revoke_approval: true,
+  can_bulk_moderate: true,
   can_delete_posts: true,
   can_manage_labs: true,
   can_manage_inquiries: true,
   can_manage_orbit_and_subscribers: true,
   can_trigger_ingestion: true,
   can_web_research: true,
+  can_use_ai_drafter: true,
   can_manage_media: true,
   community_hackathons_require_approval: true,
   mcp_enabled: true,
   mcp_inherit_ai_permissions: true,
+  mcp_allow_pii_over_mcp: false,
+  mcp_allow_full_parity_tokens: true,
+  mcp_require_dry_run_for_bulk_delete: true,
+  mcp_expose_prompts: true,
+  mcp_expose_resources: true,
+  mcp_read_audit_logs: false,
+  mcp_default_rate_limit_rpm: 60,
 };
 
 export interface LocalStoreState {
@@ -2150,6 +2162,74 @@ export async function deleteAdminInvite(id: string): Promise<boolean> {
 // MCP TOKENS
 // =============================================================================
 
+function normalizeMcpToken(raw: Partial<McpToken> & { id: string }): McpToken {
+  const mode: McpPermissionsMode =
+    raw.permissions_mode === "full" ||
+    raw.permissions_mode === "readonly" ||
+    raw.permissions_mode === "custom"
+      ? raw.permissions_mode
+      : "inherit";
+
+  const preset: McpRolePreset =
+    raw.role_preset ||
+    (mode === "readonly"
+      ? "readonly_public"
+      : mode === "full"
+      ? "full_ops"
+      : mode === "custom"
+      ? "custom"
+      : "inherit");
+
+  return {
+    id: raw.id,
+    name: raw.name || "External AI Agent",
+    token_hash: raw.token_hash || "",
+    prefix: raw.prefix || "gg_mcp_",
+    permissions_mode: mode,
+    role_preset: preset,
+    custom_scopes:
+      raw.custom_scopes && typeof raw.custom_scopes === "object"
+        ? raw.custom_scopes
+        : {},
+    expires_at: raw.expires_at ?? null,
+    rate_limit_rpm:
+      typeof raw.rate_limit_rpm === "number" && raw.rate_limit_rpm > 0
+        ? raw.rate_limit_rpm
+        : 60,
+    request_count:
+      typeof raw.request_count === "number" && raw.request_count >= 0
+        ? raw.request_count
+        : 0,
+    denied_count:
+      typeof raw.denied_count === "number" && raw.denied_count >= 0
+        ? raw.denied_count
+        : 0,
+    last_client_info: raw.last_client_info ?? null,
+    notes: raw.notes ?? null,
+    created_by: raw.created_by || "admin",
+    created_at: raw.created_at || new Date().toISOString(),
+    last_used_at: raw.last_used_at ?? null,
+    is_active: raw.is_active !== false,
+  };
+}
+
+function isMcpSchemaFallbackError(err: { code?: string; message?: string } | null): boolean {
+  if (!err) return false;
+  const msg = `${err.code ?? ""} ${err.message ?? ""}`.toLowerCase();
+  return (
+    msg.includes("42703") ||
+    msg.includes("pgrst204") ||
+    msg.includes("column") ||
+    msg.includes("mcp_tokens_permissions_mode_check")
+  );
+}
+
+export function isMcpTokenExpired(token: Pick<McpToken, "expires_at">): boolean {
+  if (!token.expires_at) return false;
+  const expMs = new Date(token.expires_at).getTime();
+  return Number.isFinite(expMs) && expMs <= Date.now();
+}
+
 export async function listMcpTokens(): Promise<McpToken[]> {
   const store = readLocalStore();
   if (isSupabaseConfigured()) {
@@ -2162,16 +2242,26 @@ export async function listMcpTokens(): Promise<McpToken[]> {
       if (error) {
         logSupabaseError("listMcpTokens", error);
       } else if (data !== null) {
-        return data as McpToken[];
+        return (data as McpToken[]).map(normalizeMcpToken);
       }
     }
   }
-  return store.mcp_tokens;
+  return store.mcp_tokens.map(normalizeMcpToken);
+}
+
+export async function getMcpTokenById(id: string): Promise<McpToken | null> {
+  const tokens = await listMcpTokens();
+  return tokens.find((t) => t.id === id) ?? null;
 }
 
 export async function createMcpToken(payload: {
   name: string;
-  permissions_mode: "inherit" | "full" | "readonly";
+  permissions_mode: McpPermissionsMode;
+  role_preset?: McpRolePreset;
+  custom_scopes?: McpScopeMap;
+  expires_at?: string | null;
+  rate_limit_rpm?: number;
+  notes?: string | null;
   created_by: string;
 }): Promise<{ tokenRecord: McpToken; plaintextToken: string }> {
   const store = readLocalStore();
@@ -2181,17 +2271,25 @@ export async function createMcpToken(payload: {
     .update(plaintextToken)
     .digest("hex");
 
-  const tokenRecord: McpToken = {
+  const tokenRecord = normalizeMcpToken({
     id: crypto.randomUUID(),
     name: payload.name.trim() || "External AI Agent",
     token_hash: tokenHash,
     prefix: plaintextToken.slice(0, 14),
     permissions_mode: payload.permissions_mode,
+    role_preset: payload.role_preset,
+    custom_scopes: payload.custom_scopes ?? {},
+    expires_at: payload.expires_at ?? null,
+    rate_limit_rpm: payload.rate_limit_rpm ?? 60,
+    request_count: 0,
+    denied_count: 0,
+    last_client_info: null,
+    notes: payload.notes?.trim() || null,
     created_by: payload.created_by,
     created_at: new Date().toISOString(),
     last_used_at: null,
     is_active: true,
-  };
+  });
 
   store.mcp_tokens.unshift(tokenRecord);
   writeLocalStore(store);
@@ -2200,7 +2298,24 @@ export async function createMcpToken(payload: {
     const sb = getSupabaseAdminClient();
     if (sb) {
       const { error } = await sb.from("mcp_tokens").insert(tokenRecord);
-      logSupabaseError("createMcpToken", error);
+      if (isMcpSchemaFallbackError(error)) {
+        const legacyMode =
+          tokenRecord.permissions_mode === "custom" ? "inherit" : tokenRecord.permissions_mode;
+        const { error: legacyErr } = await sb.from("mcp_tokens").insert({
+          id: tokenRecord.id,
+          name: tokenRecord.name,
+          token_hash: tokenRecord.token_hash,
+          prefix: tokenRecord.prefix,
+          permissions_mode: legacyMode,
+          created_by: tokenRecord.created_by,
+          created_at: tokenRecord.created_at,
+          last_used_at: tokenRecord.last_used_at,
+          is_active: tokenRecord.is_active,
+        });
+        logSupabaseError("createMcpToken:legacyFallback", legacyErr);
+      } else {
+        logSupabaseError("createMcpToken", error);
+      }
     }
   }
 
@@ -2210,28 +2325,226 @@ export async function createMcpToken(payload: {
 export async function findActiveMcpTokenByHash(
   tokenHash: string
 ): Promise<McpToken | null> {
-  const tokens = await listMcpTokens();
-  return tokens.find((t) => t.is_active && t.token_hash === tokenHash) ?? null;
-}
-
-export async function touchMcpTokenLastUsed(id: string): Promise<void> {
-  const store = readLocalStore();
-  const nowIso = new Date().toISOString();
-  const idx = store.mcp_tokens.findIndex((t) => t.id === id);
-  if (idx >= 0) {
-    store.mcp_tokens[idx].last_used_at = nowIso;
-    writeLocalStore(store);
-  }
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { error } = await sb
+      const { data, error } = await sb
         .from("mcp_tokens")
-        .update({ last_used_at: nowIso })
-        .eq("id", id);
-      logSupabaseError("touchMcpTokenLastUsed", error);
+        .select("*")
+        .eq("token_hash", tokenHash)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (error) {
+        logSupabaseError("findActiveMcpTokenByHash", error);
+      } else if (data) {
+        const normalized = normalizeMcpToken(data as McpToken);
+        if (isMcpTokenExpired(normalized)) return null;
+        return normalized;
+      } else {
+        return null;
+      }
     }
   }
+
+  const store = readLocalStore();
+  const matched = store.mcp_tokens.find(
+    (t) => t.is_active && t.token_hash === tokenHash
+  );
+  if (!matched) return null;
+  const normalized = normalizeMcpToken(matched);
+  if (isMcpTokenExpired(normalized)) return null;
+  return normalized;
+}
+
+export async function updateMcpToken(
+  id: string,
+  patch: {
+    name?: string;
+    permissions_mode?: McpPermissionsMode;
+    role_preset?: McpRolePreset;
+    custom_scopes?: McpScopeMap;
+    expires_at?: string | null;
+    rate_limit_rpm?: number;
+    notes?: string | null;
+    is_active?: boolean;
+  }
+): Promise<McpToken | null> {
+  const store = readLocalStore();
+  const idx = store.mcp_tokens.findIndex((t) => t.id === id);
+  let updatedLocal: McpToken | null = null;
+  if (idx >= 0) {
+    const merged = normalizeMcpToken({
+      ...store.mcp_tokens[idx],
+      ...patch,
+      name: patch.name !== undefined ? patch.name.trim() || store.mcp_tokens[idx].name : store.mcp_tokens[idx].name,
+      id,
+    });
+    store.mcp_tokens[idx] = merged;
+    writeLocalStore(store);
+    updatedLocal = merged;
+  }
+
+  if (isSupabaseConfigured()) {
+    const sb = getSupabaseAdminClient();
+    if (sb) {
+      const updatePayload: Record<string, unknown> = {};
+      if (patch.name !== undefined) updatePayload.name = patch.name.trim() || "External AI Agent";
+      if (patch.permissions_mode !== undefined) updatePayload.permissions_mode = patch.permissions_mode;
+      if (patch.role_preset !== undefined) updatePayload.role_preset = patch.role_preset;
+      if (patch.custom_scopes !== undefined) updatePayload.custom_scopes = patch.custom_scopes;
+      if (patch.expires_at !== undefined) updatePayload.expires_at = patch.expires_at;
+      if (patch.rate_limit_rpm !== undefined) updatePayload.rate_limit_rpm = patch.rate_limit_rpm;
+      if (patch.notes !== undefined) updatePayload.notes = patch.notes;
+      if (patch.is_active !== undefined) updatePayload.is_active = patch.is_active;
+
+      const { data, error } = await sb
+        .from("mcp_tokens")
+        .update(updatePayload)
+        .eq("id", id)
+        .select("*")
+        .maybeSingle();
+
+      if (isMcpSchemaFallbackError(error)) {
+        const legacyPayload: Record<string, unknown> = {};
+        if (patch.name !== undefined) legacyPayload.name = patch.name.trim() || "External AI Agent";
+        if (patch.permissions_mode !== undefined) {
+          legacyPayload.permissions_mode =
+            patch.permissions_mode === "custom" ? "inherit" : patch.permissions_mode;
+        }
+        if (patch.is_active !== undefined) legacyPayload.is_active = patch.is_active;
+        const { data: legacyData, error: legacyErr } = await sb
+          .from("mcp_tokens")
+          .update(legacyPayload)
+          .eq("id", id)
+          .select("*")
+          .maybeSingle();
+        logSupabaseError("updateMcpToken:legacyFallback", legacyErr);
+        if (legacyData) return normalizeMcpToken(legacyData as McpToken);
+      } else if (error) {
+        logSupabaseError("updateMcpToken", error);
+      } else if (data) {
+        return normalizeMcpToken(data as McpToken);
+      }
+    }
+  }
+
+  return updatedLocal;
+}
+
+export async function rotateMcpToken(id: string): Promise<{
+  tokenRecord: McpToken;
+  plaintextToken: string;
+} | null> {
+  const existing = await getMcpTokenById(id);
+  if (!existing) return null;
+
+  const plaintextToken = `gg_mcp_${crypto.randomBytes(24).toString("hex")}`;
+  const tokenHash = crypto
+    .createHash("sha256")
+    .update(plaintextToken)
+    .digest("hex");
+  const prefix = plaintextToken.slice(0, 14);
+
+  const store = readLocalStore();
+  const idx = store.mcp_tokens.findIndex((t) => t.id === id);
+  let updatedRecord: McpToken = normalizeMcpToken({
+    ...existing,
+    token_hash: tokenHash,
+    prefix,
+    is_active: true,
+  });
+  if (idx >= 0) {
+    store.mcp_tokens[idx] = updatedRecord;
+    writeLocalStore(store);
+  }
+
+  if (isSupabaseConfigured()) {
+    const sb = getSupabaseAdminClient();
+    if (sb) {
+      const { data, error } = await sb
+        .from("mcp_tokens")
+        .update({
+          token_hash: tokenHash,
+          prefix,
+          is_active: true,
+        })
+        .eq("id", id)
+        .select("*")
+        .maybeSingle();
+      if (error) {
+        logSupabaseError("rotateMcpToken", error);
+      } else if (data) {
+        updatedRecord = normalizeMcpToken(data as McpToken);
+      }
+    }
+  }
+
+  return { tokenRecord: updatedRecord, plaintextToken };
+}
+
+export async function recordMcpTokenUsage(
+  id: string,
+  options: { denied?: boolean; clientInfo?: string } = {}
+): Promise<void> {
+  const store = readLocalStore();
+  const nowIso = new Date().toISOString();
+  const idx = store.mcp_tokens.findIndex((t) => t.id === id);
+  let nextReq = 1;
+  let nextDenied = options.denied ? 1 : 0;
+
+  if (idx >= 0) {
+    nextReq = (store.mcp_tokens[idx].request_count ?? 0) + 1;
+    nextDenied = (store.mcp_tokens[idx].denied_count ?? 0) + (options.denied ? 1 : 0);
+    store.mcp_tokens[idx].last_used_at = nowIso;
+    store.mcp_tokens[idx].request_count = nextReq;
+    store.mcp_tokens[idx].denied_count = nextDenied;
+    if (options.clientInfo) {
+      store.mcp_tokens[idx].last_client_info = options.clientInfo.slice(0, 80);
+    }
+    writeLocalStore(store);
+  }
+
+  if (isSupabaseConfigured()) {
+    const sb = getSupabaseAdminClient();
+    if (sb) {
+      const { data: current } = await sb
+        .from("mcp_tokens")
+        .select("request_count, denied_count")
+        .eq("id", id)
+        .maybeSingle();
+      const sbReq = ((current as { request_count?: number } | null)?.request_count ?? 0) + 1;
+      const sbDenied =
+        ((current as { denied_count?: number } | null)?.denied_count ?? 0) +
+        (options.denied ? 1 : 0);
+
+      const updatePayload: Record<string, unknown> = {
+        last_used_at: nowIso,
+        request_count: sbReq,
+        denied_count: sbDenied,
+      };
+      if (options.clientInfo) {
+        updatePayload.last_client_info = options.clientInfo.slice(0, 80);
+      }
+      const { error } = await sb
+        .from("mcp_tokens")
+        .update(updatePayload)
+        .eq("id", id);
+
+      if (isMcpSchemaFallbackError(error)) {
+        const { error: legacyErr } = await sb
+          .from("mcp_tokens")
+          .update({ last_used_at: nowIso })
+          .eq("id", id);
+        logSupabaseError("recordMcpTokenUsage:legacyFallback", legacyErr);
+      } else {
+        logSupabaseError("recordMcpTokenUsage", error);
+      }
+    }
+  }
+}
+
+export async function touchMcpTokenLastUsed(id: string): Promise<void> {
+  await recordMcpTokenUsage(id, {});
 }
 
 export async function revokeMcpToken(id: string): Promise<boolean> {

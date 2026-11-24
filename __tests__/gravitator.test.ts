@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { HarmBlockThreshold, ThinkingLevel } from "@google/genai";
 import {
@@ -19,10 +20,14 @@ import {
   parsePrizeFromText,
 } from "@/lib/ingestion/hackathons/normalize";
 import {
+  createMcpToken,
+  findActiveMcpTokenByHash,
   getAiPermissions,
   mergeHackathonSources,
   readLocalStore,
+  rotateMcpToken,
   updateAiPermissions,
+  updateMcpToken,
   writeLocalStore,
   type LocalStoreState,
 } from "@/lib/db/repository";
@@ -33,11 +38,13 @@ import {
   verifySessionToken,
 } from "@/lib/auth/admin-auth";
 import { submitAndVerifyHackathonUrl } from "@/lib/ingestion/hackathons";
+import { processMcpJsonRpcPayload } from "@/lib/mcp/protocol";
 import { buildVoiceSummary } from "@/lib/ops/ai-agent";
 import {
   executeOpsTool,
   getGeminiFunctionDeclarations,
   OPS_TOOLS,
+  type OpsActorContext,
 } from "@/lib/ops/tools";
 import { generateHackathonIcs } from "@/lib/ics";
 import { heuristicSynthesizeNews } from "@/lib/ingestion/news/synthesize";
@@ -465,4 +472,417 @@ const x = 1;
     }
   });
 });
+
+describe("MCP 2.0 Streamable HTTP, Granular Scopes, PII Ceilings & Tooling Suite", () => {
+  let snapshot: LocalStoreState;
+
+  beforeAll(() => {
+    snapshot = structuredClone(readLocalStore());
+  });
+
+  afterAll(() => {
+    writeLocalStore(snapshot);
+  });
+
+  it("supports Streamable HTTP 2026-07-28 & 2025-11-25 discovery, notifications (202), header mismatch rejection, and batch JSON-RPC", async () => {
+    const policy = await updateAiPermissions({
+      mcp_enabled: true,
+      mcp_expose_resources: true,
+      mcp_expose_prompts: true,
+    });
+    const actor: OpsActorContext = {
+      actorType: "mcp",
+      actorLabel: "MCP:ProtocolTest",
+      permissionsMode: "readonly",
+      rolePreset: "readonly_public",
+      tokenId: "proto-test-1",
+    };
+
+    const discover = await processMcpJsonRpcPayload(
+      { jsonrpc: "2.0", id: 1, method: "server/discover" },
+      { actor, policy, enforceRateLimit: false }
+    );
+    expect(discover.status).toBe(200);
+    const discoverRes = discover.body as {
+      result: { protocolVersions: string[]; serverInfo: { version: string } };
+    };
+    expect(discoverRes.result.protocolVersions).toContain("2026-07-28");
+    expect(discoverRes.result.serverInfo.version).toBe("2.0.0");
+
+    const init2025 = await processMcpJsonRpcPayload(
+      {
+        jsonrpc: "2.0",
+        id: 2,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-11-25",
+          clientInfo: { name: "claude-desktop", version: "1.9" },
+        },
+      },
+      { actor, policy, enforceRateLimit: false }
+    );
+    expect(init2025.status).toBe(200);
+    expect(
+      (init2025.body as { result: { protocolVersion: string } }).result.protocolVersion
+    ).toBe("2025-11-25");
+
+    // Notification returns 202 Accepted with null body
+    const notif = await processMcpJsonRpcPayload(
+      { jsonrpc: "2.0", method: "notifications/initialized" },
+      { actor, policy, enforceRateLimit: false }
+    );
+    expect(notif.status).toBe(202);
+    expect(notif.body).toBeNull();
+
+    // Header mismatch returns 400
+    const mismatch = await processMcpJsonRpcPayload(
+      {
+        jsonrpc: "2.0",
+        id: 3,
+        method: "tools/list",
+        params: {
+          _meta: { "io.modelcontextprotocol/protocolVersion": "2026-07-28" },
+        },
+      },
+      {
+        actor,
+        policy,
+        headerProtocolVersion: "2025-11-25",
+        enforceRateLimit: false,
+      }
+    );
+    expect(mismatch.status).toBe(400);
+
+    // Batch drops notification and returns 2 responses
+    const batch = await processMcpJsonRpcPayload(
+      [
+        { jsonrpc: "2.0", id: 10, method: "ping" },
+        { jsonrpc: "2.0", method: "notifications/initialized" },
+        { jsonrpc: "2.0", id: 11, method: "resources/templates/list" },
+      ],
+      { actor, policy, enforceRateLimit: false }
+    );
+    expect(batch.status).toBe(200);
+    expect(Array.isArray(batch.body)).toBe(true);
+    expect((batch.body as unknown[]).length).toBe(2);
+  });
+
+  it("filters tools/list by least-privilege preset and enforces the Global PII Ceiling across all modes including full", async () => {
+    const policy = await updateAiPermissions({
+      mcp_enabled: true,
+      mcp_allow_pii_over_mcp: false,
+      mcp_allow_full_parity_tokens: true,
+    });
+
+    const readonlyActor: OpsActorContext = {
+      actorType: "mcp",
+      actorLabel: "MCP:Reader",
+      permissionsMode: "readonly",
+      rolePreset: "readonly_public",
+      tokenId: "ro-1",
+    };
+
+    const roTools = await processMcpJsonRpcPayload(
+      { jsonrpc: "2.0", id: 1, method: "tools/list" },
+      { actor: readonlyActor, policy, enforceRateLimit: false }
+    );
+    const roToolList = (
+      roTools.body as {
+        result: {
+          tools: Array<{ name: string; annotations: { readOnlyHint?: boolean } }>;
+        };
+      }
+    ).result.tools;
+    expect(roToolList.every((t) => t.annotations.readOnlyHint === true)).toBe(true);
+    expect(roToolList.some((t) => t.name === "create_dispatch")).toBe(false);
+    expect(roToolList.some((t) => t.name === "get_audit_logs")).toBe(false);
+    expect(roToolList.some((t) => t.name === "search_platform")).toBe(true);
+
+    // Even a "full" token is blocked from reading CRM PII when mcp_allow_pii_over_mcp = false
+    const fullActor: OpsActorContext = {
+      actorType: "mcp",
+      actorLabel: "MCP:FullAgent",
+      permissionsMode: "full",
+      rolePreset: "full_ops",
+      tokenId: "full-1",
+    };
+
+    const piiCallDenied = await executeOpsTool(
+      "list_content",
+      { entity: "inquiries" },
+      fullActor
+    );
+    expect(piiCallDenied.ok).toBe(false);
+    expect(piiCallDenied.denied).toBe(true);
+    expect(piiCallDenied.error).toContain("mcp_allow_pii_over_mcp");
+
+    const piiResourceDenied = await processMcpJsonRpcPayload(
+      {
+        jsonrpc: "2.0",
+        id: 2,
+        method: "resources/read",
+        params: { uri: "ggravitator://inquiries/NEW" },
+      },
+      { actor: fullActor, policy, enforceRateLimit: false }
+    );
+    expect((piiResourceDenied.body as { error: { code: number } }).error.code).toBe(-32003);
+
+    // Turning Global PII Ceiling ON unlocks CRM Inquiries for crm_operator & full
+    const policyPiiOn = await updateAiPermissions({ mcp_allow_pii_over_mcp: true });
+    const crmActor: OpsActorContext = {
+      actorType: "mcp",
+      actorLabel: "MCP:CRM",
+      permissionsMode: "custom",
+      rolePreset: "crm_operator",
+      tokenId: "crm-1",
+    };
+    const piiAllowed = await executeOpsTool(
+      "list_content",
+      { entity: "inquiries" },
+      crmActor
+    );
+    expect(piiAllowed.ok).toBe(true);
+
+    const crmPrompts = await processMcpJsonRpcPayload(
+      { jsonrpc: "2.0", id: 3, method: "prompts/list" },
+      { actor: crmActor, policy: policyPiiOn, enforceRateLimit: false }
+    );
+    const promptNames = (
+      crmPrompts.body as { result: { prompts: Array<{ name: string }> } }
+    ).result.prompts.map((p) => p.name);
+    expect(promptNames).toContain("triage-b2b-inquiries");
+    expect(promptNames).not.toContain("draft-journal-dispatch");
+  });
+
+  it("isolates editorial_writer preset and protects remove_old_posts behind dry-run confirmation tokens", async () => {
+    await updateAiPermissions({
+      mcp_enabled: true,
+      mcp_require_dry_run_for_bulk_delete: true,
+      mcp_allow_full_parity_tokens: false,
+    });
+
+    const writerActor: OpsActorContext = {
+      actorType: "mcp",
+      actorLabel: "MCP:Writer",
+      permissionsMode: "custom",
+      rolePreset: "editorial_writer",
+      tokenId: "writer-1",
+    };
+
+    // Allowed to draft a Journal Dispatch (automatically queued PENDING_REVIEW since direct publish OFF)
+    const created = await executeOpsTool(
+      "create_dispatch",
+      {
+        title: "MCP Scoped Editorial Draft Test",
+        subtitle: "Testing preset channel isolation",
+        category: "AI SYSTEMS",
+        mdx_content: "## Architecture\n\n> [!ACCENT] Scoped token verification.",
+      },
+      writerActor
+    );
+    expect(created.ok).toBe(true);
+    expect(created.data?.queued_for_review).toBe(true);
+    const createdDispatch = created.data?.dispatch as { id: string; slug: string };
+
+    // Readiness audit on that draft succeeds
+    const audit = await executeOpsTool(
+      "audit_post_readiness",
+      { entity: "dispatch", id_or_slug: createdDispatch.slug },
+      writerActor
+    );
+    expect(audit.ok).toBe(true);
+    expect(audit.data?.ready_to_publish).toBe(true);
+
+    // Denied creating a Hackathon or deleting posts
+    const deniedHack = await executeOpsTool(
+      "create_hackathon",
+      {
+        title: "Should fail",
+        organizer: "None",
+        summary: "No",
+        deadline_at: "2027-01-01T00:00:00Z",
+        primary_url: "https://example.com",
+      },
+      writerActor
+    );
+    expect(deniedHack.ok).toBe(false);
+    expect(deniedHack.denied).toBe(true);
+
+    // Full actor gets downgraded when mcp_allow_full_parity_tokens=false
+    const downgradedFull: OpsActorContext = {
+      actorType: "mcp",
+      actorLabel: "MCP:LegacyFull",
+      permissionsMode: "full",
+      rolePreset: "full_ops",
+      tokenId: "downgraded-full-1",
+    };
+    const identity = await executeOpsTool("get_my_mcp_identity", {}, downgradedFull);
+    expect(identity.ok).toBe(true);
+    expect(identity.data?.downgraded_from_full).toBe(true);
+
+    // Custom admin-scoped purge tests dry-run confirm_token guard
+    const purgeActor: OpsActorContext = {
+      actorType: "mcp",
+      actorLabel: "MCP:Janitor",
+      permissionsMode: "custom",
+      rolePreset: "custom",
+      customScopes: {
+        can_purge_expired_posts: true,
+        can_delete_posts: true,
+        can_read_public_content: true,
+      },
+      tokenId: "janitor-1",
+    };
+
+    const dryRunRes = await executeOpsTool(
+      "remove_old_posts",
+      { entity: "hackathons", older_than_days: 9999 },
+      purgeActor
+    );
+    expect(dryRunRes.ok).toBe(true);
+    expect(dryRunRes.data?.dry_run).toBe(true);
+    expect(typeof dryRunRes.data?.confirm_token).toBe("string");
+
+    // Seed an expired hackathon so candidateCount > 0 and verify guard blocks missing/bad confirm_token
+    const store = readLocalStore();
+    store.hackathons.push({
+      ...SEED_HACKATHONS[0],
+      id: "hack-expired-test-purge",
+      slug: "hack-expired-test-purge",
+      fingerprint: "hack-expired-test-purge-fp",
+      deadline_at: "2020-01-01T00:00:00Z",
+    });
+    writeLocalStore(store);
+
+    const blockedNoToken = await executeOpsTool(
+      "remove_old_posts",
+      { entity: "hackathons", dry_run: false },
+      purgeActor
+    );
+    expect(blockedNoToken.ok).toBe(false);
+    expect(blockedNoToken.denied).toBe(true);
+
+    const dryPreviewExpired = await executeOpsTool(
+      "remove_old_posts",
+      { entity: "hackathons", dry_run: true },
+      purgeActor
+    );
+    expect(dryPreviewExpired.ok).toBe(true);
+    expect(dryPreviewExpired.data?.would_remove_hackathons).toBeGreaterThanOrEqual(1);
+
+    const validPurge = await executeOpsTool(
+      "remove_old_posts",
+      {
+        entity: "hackathons",
+        dry_run: false,
+        confirm_token: dryPreviewExpired.data?.confirm_token,
+      },
+      purgeActor
+    );
+    expect(validPurge.ok).toBe(true);
+    expect(validPurge.data?.removedHackathons).toBeGreaterThanOrEqual(1);
+  });
+
+  it("supports new Labs tools, Resource URI templates, Prompts, token lifecycle rotation/expiry, and RPM limiting", async () => {
+    const adminActor: OpsActorContext = {
+      actorType: "admin",
+      actorLabel: "founder@ggravitator.com",
+    };
+
+    const appendRes = await executeOpsTool(
+      "append_lab_changelog",
+      { id_or_code: "G-01", version: "v2.4.0", summary: "MCP Streamable HTTP governance added" },
+      adminActor
+    );
+    expect(appendRes.ok).toBe(true);
+
+    const scoreRes = await executeOpsTool(
+      "update_lab_scorecard",
+      {
+        id_or_code: "G-01",
+        scorecard: {
+          pain_intensity: 5,
+          willingness_to_pay: 5,
+          technical_moat: 5,
+          distribution_hook: 4,
+          lean_maintainability: 4,
+        },
+      },
+      adminActor
+    );
+    expect(scoreRes.ok).toBe(true);
+    expect((scoreRes.data?.evaluation as { total: number }).total).toBe(23);
+
+    // Token creation, update, rotation, and expiry enforcement
+    const { tokenRecord, plaintextToken } = await createMcpToken({
+      name: "Lifecycle Test Client",
+      permissions_mode: "custom",
+      role_preset: "labs_copilot",
+      rate_limit_rpm: 2,
+      created_by: "founder@ggravitator.com",
+    });
+
+    const hash1 = crypto.createHash("sha256").update(plaintextToken).digest("hex");
+    expect((await findActiveMcpTokenByHash(hash1))?.id).toBe(tokenRecord.id);
+
+    const rotated = await rotateMcpToken(tokenRecord.id);
+    expect(rotated).not.toBeNull();
+    expect(await findActiveMcpTokenByHash(hash1)).toBeNull();
+
+    const hash2 = crypto
+      .createHash("sha256")
+      .update(rotated!.plaintextToken)
+      .digest("hex");
+    expect((await findActiveMcpTokenByHash(hash2))?.id).toBe(tokenRecord.id);
+
+    // Expired token is rejected cleanly
+    await updateMcpToken(tokenRecord.id, {
+      expires_at: "2020-01-01T00:00:00Z",
+    });
+    expect(await findActiveMcpTokenByHash(hash2)).toBeNull();
+
+    // Sliding-window rate limit triggers HTTP 429 on 3rd call when rate_limit_rpm=2
+    const policy = await getAiPermissions();
+    const rateActor: OpsActorContext = {
+      actorType: "mcp",
+      actorLabel: "MCP:RateTested",
+      permissionsMode: "readonly",
+      rolePreset: "readonly_public",
+      tokenId: "rate-limit-test-bucket",
+      rateLimitRpm: 2,
+    };
+    const r1 = await processMcpJsonRpcPayload(
+      { jsonrpc: "2.0", id: 1, method: "ping" },
+      { actor: rateActor, policy }
+    );
+    const r2 = await processMcpJsonRpcPayload(
+      { jsonrpc: "2.0", id: 2, method: "ping" },
+      { actor: rateActor, policy }
+    );
+    const r3 = await processMcpJsonRpcPayload(
+      { jsonrpc: "2.0", id: 3, method: "ping" },
+      { actor: rateActor, policy }
+    );
+    expect(r1.status).toBe(200);
+    expect(r2.status).toBe(200);
+    expect(r3.status).toBe(429);
+
+    // Read dynamic resource template & prompt
+    const resRead = await processMcpJsonRpcPayload(
+      {
+        jsonrpc: "2.0",
+        id: 4,
+        method: "resources/read",
+        params: { uri: "ggravitator://labs/G-01" },
+      },
+      { actor: rateActor, policy, enforceRateLimit: false }
+    );
+    expect(resRead.status).toBe(200);
+    const resContents = (
+      resRead.body as { result: { contents: Array<{ text: string }> } }
+    ).result.contents;
+    expect(resContents[0].text).toContain("G-01");
+  });
+});
+
 
