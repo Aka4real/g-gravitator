@@ -21,6 +21,7 @@ import type { Dispatch, DispatchCategory } from "@/lib/supabase/types";
 interface DispatchReaderClientProps {
   dispatch: Dispatch;
   otherDispatches: Dispatch[];
+  isAdminPreview?: boolean;
 }
 
 interface ParsedBlock {
@@ -210,6 +211,7 @@ function formatTagLabel(tag: string): string {
 export function DispatchReaderClient({
   dispatch,
   otherDispatches,
+  isAdminPreview = false,
 }: DispatchReaderClientProps) {
   const prefersReducedMotion = useReducedMotion();
   const [readingMode, setReadingMode] = useState<"DARK" | "LIGHT">("DARK");
@@ -363,6 +365,34 @@ export function DispatchReaderClient({
             </div>
           </div>
         </div>
+
+        {isAdminPreview && (
+          <div
+            role="status"
+            className={`mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-xs ${
+              isLight
+                ? "border-[#FF3B1F]/40 bg-[#FF3B1F]/10 text-[#991B1B]"
+                : "border-[#FF3B1F]/40 bg-[#FF3B1F]/12 text-[#FF8A7A]"
+            }`}
+          >
+            <div className="flex items-center gap-2 font-medium">
+              <span className="inline-block h-2 w-2 rounded-full bg-[#FF3B1F]" />
+              <span>
+                Admin Preview · Status:{" "}
+                <span className="font-mono uppercase">
+                  {dispatch.approval_status || "UNPUBLISHED"}
+                </span>{" "}
+                — hidden from public readers until approved.
+              </span>
+            </div>
+            <a
+              href="/gg-command"
+              className="rounded-full border border-[#FF3B1F]/40 bg-[#FF3B1F] px-3 py-1 font-semibold text-[#08080A] hover:bg-[#FF5238]"
+            >
+              Return to Command Center
+            </a>
+          </div>
+        )}
 
         {/* Editorial Article Header */}
         <header

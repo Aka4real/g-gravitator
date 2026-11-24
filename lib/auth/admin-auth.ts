@@ -2,7 +2,6 @@ import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import {
   findActiveMcpTokenByHash,
-  getAdminUserById,
   listAdminUsers,
   touchMcpTokenLastUsed,
 } from "@/lib/db/repository";
@@ -139,7 +138,7 @@ export async function getAuthenticatedAdmin(): Promise<AuthenticatedAdmin | null
 
     const allUsers = await listAdminUsers();
     if (allUsers.length > 0) {
-      const existing = await getAdminUserById(payload.sub);
+      const existing = allUsers.find((u) => u.id === payload.sub);
       if (!existing) return null;
       return {
         id: existing.id,

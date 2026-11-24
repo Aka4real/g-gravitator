@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  CheckCircle2,
   Download,
   ExternalLink,
   Image as ImageIcon,
@@ -48,6 +49,18 @@ const ACCENT_PRESETS = [
   { name: "Rose", hex: "#F43F5E" },
   { name: "Alabaster", hex: "#F4F3EF" },
 ];
+
+function parseUtcDatetimeLocal(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString();
+  }
+  const withZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(trimmed) ? trimmed : `${trimmed}Z`;
+  const parsed = new Date(withZone);
+  return Number.isNaN(parsed.getTime())
+    ? new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString()
+    : parsed.toISOString();
+}
 
 export function PostDesignerModal({
   entity,
@@ -107,8 +120,9 @@ export function PostDesignerModal({
   const [authorName, setAuthorName] = useState(
     disp?.author_name || "Enwedo Akaolisa Gift"
   );
-  const authorRole =
-    disp?.author_role || "Principal Architect · G-Gravitator & OXAKALABS";
+  const [authorRole, setAuthorRole] = useState(
+    disp?.author_role || "Principal Architect · G-Gravitator & OXAKALABS"
+  );
   const [tagsText, setTagsText] = useState(
     disp?.tags?.join(", ") || "AI SYSTEMS, ENGINEERING"
   );
@@ -152,7 +166,7 @@ export function PostDesignerModal({
     hack?.themes?.join(", ") || "AI, Agents"
   );
   const [primaryUrl, setPrimaryUrl] = useState(hack?.primary_url || "");
-  const tweetUrl = hack?.source_tweet_url || "";
+  const [tweetUrl, setTweetUrl] = useState(hack?.source_tweet_url || "");
   const [oxaStatus, setOxaStatus] = useState<OxakalabsStatus>(
     hack?.oxakalabs_status || "SCOUTING"
   );
@@ -165,6 +179,7 @@ export function PostDesignerModal({
   const [imgImportUrl, setImgImportUrl] = useState("");
   const [imgBusy, setImgBusy] = useState(false);
   const [imgError, setImgError] = useState<string | null>(null);
+  const [imgStatus, setImgStatus] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const mdxRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -176,11 +191,22 @@ export function PostDesignerModal({
   // AI Draft Assistant inside Designer
   const [aiTopic, setAiTopic] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
+  const [aiStatus, setAiStatus] = useState<string | null>(null);
 
   // Save state
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !saving) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose, saving]);
 
   const insertSnippet = (snippet: string) => {
     const el = mdxRef.current;
@@ -202,6 +228,7 @@ export function PostDesignerModal({
       return;
     }
     setImgError(null);
+    setImgStatus(null);
     setImgBusy(true);
     try {
       const res = await fetch("/api/ops/media", {
@@ -227,6 +254,11 @@ export function PostDesignerModal({
         return;
       }
       setImageUrl(data.asset.url);
+      setImgStatus(
+        data.generator === "gemini"
+          ? "Generated with Gemini Image AI"
+          : "Generated with Studio Editorial SVG (Gemini image fallback)"
+      );
       await onMediaUpdated();
     } catch {
       setImgError("Network error generating image.");
@@ -238,6 +270,7 @@ export function PostDesignerModal({
   const handleImportImageUrl = async () => {
     if (!imgImportUrl.trim()) return;
     setImgError(null);
+    setImgStatus(null);
     setImgBusy(true);
     try {
       const res = await fetch("/api/ops/media", {
@@ -256,6 +289,7 @@ export function PostDesignerModal({
       }
       setImageUrl(data.asset.url);
       setImgImportUrl("");
+      setImgStatus("Imported and hosted in Media Library.");
       await onMediaUpdated();
     } catch {
       setImgError("Network error importing image.");
@@ -266,6 +300,7 @@ export function PostDesignerModal({
 
   const handleUploadFile = async (file: File) => {
     setImgError(null);
+    setImgStatus(null);
     setImgBusy(true);
     try {
       const dataUrl: string = await new Promise((resolve, reject) => {
@@ -291,6 +326,7 @@ export function PostDesignerModal({
         return;
       }
       setImageUrl(data.asset.url);
+      setImgStatus(`Uploaded ${file.name} to Media Library.`);
       await onMediaUpdated();
     } catch {
       setImgError("Failed to upload file.");
@@ -319,25 +355,154 @@ export function PostDesignerModal({
     if (!topic) return;
     setAiBusy(true);
     setSaveError(null);
+    setAiStatus(null);
     try {
-      const prompt =
-        entity === "dispatch"
-          ? `Research "${topic}" using web_research, generate a cover image using generate_post_image with accent_color "${accentColor}", and return ONLY JSON inside your message? Wait — instead, create a draft or return clear structured details. Actually: directly use web_research and generate_post_image, then write a complete ${entity} post via create_${entity === "dispatch" ? "dispatch" : entity === "news" ? "news_item" : "hackathon"}? Wait: if I already have the modal open, instead create the post directly in the database and tell me.`
-          : `Research "${topic}" via web_research, generate a visual via generate_post_image with accent_color "${accentColor}", and save the ${entity} post using the corresponding create tool.`;
-      const res = await fetch("/api/ops/ai/chat", {
+      const res = await fetch("/api/ops/ai/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [{ role: "user", content: prompt }],
+          entity,
+          topic,
+          accentColor,
+          generateCover: true,
         }),
       });
-      if (res.ok) {
-        await onSaved();
-        onClose();
-      } else {
-        const d = await res.json().catch(() => null);
-        setSaveError(d?.error || "AI drafting failed.");
+      const data = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        draft?: Record<string, unknown>;
+        coverImageUrl?: string | null;
+        coverGenerator?: "gemini" | "editorial_svg" | null;
+        researchCount?: number;
+        error?: string;
+      } | null;
+
+      if (!res.ok || !data?.ok || !data?.draft) {
+        setSaveError(data?.error || "AI drafting failed.");
+        return;
       }
+
+      const d = data.draft;
+      if (typeof d.title === "string" && d.title.trim()) {
+        setTitle(d.title.trim());
+      }
+
+      if (entity === "dispatch") {
+        if (typeof d.subtitle === "string") setSubtitle(d.subtitle);
+        if (
+          typeof d.category === "string" &&
+          [
+            "ARCHITECTURE",
+            "POST-MORTEM",
+            "AI SYSTEMS",
+            "HACKATHON LOG",
+            "DESIGN ENGINEERING",
+          ].includes(d.category)
+        ) {
+          setDispatchCat(d.category as DispatchCategory);
+        }
+        if (Array.isArray(d.tags) && d.tags.length > 0) {
+          setTagsText(d.tags.map((t) => String(t).trim()).filter(Boolean).join(", "));
+        }
+        if (typeof d.mdx_content === "string" && d.mdx_content.trim()) {
+          setMdxContent(d.mdx_content);
+        }
+        if (Array.isArray(d.featured_links)) {
+          setLinks(
+            d.featured_links
+              .filter(
+                (l): l is PostLinkRef =>
+                  Boolean(l) &&
+                  typeof (l as PostLinkRef).label === "string" &&
+                  typeof (l as PostLinkRef).url === "string"
+              )
+              .slice(0, 6)
+          );
+        }
+      } else if (entity === "news") {
+        if (typeof d.source_name === "string") setSourceName(d.source_name);
+        if (typeof d.source_url === "string") setSourceUrl(d.source_url);
+        if (
+          typeof d.category === "string" &&
+          [
+            "MODELS",
+            "AGENTS",
+            "DEVTOOLS",
+            "RESEARCH",
+            "BUSINESS",
+            "OPEN_SOURCE",
+          ].includes(d.category)
+        ) {
+          setNewsCat(d.category as NewsCategory);
+        }
+        if (typeof d.gravity_take === "string") setGravityTake(d.gravity_take);
+        if (typeof d.impact_score === "number" && Number.isFinite(d.impact_score)) {
+          setImpactScore(Math.min(100, Math.max(1, Math.round(d.impact_score))));
+        }
+        if (Array.isArray(d.related_links)) {
+          setLinks(
+            d.related_links
+              .filter(
+                (l): l is PostLinkRef =>
+                  Boolean(l) &&
+                  typeof (l as PostLinkRef).label === "string" &&
+                  typeof (l as PostLinkRef).url === "string"
+              )
+              .slice(0, 6)
+          );
+        }
+      } else {
+        if (typeof d.organizer === "string") setOrganizer(d.organizer);
+        if (typeof d.summary === "string") setSummary(d.summary);
+        if (typeof d.prize_display === "string") setPrizeDisplay(d.prize_display);
+        if (typeof d.prize_pool_usd === "number" && Number.isFinite(d.prize_pool_usd)) {
+          setPrizeUsd(String(d.prize_pool_usd));
+        }
+        if (typeof d.deadline_at === "string") {
+          const parsed = new Date(d.deadline_at);
+          if (!Number.isNaN(parsed.getTime())) {
+            setDeadlineAt(parsed.toISOString().slice(0, 16));
+          }
+        }
+        if (
+          typeof d.format === "string" &&
+          ["ONLINE", "IN_PERSON", "HYBRID"].includes(d.format)
+        ) {
+          setFormat(d.format as HackathonFormat);
+        }
+        if (typeof d.location === "string") setLocation(d.location);
+        if (Array.isArray(d.themes) && d.themes.length > 0) {
+          setThemesText(d.themes.map((t) => String(t).trim()).filter(Boolean).join(", "));
+        }
+        if (typeof d.primary_url === "string") setPrimaryUrl(d.primary_url);
+        if (Array.isArray(d.related_links)) {
+          setLinks(
+            d.related_links
+              .filter(
+                (l): l is PostLinkRef =>
+                  Boolean(l) &&
+                  typeof (l as PostLinkRef).label === "string" &&
+                  typeof (l as PostLinkRef).url === "string"
+              )
+              .slice(0, 6)
+          );
+        }
+      }
+
+      if (data.coverImageUrl) {
+        setImageUrl(data.coverImageUrl);
+        await onMediaUpdated();
+      }
+
+      const sourceNote =
+        typeof data.researchCount === "number" && data.researchCount > 0
+          ? `${data.researchCount} live web sources analyzed`
+          : "drafted from engineering brief";
+      const coverNote = data.coverImageUrl
+        ? data.coverGenerator === "gemini"
+          ? " · Gemini AI cover ready"
+          : " · Studio SVG cover ready"
+        : "";
+      setAiStatus(`Draft populated into editor (${sourceNote}${coverNote}). Review preview and click Publish / Save.`);
     } catch {
       setSaveError("Network error invoking AI draft.");
     } finally {
@@ -350,12 +515,25 @@ export function PostDesignerModal({
     setSaveError(null);
     setSaving(true);
 
+    // Preserve a pending unsaved link row if the user filled both label and URL
+    const effectiveLinks: PostLinkRef[] =
+      newLinkLabel.trim() && newLinkUrl.trim()
+        ? [
+            ...links,
+            {
+              label: newLinkLabel.trim(),
+              url: newLinkUrl.trim(),
+              ...(newLinkDesc.trim() ? { description: newLinkDesc.trim() } : {}),
+            },
+          ]
+        : links;
+
     const design: PostDesignConfig = {
       accent_color: accentColor,
       ...(surfaceTint ? { surface_tint: surfaceTint } : {}),
       hero_layout: heroLayout,
       callout_style: calloutStyle,
-      featured_links: links,
+      featured_links: effectiveLinks,
     };
 
     try {
@@ -394,7 +572,7 @@ export function PostDesignerModal({
           is_pinned: isPinned,
           is_published: isPublished,
           image_url: imageUrl || null,
-          related_links: links,
+          related_links: effectiveLinks,
           design,
         };
       } else {
@@ -406,7 +584,7 @@ export function PostDesignerModal({
           summary,
           prize_pool_usd: prizeUsd ? Number(prizeUsd) : null,
           prize_display: prizeDisplay,
-          deadline_at: new Date(deadlineAt).toISOString(),
+          deadline_at: parseUtcDatetimeLocal(deadlineAt),
           format,
           location,
           themes: themesText
@@ -414,12 +592,12 @@ export function PostDesignerModal({
             .map((t) => t.trim())
             .filter(Boolean),
           primary_url: primaryUrl,
-          source_tweet_url: tweetUrl || null,
+          source_tweet_url: tweetUrl.trim() || null,
           image_url: imageUrl || null,
           oxakalabs_status: oxaStatus,
           is_featured: isFeatured,
           is_published: isPublished,
-          related_links: links,
+          related_links: effectiveLinks,
           design,
         };
       }
@@ -451,8 +629,19 @@ export function PostDesignerModal({
   }, [imageUrl]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 backdrop-blur-sm sm:p-6">
-      <div className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/[0.12] bg-[#0B0B0E] text-[#F4F3EF] shadow-2xl">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 backdrop-blur-sm sm:p-6"
+      onClick={() => {
+        if (!saving) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${isEdit ? "Edit" : "Create"} ${entity}`}
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/[0.12] bg-[#0B0B0E] text-[#F4F3EF] shadow-2xl"
+      >
         {/* Modal Header */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] px-5 py-4">
           <div className="flex items-center gap-3">
@@ -514,30 +703,46 @@ export function PostDesignerModal({
           </div>
         </div>
 
-        {/* AI One-Click Research & Create Bar (only on new post) */}
+        {/* AI Research & Draft Bar (populates live editor for review) */}
         {!isEdit && (
-          <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] bg-[#111114] px-5 py-3">
-            <Sparkles className="h-4 w-4 shrink-0 text-[#FF6B54]" />
-            <input
-              type="text"
-              value={aiTopic}
-              onChange={(e) => setAiTopic(e.target.value)}
-              placeholder={`Ask AI to research a topic, generate a cover visual, and build this ${entity} automatically...`}
-              className="h-9 min-w-[220px] flex-1 rounded-full border border-white/[0.1] bg-[#0B0B0E] px-4 text-xs text-[#F4F3EF] placeholder:text-[#71717A] focus:border-[#FF3B1F] focus:outline-none"
-            />
-            <button
-              type="button"
-              disabled={aiBusy || !aiTopic.trim()}
-              onClick={() => void handleAiAssistDraft()}
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full bg-[#FF3B1F]/15 px-4 text-xs font-semibold text-[#FF8A7A] hover:bg-[#FF3B1F] hover:text-[#08080A] disabled:opacity-50"
-            >
-              {aiBusy ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Wand2 className="h-3.5 w-3.5" />
-              )}
-              <span>{aiBusy ? "Researching & building..." : "AI Research & Create"}</span>
-            </button>
+          <div className="space-y-2 border-b border-white/[0.06] bg-[#111114] px-5 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Sparkles className="h-4 w-4 shrink-0 text-[#FF6B54]" />
+              <input
+                type="text"
+                value={aiTopic}
+                onChange={(e) => setAiTopic(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (!aiBusy && (aiTopic || title).trim()) {
+                      void handleAiAssistDraft();
+                    }
+                  }
+                }}
+                placeholder={`Enter a topic to research live web sources, generate a cover visual & draft this ${entity} into the editor...`}
+                className="h-9 min-w-[220px] flex-1 rounded-full border border-white/[0.1] bg-[#0B0B0E] px-4 text-xs text-[#F4F3EF] placeholder:text-[#71717A] focus:border-[#FF3B1F] focus:outline-none"
+              />
+              <button
+                type="button"
+                disabled={aiBusy || !(aiTopic || title).trim()}
+                onClick={() => void handleAiAssistDraft()}
+                className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full bg-[#FF3B1F]/15 px-4 text-xs font-semibold text-[#FF8A7A] hover:bg-[#FF3B1F] hover:text-[#08080A] disabled:opacity-50"
+              >
+                {aiBusy ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Wand2 className="h-3.5 w-3.5" />
+                )}
+                <span>{aiBusy ? "Researching & drafting..." : "AI Research & Draft"}</span>
+              </button>
+            </div>
+            {aiStatus && (
+              <div className="flex items-center gap-1.5 text-xs text-[#34D399]">
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                <span>{aiStatus}</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -587,7 +792,7 @@ export function PostDesignerModal({
                       className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3.5 text-sm text-[#F4F3EF] focus:border-[#FF3B1F] focus:outline-none"
                     />
                   </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                       <label className="block text-xs font-medium text-[#D4D4D8]">
                         Category
@@ -608,7 +813,20 @@ export function PostDesignerModal({
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-[#D4D4D8]">
-                        Author
+                        Tags (comma-separated)
+                      </label>
+                      <input
+                        type="text"
+                        value={tagsText}
+                        onChange={(e) => setTagsText(e.target.value)}
+                        className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs font-medium text-[#D4D4D8]">
+                        Author Name
                       </label>
                       <input
                         type="text"
@@ -619,12 +837,12 @@ export function PostDesignerModal({
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-[#D4D4D8]">
-                        Tags (comma-separated)
+                        Author Role / Byline
                       </label>
                       <input
                         type="text"
-                        value={tagsText}
-                        onChange={(e) => setTagsText(e.target.value)}
+                        value={authorRole}
+                        onChange={(e) => setAuthorRole(e.target.value)}
                         className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
                       />
                     </div>
@@ -842,6 +1060,18 @@ export function PostDesignerModal({
                       />
                     </div>
                   </div>
+                  <div>
+                    <label className="block text-xs font-medium text-[#D4D4D8]">
+                      Announcement / X Post URL (optional)
+                    </label>
+                    <input
+                      type="url"
+                      value={tweetUrl}
+                      onChange={(e) => setTweetUrl(e.target.value)}
+                      placeholder="https://x.com/..."
+                      className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                    />
+                  </div>
                 </>
               )}
             </div>
@@ -965,6 +1195,12 @@ export function PostDesignerModal({
                   {imgError}
                 </div>
               )}
+              {imgStatus && !imgError && (
+                <div className="flex items-center gap-1.5 rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 px-3 py-2 text-xs text-[#34D399]">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  <span>{imgStatus}</span>
+                </div>
+              )}
 
               {imageTab === "generate" && (
                 <div className="flex flex-col gap-2 sm:flex-row">
@@ -1024,6 +1260,7 @@ export function PostDesignerModal({
                     accept="image/*"
                     onChange={(e) => {
                       const f = e.target.files?.[0];
+                      e.target.value = "";
                       if (f) void handleUploadFile(f);
                     }}
                     className="hidden"

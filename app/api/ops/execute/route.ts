@@ -7,6 +7,7 @@ import {
   deleteAdminInvite,
   deleteAdminUser,
   deleteMcpToken,
+  listAdminUsers,
   revokeMcpToken,
 } from "@/lib/db/repository";
 import { executeOpsTool } from "@/lib/ops/tools";
@@ -51,13 +52,44 @@ export async function POST(request: Request) {
     }
 
     if (action === "delete_admin_user") {
-      const id = String(args.id || "");
+      const id = String(args.id || "").trim();
+      if (!id) {
+        return NextResponse.json(
+          { error: "Missing target admin user ID." },
+          { status: 400 }
+        );
+      }
       if (id === admin.id) {
         return NextResponse.json(
           { error: "You cannot delete your own active session account." },
           { status: 400 }
         );
       }
+
+      const allAdmins = await listAdminUsers();
+      const target = allAdmins.find((u) => u.id === id);
+      if (!target) {
+        return NextResponse.json(
+          { error: "Admin user not found." },
+          { status: 404 }
+        );
+      }
+      if (target.role === "SUPER_ADMIN" && admin.role !== "SUPER_ADMIN") {
+        return NextResponse.json(
+          { error: "Only a SUPER_ADMIN can remove another SUPER_ADMIN account." },
+          { status: 403 }
+        );
+      }
+      if (target.role === "SUPER_ADMIN") {
+        const superAdminCount = allAdmins.filter((u) => u.role === "SUPER_ADMIN").length;
+        if (superAdminCount <= 1) {
+          return NextResponse.json(
+            { error: "Cannot remove the last remaining SUPER_ADMIN account." },
+            { status: 400 }
+          );
+        }
+      }
+
       const deleted = await deleteAdminUser(id);
       await appendAuditLog({
         actor_type: "admin",
@@ -65,7 +97,7 @@ export async function POST(request: Request) {
         action: "delete_admin_user",
         entity_type: "admin_users",
         entity_id: id,
-        summary: `Removed admin user ${id}`,
+        summary: `Removed admin user ${target.email} (${target.role})`,
         status: deleted ? "ok" : "error",
       });
       return NextResponse.json({ ok: deleted, data: { deleted, id } });

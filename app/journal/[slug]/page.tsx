@@ -2,6 +2,7 @@ import React from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { DispatchReaderClient } from "@/components/journal/DispatchReaderClient";
+import { getAuthenticatedAdmin } from "@/lib/auth/admin-auth";
 import { getDispatchBySlug, getDispatches } from "@/lib/db/repository";
 
 export const dynamic = "force-dynamic";
@@ -12,9 +13,23 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const dispatch = await getDispatchBySlug(slug);
+  const dispatch = await getDispatchBySlug(slug, { includeUnpublished: true });
   if (!dispatch) {
     return { title: "Dispatch Not Found | G-Gravitator Journal" };
+  }
+  if (dispatch.is_published === false) {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return {
+        title: "Dispatch Not Found | G-Gravitator Journal",
+        robots: { index: false, follow: false },
+      };
+    }
+    return {
+      title: `[Admin Preview] Issue ${dispatch.issue_number}: ${dispatch.title}`,
+      description: dispatch.subtitle,
+      robots: { index: false, follow: false },
+    };
   }
   return {
     title: `Issue ${dispatch.issue_number}: ${dispatch.title}`,
@@ -36,12 +51,21 @@ export default async function DispatchArticlePage({
 }) {
   const { slug } = await params;
   const [dispatch, allDispatches] = await Promise.all([
-    getDispatchBySlug(slug),
+    getDispatchBySlug(slug, { includeUnpublished: true }),
     getDispatches(),
   ]);
 
-  if (!dispatch || dispatch.is_published === false) {
+  if (!dispatch) {
     notFound();
+  }
+
+  let isAdminPreview = false;
+  if (dispatch.is_published === false) {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      notFound();
+    }
+    isAdminPreview = true;
   }
 
   const otherDispatches = allDispatches.filter((d) => d.slug !== dispatch.slug);
@@ -50,6 +74,7 @@ export default async function DispatchArticlePage({
     <DispatchReaderClient
       dispatch={dispatch}
       otherDispatches={otherDispatches}
+      isAdminPreview={isAdminPreview}
     />
   );
 }

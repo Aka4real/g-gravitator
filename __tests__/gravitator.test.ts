@@ -1,11 +1,15 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { HarmBlockThreshold } from "@google/genai";
+import { HarmBlockThreshold, ThinkingLevel } from "@google/genai";
 import {
   buildMaxPermissionConfig,
+  buildThinkingConfigForModel,
+  ensureWavAudioBuffer,
   GEMINI_DEFAULT_MODEL,
   GEMINI_MAX_OUTPUT_TOKENS,
   GEMINI_MAX_PERMISSION_SAFETY_SETTINGS,
   getGeminiModelName,
+  normalizeAudioMimeType,
+  wrapPcmAsWav,
 } from "@/lib/gemini/client";
 import { evaluateGraduationScorecard } from "@/lib/scorecard";
 import {
@@ -29,7 +33,12 @@ import {
   verifySessionToken,
 } from "@/lib/auth/admin-auth";
 import { submitAndVerifyHackathonUrl } from "@/lib/ingestion/hackathons";
-import { executeOpsTool, OPS_TOOLS } from "@/lib/ops/tools";
+import { buildVoiceSummary } from "@/lib/ops/ai-agent";
+import {
+  executeOpsTool,
+  getGeminiFunctionDeclarations,
+  OPS_TOOLS,
+} from "@/lib/ops/tools";
 import { generateHackathonIcs } from "@/lib/ics";
 import { heuristicSynthesizeNews } from "@/lib/ingestion/news/synthesize";
 import { SEED_HACKATHONS } from "@/lib/seed-fallback";
@@ -316,6 +325,144 @@ describe("Disconnected Ops Auth, Moderation Gate & Unified Tool Registry", () =>
 
     const policy = await getAiPermissions();
     expect(policy.can_delete_posts).toBe(false);
+  });
+
+  it("enforces can_approve_posts and can_revoke_approval on update_news_item and update_hackathon and supports get_post_details", async () => {
+    await updateAiPermissions({
+      ai_enabled: true,
+      can_edit_posts: true,
+      can_approve_posts: false,
+      can_revoke_approval: false,
+    });
+
+    const store = readLocalStore();
+    const publishedNews = store.news_items.find((n) => n.is_published);
+    const pendingHack = store.hackathons.find((h) => !h.is_published);
+    expect(publishedNews).toBeDefined();
+    expect(pendingHack).toBeDefined();
+
+    // Attempting to unpublish via update_news_item without can_revoke_approval must fail
+    const revokeViaEdit = await executeOpsTool(
+      "update_news_item",
+      { id: publishedNews!.id, is_published: false },
+      { actorType: "ai_assistant", actorLabel: "AI Operator" }
+    );
+    expect(revokeViaEdit.ok).toBe(false);
+    expect(revokeViaEdit.error).toContain("can_revoke_approval");
+
+    // Attempting to publish via update_hackathon without can_approve_posts must fail
+    const approveViaEdit = await executeOpsTool(
+      "update_hackathon",
+      { id: pendingHack!.id, is_published: true },
+      { actorType: "ai_assistant", actorLabel: "AI Operator" }
+    );
+    expect(approveViaEdit.ok).toBe(false);
+    expect(approveViaEdit.error).toContain("can_approve_posts");
+
+    // get_post_details fetches full records by slug/code/id
+    const labRes = await executeOpsTool(
+      "get_post_details",
+      { entity: "lab", id_or_slug: "G-01" },
+      { actorType: "ai_assistant", actorLabel: "AI Operator" }
+    );
+    expect(labRes.ok).toBe(true);
+    expect((labRes.data?.item as { code: string }).code).toBe("G-01");
+  });
+});
+
+describe("AI Voice Pipeline & Gemini Function Schema Integrity", () => {
+  it("strips browser codec suffixes from audio MIME types for Gemini STT compatibility", () => {
+    expect(normalizeAudioMimeType("audio/webm;codecs=opus")).toBe("audio/webm");
+    expect(normalizeAudioMimeType("video/webm;codecs=vp8,opus")).toBe("audio/webm");
+    expect(normalizeAudioMimeType("audio/mp4;codecs=mp4a.40.2")).toBe("audio/mp4");
+    expect(normalizeAudioMimeType("audio/ogg; codecs=opus")).toBe("audio/ogg");
+    expect(normalizeAudioMimeType("audio/x-m4a")).toBe("audio/mp4");
+    expect(normalizeAudioMimeType("")).toBe("audio/webm");
+  });
+
+  it("wraps headerless raw L16 PCM TTS output into valid RIFF WAV and preserves existing WAV headers", () => {
+    const rawPcm = Buffer.alloc(4800, 0x11);
+    const wrapped = ensureWavAudioBuffer([rawPcm], "audio/L16;codec=pcm;rate=24000");
+    expect(wrapped.mimeType).toBe("audio/wav");
+    expect(wrapped.buffer.subarray(0, 4).toString("ascii")).toBe("RIFF");
+    expect(wrapped.buffer.subarray(8, 12).toString("ascii")).toBe("WAVE");
+    expect(wrapped.buffer.readUInt32LE(24)).toBe(24000);
+    expect(wrapped.buffer.readUInt32LE(40)).toBe(rawPcm.length);
+    expect(wrapped.buffer.length).toBe(44 + rawPcm.length);
+
+    // Passing a complete RIFF WAV passes through untouched
+    const existingWav = wrapPcmAsWav(Buffer.alloc(1600, 0x22), 24000);
+    const preserved = ensureWavAudioBuffer([existingWav], "audio/wav");
+    expect(preserved.buffer.equals(existingWav)).toBe(true);
+
+    // Multi-part WAV chunks merge into one valid WAV payload
+    const chunkA = wrapPcmAsWav(Buffer.alloc(800, 0x33), 24000);
+    const chunkB = wrapPcmAsWav(Buffer.alloc(1200, 0x44), 24000);
+    const merged = ensureWavAudioBuffer([chunkA, chunkB], "audio/wav");
+    expect(merged.buffer.subarray(0, 4).toString("ascii")).toBe("RIFF");
+    expect(merged.buffer.readUInt32LE(40)).toBe(2000);
+    expect(merged.buffer.length).toBe(44 + 2000);
+  });
+
+  it("applies ThinkingLevel only on supported Gemini 3.x/4.x models and omits it on 2.5/TTS/Transcribe models", () => {
+    expect(buildThinkingConfigForModel("gemini-3.8-flash", "low")).toEqual({
+      thinkingLevel: ThinkingLevel.LOW,
+    });
+    expect(buildThinkingConfigForModel("gemini-3.8-flash", "medium")).toEqual({
+      thinkingLevel: ThinkingLevel.MEDIUM,
+    });
+    expect(buildThinkingConfigForModel("gemini-2.5-flash", "low")).toBeUndefined();
+    expect(buildThinkingConfigForModel("gemini-3.8-flash-lite-tts", "low")).toBeUndefined();
+    expect(buildThinkingConfigForModel("gemini-3.5-transcribe", "low")).toBeUndefined();
+  });
+
+  it("sanitizes markdown, URLs, UUIDs, and tool names for natural spoken TTS", () => {
+    const raw = `## Done!
+Created **Issue 005** with cover \`/api/media/med-1234abcd\` and ID 550e8400-e29b-41d4-a716-446655440000.
+See [Live Link](https://ggravitator.xyz/journal/test) and check \`pending_reviews\`.
+\`\`\`ts
+const x = 1;
+\`\`\``;
+    const spoken = buildVoiceSummary(raw);
+    expect(spoken).not.toContain("https://");
+    expect(spoken).not.toContain("550e8400");
+    expect(spoken).not.toContain("/api/media/");
+    expect(spoken).not.toContain("```");
+    expect(spoken).not.toContain("pending_reviews");
+    expect(spoken).toContain("Issue 005");
+    expect(spoken).toContain("Live Link");
+  });
+
+  it("exposes strictly typed Gemini function declarations without admin_only tools or bare object schemas", () => {
+    const decls = getGeminiFunctionDeclarations();
+    expect(decls.length).toBeGreaterThanOrEqual(25);
+    expect(decls.some((d) => d.name === "update_ai_permissions")).toBe(false);
+    expect(decls.some((d) => d.name === "get_post_details")).toBe(true);
+
+    const assertNoBareObjects = (node: unknown, pathLabel: string) => {
+      if (!node || typeof node !== "object") return;
+      const obj = node as Record<string, unknown>;
+      const t = String(obj.type || "").toLowerCase();
+      if (t === "object") {
+        const props = obj.properties as Record<string, unknown> | undefined;
+        expect(
+          props && Object.keys(props).length > 0,
+          `Bare object schema without properties at ${pathLabel}`
+        ).toBe(true);
+        if (props) {
+          for (const [k, v] of Object.entries(props)) {
+            assertNoBareObjects(v, `${pathLabel}.${k}`);
+          }
+        }
+      }
+      if (t === "array" && obj.items) {
+        assertNoBareObjects(obj.items, `${pathLabel}[]`);
+      }
+    };
+
+    for (const d of decls) {
+      assertNoBareObjects(d.parameters, d.name || "unnamed");
+    }
   });
 });
 

@@ -51,6 +51,14 @@ export interface OpsAdminSummary {
   last_login_at?: string | null;
 }
 
+export interface OpsSystemHealth {
+  geminiConfigured: boolean;
+  geminiModel: string;
+  supabaseConfigured: boolean;
+  storageMode: "supabase" | "local";
+  resendConfigured: boolean;
+}
+
 export interface OpsBootstrapData {
   user: OpsUserInfo;
   dispatches: Dispatch[];
@@ -67,4 +75,5 @@ export interface OpsBootstrapData {
   adminInvites: AdminInvite[];
   auditLogs: AuditLogEntry[];
   mcpEndpointUrl: string;
+  systemHealth: OpsSystemHealth;
 }

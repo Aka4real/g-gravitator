@@ -162,6 +162,155 @@ function asDesignConfig(val: unknown): PostDesignConfig | undefined {
   return design;
 }
 
+const DISPATCH_CATEGORIES: DispatchCategory[] = [
+  "ARCHITECTURE",
+  "POST-MORTEM",
+  "AI SYSTEMS",
+  "HACKATHON LOG",
+  "DESIGN ENGINEERING",
+];
+
+const NEWS_CATEGORIES: NewsCategory[] = [
+  "MODELS",
+  "AGENTS",
+  "DEVTOOLS",
+  "RESEARCH",
+  "BUSINESS",
+  "OPEN_SOURCE",
+];
+
+const HACKATHON_FORMATS: HackathonFormat[] = ["ONLINE", "IN_PERSON", "HYBRID"];
+
+const OXAKALABS_STATUSES: OxakalabsStatus[] = [
+  "NONE",
+  "SCOUTING",
+  "SQUAD_DEPLOYED",
+  "SUBMITTED",
+  "WON",
+];
+
+const LAB_DIVISIONS: LabDivision[] = ["LABS", "SKUNKWORKS"];
+
+const LAB_STATUSES: LabProjectStatus[] = [
+  "CONCEPT",
+  "PROTOTYPING",
+  "R&D",
+  "SKUNKWORKS CANDIDATE",
+  "BETA",
+  "LIVE",
+  "ARCHIVED",
+];
+
+function normalizeEnum<T extends string>(
+  raw: unknown,
+  allowed: readonly T[],
+  fallback: T
+): T {
+  if (typeof raw !== "string") return fallback;
+  const upper = raw.trim().toUpperCase().replace(/-/g, "_");
+  const exact = allowed.find(
+    (v) => v.toUpperCase() === raw.trim().toUpperCase() || v.toUpperCase().replace(/-/g, "_") === upper
+  );
+  return exact ?? fallback;
+}
+
+function normalizeIsoDate(raw: unknown, fallbackDaysAhead?: number): string {
+  if (typeof raw === "string" && raw.trim()) {
+    const parsed = new Date(raw.trim());
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString();
+    }
+  }
+  if (fallbackDaysAhead !== undefined) {
+    return new Date(Date.now() + fallbackDaysAhead * 24 * 3600 * 1000).toISOString();
+  }
+  throw new Error(
+    "Invalid deadline_at timestamp. Provide a valid ISO-8601 date string (e.g. 2026-12-15T23:59:00Z)."
+  );
+}
+
+function assertPublishPermission(
+  actor: OpsActorContext,
+  policy: AiPermissionsPolicy,
+  requestedPublish: boolean,
+  entityLabel: string
+): void {
+  if (actor.actorType === "admin") return;
+  if (actor.actorType === "mcp" && actor.permissionsMode === "full") return;
+  if (requestedPublish && !policy.can_approve_posts) {
+    throw new Error(
+      `Permission "can_approve_posts" is required to approve/publish ${entityLabel}.`
+    );
+  }
+  if (!requestedPublish && !policy.can_revoke_approval) {
+    throw new Error(
+      `Permission "can_revoke_approval" is required to unpublish/revoke ${entityLabel}.`
+    );
+  }
+}
+
+const LINK_REF_ITEM_SCHEMA = {
+  type: "object",
+  properties: {
+    label: { type: "string", description: "Visible link label" },
+    url: { type: "string", description: "Full https:// URL" },
+    description: { type: "string", description: "Optional short link note" },
+  },
+  required: ["label", "url"],
+};
+
+const POST_DESIGN_SCHEMA = {
+  type: "object",
+  description: "Optional visual styling metadata for the post",
+  properties: {
+    accent_color: { type: "string", description: "Hex accent color e.g. #FF3B1F or #10B981" },
+    surface_tint: { type: "string", description: "Optional hex backdrop glow tint" },
+    hero_layout: {
+      type: "string",
+      enum: ["editorial", "split", "fullbleed", "minimal"],
+    },
+    callout_style: {
+      type: "string",
+      enum: ["left-bar", "glass-card", "tinted-banner"],
+    },
+    featured_links: {
+      type: "array",
+      items: LINK_REF_ITEM_SCHEMA,
+    },
+    gallery_images: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          url: { type: "string" },
+          caption: { type: "string" },
+          alt: { type: "string" },
+        },
+        required: ["url"],
+      },
+    },
+  },
+};
+
+const SCORECARD_SCHEMA = {
+  type: "object",
+  description: "25-point OXAKALABS Graduation Scorecard (1-5 per axis)",
+  properties: {
+    pain_intensity: { type: "number", minimum: 1, maximum: 5 },
+    willingness_to_pay: { type: "number", minimum: 1, maximum: 5 },
+    technical_moat: { type: "number", minimum: 1, maximum: 5 },
+    distribution_hook: { type: "number", minimum: 1, maximum: 5 },
+    lean_maintainability: { type: "number", minimum: 1, maximum: 5 },
+  },
+  required: [
+    "pain_intensity",
+    "willingness_to_pay",
+    "technical_moat",
+    "distribution_hook",
+    "lean_maintainability",
+  ],
+};
+
 export function checkToolPermission(
   tool: OpsToolDefinition,
   actor: OpsActorContext,
@@ -434,6 +583,56 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
     },
   },
   {
+    name: "get_post_details",
+    description:
+      "Retrieve the full record (including full markdown body, design metadata, links, and scorecard) for a single dispatch, news item, hackathon, or lab project by ID or slug.",
+    requiredPermission: null,
+    inputSchema: {
+      type: "object",
+      properties: {
+        entity: {
+          type: "string",
+          enum: ["dispatch", "news", "hackathon", "lab"],
+        },
+        id_or_slug: { type: "string" },
+      },
+      required: ["entity", "id_or_slug"],
+    },
+    execute: async (args) => {
+      const entity = asString(args.entity);
+      const key = asString(args.id_or_slug).trim();
+      if (!key) throw new Error("Provide id_or_slug.");
+
+      if (entity === "dispatch") {
+        const all = await getDispatches(undefined, undefined, { includeUnpublished: true });
+        const found = all.find((d) => d.id === key || d.slug === key || d.issue_number === key);
+        if (!found) throw new Error(`Dispatch "${key}" not found.`);
+        return { entity, item: found };
+      }
+      if (entity === "news") {
+        const { items } = await getNewsItems({ includeUnpublished: true });
+        const found = items.find((n) => n.id === key || n.url_hash === key);
+        if (!found) throw new Error(`News item "${key}" not found.`);
+        return { entity, item: found };
+      }
+      if (entity === "hackathon") {
+        const { items } = await getHackathons({ includeUnpublished: true, includeExpired: true });
+        const found = items.find((h) => h.id === key || h.slug === key);
+        if (!found) throw new Error(`Hackathon "${key}" not found.`);
+        return { entity, item: found };
+      }
+      if (entity === "lab") {
+        const all = await getLabProjects();
+        const found = all.find(
+          (p) => p.id === key || p.slug === key || p.code.toLowerCase() === key.toLowerCase()
+        );
+        if (!found) throw new Error(`Lab project "${key}" not found.`);
+        return { entity, item: found };
+      }
+      throw new Error("Invalid entity type.");
+    },
+  },
+  {
     name: "create_dispatch",
     description:
       "Create and design a Journal Lab Dispatch post with rich markdown (headings, callouts > [!ACCENT], ![alt](url) images, [link](url)), custom accent color, cover image, and featured links. Respects AI direct-publish vs review-queue permission.",
@@ -469,18 +668,11 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
         },
         featured_links: {
           type: "array",
-          items: {
-            type: "object",
-            properties: {
-              label: { type: "string" },
-              url: { type: "string" },
-              description: { type: "string" },
-            },
-          },
+          items: LINK_REF_ITEM_SCHEMA,
         },
         is_featured: { type: "boolean" },
         is_published: { type: "boolean" },
-        design: { type: "object" },
+        design: POST_DESIGN_SCHEMA,
       },
       required: ["title", "subtitle", "category", "mdx_content"],
     },
@@ -519,7 +711,7 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
       const created = await createDispatch({
         title: asString(args.title),
         subtitle: asString(args.subtitle),
-        category: asString(args.category, "AI SYSTEMS") as DispatchCategory,
+        category: normalizeEnum(args.category, DISPATCH_CATEGORIES, "AI SYSTEMS"),
         mdx_content: asString(args.mdx_content),
         tags: asStringArray(args.tags),
         author_name: asOptionalString(args.author_name),
@@ -542,7 +734,7 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
   {
     name: "update_dispatch",
     description:
-      "Edit an existing Journal Lab Dispatch (title, subtitle, category, content, tags, cover image, accent color, featured status, links, publish state).",
+      "Edit an existing Journal Lab Dispatch (title, subtitle, category, author, content, tags, cover image, accent color, featured status, links, publish state).",
     requiredPermission: "can_edit_posts",
     inputSchema: {
       type: "object",
@@ -560,12 +752,14 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
             "DESIGN ENGINEERING",
           ],
         },
+        author_name: { type: "string" },
+        author_role: { type: "string" },
         mdx_content: { type: "string" },
         tags: { type: "array", items: { type: "string" } },
         cover_image_url: { type: "string" },
         is_featured: { type: "boolean" },
         is_published: { type: "boolean" },
-        design: { type: "object" },
+        design: POST_DESIGN_SCHEMA,
       },
       required: ["id"],
     },
@@ -577,7 +771,11 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
       const patch: Record<string, unknown> = {};
       if (asOptionalString(args.title)) patch.title = asOptionalString(args.title);
       if (asOptionalString(args.subtitle)) patch.subtitle = asOptionalString(args.subtitle);
-      if (asOptionalString(args.category)) patch.category = asOptionalString(args.category);
+      if (asOptionalString(args.category)) {
+        patch.category = normalizeEnum(args.category, DISPATCH_CATEGORIES, existing.category);
+      }
+      if (asOptionalString(args.author_name)) patch.author_name = asOptionalString(args.author_name);
+      if (asOptionalString(args.author_role)) patch.author_role = asOptionalString(args.author_role);
       if (asOptionalString(args.mdx_content)) patch.mdx_content = asOptionalString(args.mdx_content);
       if (asStringArray(args.tags)) patch.tags = asStringArray(args.tags);
       if (typeof args.cover_image_url === "string") {
@@ -589,9 +787,7 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
       const reqPub = asBoolean(args.is_published);
       if (reqPub !== undefined) {
         const policy = await getAiPermissions();
-        if (actor.actorType !== "admin" && reqPub && !policy.can_approve_posts) {
-          throw new Error("AI does not have permission to approve/publish dispatches.");
-        }
+        assertPublishPermission(actor, policy, reqPub, "dispatches");
         patch.is_published = reqPub;
         patch.approval_status = reqPub ? "APPROVED" : "PENDING_REVIEW";
       }
@@ -639,8 +835,8 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
         is_pinned: { type: "boolean" },
         is_published: { type: "boolean" },
         image_url: { type: "string" },
-        related_links: { type: "array", items: { type: "object" } },
-        design: { type: "object" },
+        related_links: { type: "array", items: LINK_REF_ITEM_SCHEMA },
+        design: POST_DESIGN_SCHEMA,
       },
       required: ["title", "source_name", "source_url", "category", "gravity_take"],
     },
@@ -656,7 +852,7 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
         title: asString(args.title),
         source_name: asString(args.source_name),
         source_url: asString(args.source_url),
-        category: asString(args.category, "AI" === "AI" ? "DEVTOOLS" : "MODELS") as NewsCategory,
+        category: normalizeEnum(args.category, NEWS_CATEGORIES, "DEVTOOLS"),
         gravity_take: asString(args.gravity_take),
         impact_score: asNumber(args.impact_score) ?? 86,
         is_pinned: asBoolean(args.is_pinned) ?? false,
@@ -695,12 +891,12 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
         is_pinned: { type: "boolean" },
         is_published: { type: "boolean" },
         image_url: { type: "string" },
-        related_links: { type: "array", items: { type: "object" } },
-        design: { type: "object" },
+        related_links: { type: "array", items: LINK_REF_ITEM_SCHEMA },
+        design: POST_DESIGN_SCHEMA,
       },
       required: ["id"],
     },
-    execute: async (args) => {
+    execute: async (args, actor) => {
       const id = asString(args.id);
       const existing = await getNewsItemById(id);
       if (!existing) throw new Error(`News item ${id} not found.`);
@@ -709,12 +905,18 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
       if (asOptionalString(args.title)) patch.title = asOptionalString(args.title);
       if (asOptionalString(args.source_name)) patch.source_name = asOptionalString(args.source_name);
       if (asOptionalString(args.source_url)) patch.source_url = asOptionalString(args.source_url);
-      if (asOptionalString(args.category)) patch.category = asOptionalString(args.category);
+      if (asOptionalString(args.category)) {
+        patch.category = normalizeEnum(args.category, NEWS_CATEGORIES, existing.category);
+      }
       if (asOptionalString(args.gravity_take)) patch.gravity_take = asOptionalString(args.gravity_take);
-      if (asNumber(args.impact_score) !== undefined) patch.impact_score = asNumber(args.impact_score);
+      if (asNumber(args.impact_score) !== undefined) {
+        patch.impact_score = Math.min(100, Math.max(1, Math.round(asNumber(args.impact_score)!)));
+      }
       if (asBoolean(args.is_pinned) !== undefined) patch.is_pinned = asBoolean(args.is_pinned);
       if (asBoolean(args.is_published) !== undefined) {
         const pub = asBoolean(args.is_published)!;
+        const policy = await getAiPermissions();
+        assertPublishPermission(actor, policy, pub, "news items");
         patch.is_published = pub;
         patch.approval_status = pub ? "APPROVED" : "PENDING_REVIEW";
       }
@@ -746,7 +948,7 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
   {
     name: "create_hackathon",
     description:
-      "Create a Hackathon listing on the radar with prize pool, deadline, format, themes, OXAKALABS squad status, cover image, accent color, and related links.",
+      "Create a Hackathon listing on the radar with prize pool, ISO-8601 deadline_at, format, themes, OXAKALABS squad status, cover image, accent color, and related links.",
     requiredPermission: "can_create_posts",
     inputSchema: {
       type: "object",
@@ -756,7 +958,10 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
         summary: { type: "string" },
         prize_pool_usd: { type: "number" },
         prize_display: { type: "string" },
-        deadline_at: { type: "string" },
+        deadline_at: {
+          type: "string",
+          description: "ISO-8601 UTC deadline timestamp e.g. 2026-12-20T23:59:00Z",
+        },
         format: { type: "string", enum: ["ONLINE", "IN_PERSON", "HYBRID"] },
         location: { type: "string" },
         themes: { type: "array", items: { type: "string" } },
@@ -769,8 +974,8 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
         },
         is_featured: { type: "boolean" },
         is_published: { type: "boolean" },
-        related_links: { type: "array", items: { type: "object" } },
-        design: { type: "object" },
+        related_links: { type: "array", items: LINK_REF_ITEM_SCHEMA },
+        design: POST_DESIGN_SCHEMA,
       },
       required: ["title", "organizer", "summary", "deadline_at", "primary_url"],
     },
@@ -782,21 +987,25 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
         "hackathons",
         asBoolean(args.is_published)
       );
+      const deadlineIso = normalizeIsoDate(args.deadline_at, 14);
       const created = await createHackathon({
         title: asString(args.title),
         organizer: asString(args.organizer),
         summary: asString(args.summary),
         prize_pool_usd: asNumber(args.prize_pool_usd) ?? null,
         prize_display: asOptionalString(args.prize_display) || "Prizes + Credits",
-        deadline_at: asString(args.deadline_at),
-        format: (asOptionalString(args.format) || "ONLINE") as HackathonFormat,
+        deadline_at: deadlineIso,
+        format: normalizeEnum(args.format, HACKATHON_FORMATS, "ONLINE"),
         location: asOptionalString(args.location) || "Global / Remote",
         themes: asStringArray(args.themes) || ["AI", "Agents"],
         primary_url: asString(args.primary_url),
         source_tweet_url: asOptionalString(args.source_tweet_url) ?? null,
         image_url: asOptionalString(args.image_url) ?? null,
-        oxakalabs_status: (asOptionalString(args.oxakalabs_status) ||
-          "SCOUTING") as OxakalabsStatus,
+        oxakalabs_status: normalizeEnum(
+          args.oxakalabs_status,
+          OXAKALABS_STATUSES,
+          "SCOUTING"
+        ),
         is_featured: asBoolean(args.is_featured) ?? false,
         is_published: pub.isPublished,
         approval_status: pub.isPublished ? "APPROVED" : "PENDING_REVIEW",
@@ -815,7 +1024,7 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
   {
     name: "update_hackathon",
     description:
-      "Update any hackathon fields including title, summary, organizer, deadline, prize, OXAKALABS status, image_url, featured status, links, and publish state.",
+      "Update any hackathon fields including title, summary, organizer, deadline, prize, OXAKALABS status, source_tweet_url, image_url, featured status, links, and publish state.",
     requiredPermission: "can_edit_posts",
     inputSchema: {
       type: "object",
@@ -831,6 +1040,7 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
         location: { type: "string" },
         themes: { type: "array", items: { type: "string" } },
         primary_url: { type: "string" },
+        source_tweet_url: { type: "string" },
         image_url: { type: "string" },
         oxakalabs_status: {
           type: "string",
@@ -838,12 +1048,12 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
         },
         is_featured: { type: "boolean" },
         is_published: { type: "boolean" },
-        related_links: { type: "array", items: { type: "object" } },
-        design: { type: "object" },
+        related_links: { type: "array", items: LINK_REF_ITEM_SCHEMA },
+        design: POST_DESIGN_SCHEMA,
       },
       required: ["id"],
     },
-    execute: async (args) => {
+    execute: async (args, actor) => {
       const id = asString(args.id);
       const existing = await getHackathonById(id);
       if (!existing) throw new Error(`Hackathon ${id} not found.`);
@@ -854,14 +1064,27 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
         "organizer",
         "summary",
         "prize_display",
-        "deadline_at",
-        "format",
         "location",
         "primary_url",
-        "oxakalabs_status",
       ]) {
         const val = asOptionalString(args[field]);
         if (val !== undefined) patch[field] = val;
+      }
+      if (asOptionalString(args.deadline_at)) {
+        patch.deadline_at = normalizeIsoDate(args.deadline_at);
+      }
+      if (asOptionalString(args.format)) {
+        patch.format = normalizeEnum(args.format, HACKATHON_FORMATS, existing.format);
+      }
+      if (asOptionalString(args.oxakalabs_status)) {
+        patch.oxakalabs_status = normalizeEnum(
+          args.oxakalabs_status,
+          OXAKALABS_STATUSES,
+          existing.oxakalabs_status
+        );
+      }
+      if (typeof args.source_tweet_url === "string") {
+        patch.source_tweet_url = args.source_tweet_url.trim() || null;
       }
       if (asNumber(args.prize_pool_usd) !== undefined) {
         patch.prize_pool_usd = asNumber(args.prize_pool_usd);
@@ -873,6 +1096,8 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
       }
       if (asBoolean(args.is_published) !== undefined) {
         const pub = asBoolean(args.is_published)!;
+        const policy = await getAiPermissions();
+        assertPublishPermission(actor, policy, pub, "hackathons");
         patch.is_published = pub;
         patch.approval_status = pub ? "APPROVED" : "PENDING_REVIEW";
       }
@@ -1103,6 +1328,8 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
         name: { type: "string" },
         tagline: { type: "string" },
         description: { type: "string" },
+        thesis: { type: "string" },
+        architecture_notes: { type: "array", items: { type: "string" } },
         status: {
           type: "string",
           enum: [
@@ -1119,18 +1346,20 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
         live_url: { type: "string" },
         repo_url: { type: "string" },
         hackathon_origin: { type: "string" },
-        scorecard: { type: "object" },
+        scorecard: SCORECARD_SCHEMA,
       },
       required: ["code", "division", "name", "tagline", "description", "status"],
     },
     execute: async (args) => {
       const created = await createLabProject({
         code: asString(args.code),
-        division: asString(args.division, "SKUNKWORKS") as LabDivision,
+        division: normalizeEnum(args.division, LAB_DIVISIONS, "SKUNKWORKS"),
         name: asString(args.name),
         tagline: asString(args.tagline),
         description: asString(args.description),
-        status: asString(args.status, "PROTOTYPING") as LabProjectStatus,
+        thesis: asOptionalString(args.thesis),
+        architecture_notes: asStringArray(args.architecture_notes) ?? [],
+        status: normalizeEnum(args.status, LAB_STATUSES, "PROTOTYPING"),
         tech_stack: asStringArray(args.tech_stack) ?? [],
         live_url: asOptionalString(args.live_url) ?? null,
         repo_url: asOptionalString(args.repo_url) ?? null,
@@ -1146,7 +1375,7 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
   {
     name: "update_lab_project",
     description:
-      "Update a Labs or Skunkworks project (status, division, scorecard, tagline, description, URLs, tech stack).",
+      "Update a Labs or Skunkworks project (status, division, scorecard, tagline, description, thesis, architecture_notes, hackathon_origin, URLs, tech stack).",
     requiredPermission: "can_manage_labs",
     inputSchema: {
       type: "object",
@@ -1156,6 +1385,8 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
         name: { type: "string" },
         tagline: { type: "string" },
         description: { type: "string" },
+        thesis: { type: "string" },
+        architecture_notes: { type: "array", items: { type: "string" } },
         status: {
           type: "string",
           enum: [
@@ -1171,7 +1402,8 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
         tech_stack: { type: "array", items: { type: "string" } },
         live_url: { type: "string" },
         repo_url: { type: "string" },
-        scorecard: { type: "object" },
+        hackathon_origin: { type: "string" },
+        scorecard: SCORECARD_SCHEMA,
       },
       required: ["id"],
     },
@@ -1180,13 +1412,28 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
       const existing = await getLabProjectById(id);
       if (!existing) throw new Error(`Project ${id} not found.`);
       const patch: Record<string, unknown> = {};
-      for (const f of ["division", "name", "tagline", "description", "status"]) {
+      if (asOptionalString(args.division)) {
+        patch.division = normalizeEnum(args.division, LAB_DIVISIONS, existing.division);
+      }
+      if (asOptionalString(args.status)) {
+        patch.status = normalizeEnum(args.status, LAB_STATUSES, existing.status);
+      }
+      for (const f of ["name", "tagline", "description"]) {
         const v = asOptionalString(args[f]);
         if (v !== undefined) patch[f] = v;
+      }
+      if (typeof args.thesis === "string") {
+        patch.thesis = args.thesis.trim() || undefined;
+      }
+      if (asStringArray(args.architecture_notes)) {
+        patch.architecture_notes = asStringArray(args.architecture_notes);
       }
       if (asStringArray(args.tech_stack)) patch.tech_stack = asStringArray(args.tech_stack);
       if (typeof args.live_url === "string") patch.live_url = args.live_url || null;
       if (typeof args.repo_url === "string") patch.repo_url = args.repo_url || null;
+      if (typeof args.hackathon_origin === "string") {
+        patch.hackathon_origin = args.hackathon_origin.trim() || null;
+      }
       if (args.scorecard && typeof args.scorecard === "object") {
         patch.scorecard = args.scorecard;
       }
@@ -1227,7 +1474,11 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
     execute: async (args) => {
       const updated = await updateClientInquiryStatus(
         asString(args.id),
-        asString(args.status) as InquiryStatus
+        normalizeEnum(
+          args.status,
+          ["NEW", "REVIEWED", "DISCOVERY_CALL", "CLOSED_WON", "ARCHIVED"] as const,
+          "REVIEWED"
+        ) as InquiryStatus
       );
       if (!updated) throw new Error("Inquiry not found.");
       return { inquiry: updated };
@@ -1275,10 +1526,18 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
         notes?: string;
       } = {};
       if (asOptionalString(args.status)) {
-        patch.status = asOptionalString(args.status) as OrbitApplicationStatus;
+        patch.status = normalizeEnum(
+          args.status,
+          ["NEW", "REVIEWING", "ACCEPTED", "WAITLISTED", "REJECTED"] as const,
+          "REVIEWING"
+        ) as OrbitApplicationStatus;
       }
       if (asOptionalString(args.track)) {
-        patch.track = asOptionalString(args.track) as OrbitTrack;
+        patch.track = normalizeEnum(
+          args.track,
+          ["AI_ENGINEERING", "FULLSTACK_SYSTEMS", "KINETIC_DESIGN"] as const,
+          "AI_ENGINEERING"
+        ) as OrbitTrack;
       }
       if (typeof args.notes === "string") {
         patch.notes = args.notes;
@@ -1496,7 +1755,30 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
-        patch: { type: "object" },
+        patch: {
+          type: "object",
+          properties: {
+            ai_enabled: { type: "boolean" },
+            full_admin_parity: { type: "boolean" },
+            can_create_posts: { type: "boolean" },
+            can_publish_directly_journal: { type: "boolean" },
+            can_publish_directly_news: { type: "boolean" },
+            can_publish_directly_hackathons: { type: "boolean" },
+            can_edit_posts: { type: "boolean" },
+            can_approve_posts: { type: "boolean" },
+            can_revoke_approval: { type: "boolean" },
+            can_delete_posts: { type: "boolean" },
+            can_manage_labs: { type: "boolean" },
+            can_manage_inquiries: { type: "boolean" },
+            can_manage_orbit_and_subscribers: { type: "boolean" },
+            can_trigger_ingestion: { type: "boolean" },
+            can_web_research: { type: "boolean" },
+            can_manage_media: { type: "boolean" },
+            community_hackathons_require_approval: { type: "boolean" },
+            mcp_enabled: { type: "boolean" },
+            mcp_inherit_ai_permissions: { type: "boolean" },
+          },
+        },
       },
       required: ["patch"],
     },
@@ -1558,6 +1840,8 @@ export async function executeOpsTool(
         ? (data.newsItem as { id: string }).id
         : typeof (data.hackathon as { id?: string } | undefined)?.id === "string"
         ? (data.hackathon as { id: string }).id
+        : typeof (data.project as { id?: string } | undefined)?.id === "string"
+        ? (data.project as { id: string }).id
         : null;
 
     await appendAuditLog({
@@ -1585,7 +1869,7 @@ export async function executeOpsTool(
 }
 
 export function getGeminiFunctionDeclarations(): FunctionDeclaration[] {
-  return OPS_TOOLS.map((t) => ({
+  return OPS_TOOLS.filter((t) => t.requiredPermission !== "admin_only").map((t) => ({
     name: t.name,
     description: t.description,
     parametersJsonSchema: t.inputSchema,

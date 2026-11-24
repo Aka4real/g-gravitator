@@ -15,6 +15,8 @@ import {
   listMcpTokens,
   listMediaAssets,
 } from "@/lib/db/repository";
+import { getGeminiModelName, isGeminiConfigured } from "@/lib/gemini/client";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 export async function GET(request: Request) {
   const admin = await getAuthenticatedAdmin();
@@ -56,6 +58,8 @@ export async function GET(request: Request) {
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
     `${url.protocol}//${url.host}`;
+
+  const supabaseConfigured = isSupabaseConfigured();
 
   return NextResponse.json({
     user: admin,
@@ -100,5 +104,12 @@ export async function GET(request: Request) {
     adminInvites,
     auditLogs,
     mcpEndpointUrl: `${baseUrl}/api/mcp`,
+    systemHealth: {
+      geminiConfigured: isGeminiConfigured(),
+      geminiModel: getGeminiModelName(),
+      supabaseConfigured,
+      storageMode: supabaseConfigured ? "supabase" : "local",
+      resendConfigured: Boolean(process.env.RESEND_API_KEY?.trim()),
+    },
   });
 }

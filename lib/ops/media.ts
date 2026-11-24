@@ -111,6 +111,7 @@ export async function generateAndStoreImage(params: {
 
   const generated = await generateGeminiImage({
     prompt: `${params.prompt}${params.accentColor ? `. Primary accent color: ${params.accentColor}.` : ""} Clean editorial dark-obsidian composition, crisp contrast, zero gibberish text.`,
+    aspectRatio: "16:9",
   });
 
   if (generated) {

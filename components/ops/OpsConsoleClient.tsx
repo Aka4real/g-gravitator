@@ -8,6 +8,7 @@ import {
   Check,
   CheckCircle2,
   Copy,
+  Database,
   Download,
   Edit3,
   ExternalLink,
@@ -26,6 +27,7 @@ import {
   Plus,
   Radar,
   RefreshCw,
+  Search,
   Shield,
   Sparkles,
   Star,
@@ -73,6 +75,20 @@ interface OpsConsoleClientProps {
   initialData: OpsBootstrapData | null;
 }
 
+const PARITY_CAPABILITY_KEYS: (keyof AiPermissionsPolicy)[] = [
+  "can_create_posts",
+  "can_edit_posts",
+  "can_approve_posts",
+  "can_revoke_approval",
+  "can_delete_posts",
+  "can_manage_labs",
+  "can_manage_inquiries",
+  "can_manage_orbit_and_subscribers",
+  "can_trigger_ingestion",
+  "can_web_research",
+  "can_manage_media",
+];
+
 function formatUtc(iso: string | null | undefined): string {
   if (!iso) return "--";
   const d = new Date(iso);
@@ -87,14 +103,22 @@ export function OpsConsoleClient({
   initialData,
 }: OpsConsoleClientProps) {
   const [user, setUser] = useState<OpsUserInfo | null>(initialUser);
+  const [hasAdminsState, setHasAdminsState] = useState(hasAdmins);
+  const [requiresInviteState, setRequiresInviteState] = useState(requiresInviteCode);
   const [data, setData] = useState<OpsBootstrapData | null>(initialData);
   const [loadingBootstrap, setLoadingBootstrap] = useState(false);
+  const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ConsoleTab>("OVERVIEW");
+  const [searchQuery, setSearchQuery] = useState("");
   const [notice, setNotice] = useState<{
     tone: "info" | "success" | "error";
     text: string;
   } | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
+
+  // Two-step destructive delete confirmation
+  const [confirmDeleteKey, setConfirmDeleteKey] = useState<string | null>(null);
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Designer Modal
   const [designerState, setDesignerState] = useState<{
@@ -113,6 +137,9 @@ export function OpsConsoleClient({
   const [labName, setLabName] = useState("");
   const [labTagline, setLabTagline] = useState("");
   const [labDesc, setLabDesc] = useState("");
+  const [labThesis, setLabThesis] = useState("");
+  const [labArchNotes, setLabArchNotes] = useState("");
+  const [labHackOrigin, setLabHackOrigin] = useState("");
   const [labStatus, setLabStatus] = useState<LabProjectStatus>("PROTOTYPING");
   const [labStack, setLabStack] = useState("Next.js, TypeScript, Gemini 3.8 Flash");
   const [labLiveUrl, setLabLiveUrl] = useState("");
@@ -125,9 +152,13 @@ export function OpsConsoleClient({
     lean_maintainability: 4,
   });
 
+  // Orbit notes draft state keyed by application ID
+  const [orbitNotesDraft, setOrbitNotesDraft] = useState<Record<string, string>>({});
+
   // Media Tab Controls
   const [mediaPrompt, setMediaPrompt] = useState("");
   const [mediaImportUrl, setMediaImportUrl] = useState("");
+  const [mediaUploading, setMediaUploading] = useState(false);
   const mediaUploadRef = useRef<HTMLInputElement | null>(null);
 
   // Subscriber add
@@ -145,6 +176,7 @@ export function OpsConsoleClient({
 
   const refreshBootstrap = async () => {
     setLoadingBootstrap(true);
+    setBootstrapError(null);
     try {
       const res = await fetch("/api/ops/bootstrap", { cache: "no-store" });
       if (res.status === 401) {
@@ -152,11 +184,22 @@ export function OpsConsoleClient({
         setData(null);
         return;
       }
-      if (res.ok) {
-        const next = (await res.json()) as OpsBootstrapData;
-        setData(next);
-        setUser(next.user);
+      if (!res.ok) {
+        const errJson = (await res.json().catch(() => null)) as { error?: string } | null;
+        const msg = errJson?.error || `Failed to load Command Center (HTTP ${res.status}).`;
+        setBootstrapError(msg);
+        setNotice({ tone: "error", text: msg });
+        return;
       }
+      const next = (await res.json()) as OpsBootstrapData;
+      setData(next);
+      setUser(next.user);
+      setHasAdminsState(true);
+      setRequiresInviteState(true);
+    } catch {
+      const msg = "Network error loading Command Center data.";
+      setBootstrapError(msg);
+      setNotice({ tone: "error", text: msg });
     } finally {
       setLoadingBootstrap(false);
     }
@@ -164,6 +207,8 @@ export function OpsConsoleClient({
 
   const handleAuthenticated = async (loggedInUser: OpsUserInfo) => {
     setUser(loggedInUser);
+    setHasAdminsState(true);
+    setRequiresInviteState(true);
     await refreshBootstrap();
   };
 
@@ -172,9 +217,31 @@ export function OpsConsoleClient({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "logout" }),
-    });
+    }).catch(() => null);
+
+    // Refresh live auth flags so the login screen never reverts to stale SSR first-run signup state
+    try {
+      const statusRes = await fetch("/api/ops/auth", { cache: "no-store" });
+      if (statusRes.ok) {
+        const info = (await statusRes.json()) as {
+          hasAdmins?: boolean;
+          requiresInviteCode?: boolean;
+        };
+        if (typeof info.hasAdmins === "boolean") setHasAdminsState(info.hasAdmins);
+        if (typeof info.requiresInviteCode === "boolean") {
+          setRequiresInviteState(info.requiresInviteCode);
+        }
+      }
+    } catch {
+      setHasAdminsState(true);
+      setRequiresInviteState(true);
+    }
+
+    setAiOpen(false);
+    setDesignerState(null);
     setUser(null);
     setData(null);
+    setBootstrapError(null);
   };
 
   const runAction = async (
@@ -208,6 +275,28 @@ export function OpsConsoleClient({
     } finally {
       setBusyAction(null);
     }
+  };
+
+  const handleConfirmedDelete = (
+    key: string,
+    action: string,
+    args: Record<string, unknown>,
+    successMsg: string
+  ) => {
+    if (confirmDeleteKey === key) {
+      if (confirmTimerRef.current) {
+        clearTimeout(confirmTimerRef.current);
+        confirmTimerRef.current = null;
+      }
+      setConfirmDeleteKey(null);
+      void runAction(action, args, successMsg);
+      return;
+    }
+    setConfirmDeleteKey(key);
+    if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+    confirmTimerRef.current = setTimeout(() => {
+      setConfirmDeleteKey((curr) => (curr === key ? null : curr));
+    }, 4500);
   };
 
   const handleCopy = async (label: string, text: string) => {
@@ -279,11 +368,73 @@ export function OpsConsoleClient({
     return list;
   }, [data]);
 
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+
+  const filteredDispatches = useMemo(() => {
+    if (!data) return [];
+    if (!normalizedSearch) return data.dispatches;
+    return data.dispatches.filter((d) =>
+      `${d.issue_number} ${d.title} ${d.subtitle} ${d.category} ${d.tags.join(" ")}`
+        .toLowerCase()
+        .includes(normalizedSearch)
+    );
+  }, [data, normalizedSearch]);
+
+  const filteredNews = useMemo(() => {
+    if (!data) return [];
+    if (!normalizedSearch) return data.news;
+    return data.news.filter((n) =>
+      `${n.title} ${n.source_name} ${n.category} ${n.gravity_take}`
+        .toLowerCase()
+        .includes(normalizedSearch)
+    );
+  }, [data, normalizedSearch]);
+
+  const filteredHackathons = useMemo(() => {
+    if (!data) return [];
+    if (!normalizedSearch) return data.hackathons;
+    return data.hackathons.filter((h) =>
+      `${h.title} ${h.organizer} ${h.prize_display} ${h.location} ${h.themes.join(" ")}`
+        .toLowerCase()
+        .includes(normalizedSearch)
+    );
+  }, [data, normalizedSearch]);
+
+  const filteredLabs = useMemo(() => {
+    if (!data) return [];
+    if (!normalizedSearch) return data.labs;
+    return data.labs.filter((p) =>
+      `${p.code} ${p.name} ${p.tagline} ${p.division} ${p.status} ${p.tech_stack.join(" ")}`
+        .toLowerCase()
+        .includes(normalizedSearch)
+    );
+  }, [data, normalizedSearch]);
+
+  const filteredInquiries = useMemo(() => {
+    if (!data) return [];
+    if (!normalizedSearch) return data.inquiries;
+    return data.inquiries.filter((i) =>
+      `${i.name} ${i.email} ${i.company || ""} ${i.tier} ${i.project_brief}`
+        .toLowerCase()
+        .includes(normalizedSearch)
+    );
+  }, [data, normalizedSearch]);
+
+  const filteredOrbit = useMemo(() => {
+    if (!data) return [];
+    if (!normalizedSearch) return data.orbit;
+    return data.orbit.filter((a) =>
+      `${a.full_name} ${a.email} ${a.track} ${a.proof_of_work} ${a.notes || ""}`
+        .toLowerCase()
+        .includes(normalizedSearch)
+    );
+  }, [data, normalizedSearch]);
+
   if (!user) {
     return (
       <OpsAuthScreen
-        hasAdmins={hasAdmins}
-        requiresInviteCode={requiresInviteCode}
+        hasAdmins={hasAdminsState}
+        requiresInviteCode={requiresInviteState}
         onAuthenticated={handleAuthenticated}
       />
     );
@@ -291,11 +442,39 @@ export function OpsConsoleClient({
 
   if (!data) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#08080A] text-[#F4F3EF]">
-        <div className="flex items-center gap-3 text-sm text-[#A1A1AA]">
-          <Loader2 className="h-5 w-5 animate-spin text-[#FF3B1F]" />
-          <span>Loading G-Gravitator Command Center...</span>
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-[#08080A] px-4 text-[#F4F3EF]">
+        {bootstrapError ? (
+          <div className="w-full max-w-md space-y-4 rounded-2xl border border-[#FF3B1F]/35 bg-[#111114] p-6 text-center">
+            <AlertCircle className="mx-auto h-7 w-7 text-[#FF6B54]" />
+            <h2 className="font-display text-lg font-semibold">
+              Command Center Unavailable
+            </h2>
+            <p className="text-xs text-[#A1A1AA]">{bootstrapError}</p>
+            <div className="flex items-center justify-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => void refreshBootstrap()}
+                className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full bg-[#FF3B1F] px-4 text-xs font-semibold text-[#08080A]"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                <span>Retry</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleLogout()}
+                className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.12] px-4 text-xs font-medium text-[#D4D4D8]"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>Sign out</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 text-sm text-[#A1A1AA]">
+            <Loader2 className="h-5 w-5 animate-spin text-[#FF3B1F]" />
+            <span>Loading G-Gravitator Command Center...</span>
+          </div>
+        )}
       </div>
     );
   }
@@ -307,6 +486,9 @@ export function OpsConsoleClient({
     setLabName(proj?.name || "");
     setLabTagline(proj?.tagline || "");
     setLabDesc(proj?.description || "");
+    setLabThesis(proj?.thesis || "");
+    setLabArchNotes(proj?.architecture_notes?.join("\n") || "");
+    setLabHackOrigin(proj?.hackathon_origin || "");
     setLabStatus(proj?.status || "PROTOTYPING");
     setLabStack(proj?.tech_stack?.join(", ") || "Next.js, TypeScript, Gemini 3.8 Flash");
     setLabLiveUrl(proj?.live_url || "");
@@ -329,6 +511,11 @@ export function OpsConsoleClient({
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
+    const archNotesArr = labArchNotes
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+
     if (editingLab) {
       await runAction(
         "update_lab_project",
@@ -338,6 +525,9 @@ export function OpsConsoleClient({
           name: labName,
           tagline: labTagline,
           description: labDesc,
+          thesis: labThesis.trim() || null,
+          architecture_notes: archNotesArr,
+          hackathon_origin: labHackOrigin.trim() || null,
           status: labStatus,
           tech_stack: stackArr,
           live_url: labLiveUrl,
@@ -355,6 +545,9 @@ export function OpsConsoleClient({
           name: labName,
           tagline: labTagline,
           description: labDesc,
+          thesis: labThesis.trim() || null,
+          architecture_notes: archNotesArr,
+          hackathon_origin: labHackOrigin.trim() || null,
           status: labStatus,
           tech_stack: stackArr,
           live_url: labLiveUrl,
@@ -389,9 +582,51 @@ export function OpsConsoleClient({
     key: keyof AiPermissionsPolicy,
     value: boolean
   ) => {
+    if (key === "full_admin_parity") {
+      if (value) {
+        const patch: Partial<AiPermissionsPolicy> = { full_admin_parity: true };
+        for (const cap of PARITY_CAPABILITY_KEYS) {
+          patch[cap] = true;
+        }
+        await runAction(
+          "update_ai_permissions",
+          { patch },
+          "Enabled Full Admin Parity across all operational AI capabilities."
+        );
+        return;
+      }
+      await runAction(
+        "update_ai_permissions",
+        {
+          patch: {
+            full_admin_parity: false,
+            can_approve_posts: false,
+            can_revoke_approval: false,
+            can_delete_posts: false,
+          },
+        },
+        "Disabled Full Admin Parity (restricted AI approve, revoke, and delete permissions)."
+      );
+      return;
+    }
+
+    const patch: Partial<AiPermissionsPolicy> = { [key]: value };
+    if (PARITY_CAPABILITY_KEYS.includes(key)) {
+      if (!value && data.aiPermissions.full_admin_parity) {
+        patch.full_admin_parity = false;
+      } else if (value) {
+        const allEnabled = PARITY_CAPABILITY_KEYS.every((cap) =>
+          cap === key ? true : Boolean(data.aiPermissions[cap])
+        );
+        if (allEnabled) {
+          patch.full_admin_parity = true;
+        }
+      }
+    }
+
     await runAction(
       "update_ai_permissions",
-      { patch: { [key]: value } },
+      { patch },
       `Updated ${key} = ${value}`
     );
   };
@@ -500,13 +735,44 @@ export function OpsConsoleClient({
               GG
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h1 className="font-display text-base font-bold tracking-tight text-[#F4F3EF]">
                   G-Gravitator Command
                 </h1>
                 <span className="rounded-full border border-[#10B981]/35 bg-[#10B981]/12 px-2 py-0.5 font-mono text-[10px] font-semibold text-[#34D399]">
                   {user.role}
                 </span>
+                {data.systemHealth && (
+                  <>
+                    <span
+                      title={`AI Model: ${data.systemHealth.geminiModel}`}
+                      className={`hidden items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] sm:inline-flex ${
+                        data.systemHealth.geminiConfigured
+                          ? "border-[#10B981]/30 bg-[#10B981]/10 text-[#34D399]"
+                          : "border-[#F59E0B]/40 bg-[#F59E0B]/12 text-[#FBBF24]"
+                      }`}
+                    >
+                      <Sparkles className="h-2.5 w-2.5" />
+                      <span>
+                        {data.systemHealth.geminiConfigured
+                          ? "Gemini Ready"
+                          : "Gemini Key Missing"}
+                      </span>
+                    </span>
+                    <span
+                      className={`hidden items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] md:inline-flex ${
+                        data.systemHealth.supabaseConfigured
+                          ? "border-white/[0.12] bg-[#18181D] text-[#D4D4D8]"
+                          : "border-[#F59E0B]/35 bg-[#F59E0B]/10 text-[#FBBF24]"
+                      }`}
+                    >
+                      <Database className="h-2.5 w-2.5" />
+                      <span>
+                        {data.systemHealth.supabaseConfigured ? "Supabase" : "Local Store"}
+                      </span>
+                    </span>
+                  </>
+                )}
               </div>
               <p className="text-[11px] text-[#8B8B94]">
                 Signed in as {user.name} ({user.email})
@@ -602,7 +868,11 @@ export function OpsConsoleClient({
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    setSearchQuery("");
+                    setConfirmDeleteKey(null);
+                  }}
                   className={`flex shrink-0 cursor-pointer items-center justify-between gap-2 rounded-xl px-3.5 py-2.5 text-left text-xs font-medium transition-colors ${
                     active
                       ? "bg-[#F4F3EF] font-semibold text-[#08080A]"
@@ -843,7 +1113,8 @@ export function OpsConsoleClient({
                           <button
                             type="button"
                             onClick={() =>
-                              void runAction(
+                              handleConfirmedDelete(
+                                `pending-${item.entity}-${item.id}`,
                                 item.entity === "dispatch"
                                   ? "delete_dispatch"
                                   : item.entity === "news"
@@ -853,9 +1124,16 @@ export function OpsConsoleClient({
                                 `Deleted ${item.title}`
                               )
                             }
-                            className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border border-[#FF3B1F]/30 bg-[#FF3B1F]/10 px-3 text-xs font-medium text-[#FF8A7A]"
+                            className={`inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border px-3 text-xs font-medium ${
+                              confirmDeleteKey === `pending-${item.entity}-${item.id}`
+                                ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
+                                : "border-[#FF3B1F]/30 bg-[#FF3B1F]/10 text-[#FF8A7A]"
+                            }`}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
+                            {confirmDeleteKey === `pending-${item.entity}-${item.id}` && (
+                              <span>Confirm?</span>
+                            )}
                           </button>
                         </div>
                       </div>
@@ -872,27 +1150,40 @@ export function OpsConsoleClient({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="font-display text-xl font-semibold text-[#F4F3EF]">
-                    Journal Lab Dispatches ({data.dispatches.length})
+                    Journal Lab Dispatches ({filteredDispatches.length}/{data.dispatches.length})
                   </h2>
                   <p className="text-xs text-[#8B8B94]">
                     Design rich long-form dispatches with cover images, accent colors, callouts, and links.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setDesignerState({ entity: "dispatch", existing: null })
-                  }
-                  className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-[#FF3B1F] px-5 text-xs font-semibold text-[#08080A] hover:bg-[#FF5238]"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Design New Dispatch</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#71717A]" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Filter dispatches..."
+                      className="h-10 w-52 rounded-full border border-white/[0.1] bg-[#141418] pr-3 pl-8 text-xs text-[#F4F3EF] placeholder:text-[#71717A] focus:border-[#FF3B1F] focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDesignerState({ entity: "dispatch", existing: null })
+                    }
+                    className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-[#FF3B1F] px-5 text-xs font-semibold text-[#08080A] hover:bg-[#FF5238]"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Design New Dispatch</span>
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-3">
-                {data.dispatches.map((d) => {
+                {filteredDispatches.map((d) => {
                   const published = d.is_published !== false;
+                  const delKey = `dispatch-${d.id}`;
                   return (
                     <div
                       key={d.id}
@@ -953,9 +1244,11 @@ export function OpsConsoleClient({
                           href={`/journal/${d.slug}`}
                           target="_blank"
                           rel="noreferrer"
+                          title={published ? "Open live dispatch" : "Open Admin Preview (unpublished)"}
                           className="inline-flex h-9 items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-3 text-xs text-[#D4D4D8] hover:text-[#F4F3EF]"
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
+                          {!published && <span className="text-[11px]">Preview</span>}
                         </a>
                         <button
                           type="button"
@@ -1016,15 +1309,21 @@ export function OpsConsoleClient({
                         <button
                           type="button"
                           onClick={() =>
-                            void runAction(
+                            handleConfirmedDelete(
+                              delKey,
                               "delete_dispatch",
                               { id: d.id },
                               `Deleted dispatch ${d.issue_number}`
                             )
                           }
-                          className="inline-flex h-9 cursor-pointer items-center rounded-full border border-[#FF3B1F]/30 bg-[#FF3B1F]/10 px-3 text-xs text-[#FF8A7A]"
+                          className={`inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border px-3 text-xs ${
+                            confirmDeleteKey === delKey
+                              ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
+                              : "border-[#FF3B1F]/30 bg-[#FF3B1F]/10 text-[#FF8A7A]"
+                          }`}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
+                          {confirmDeleteKey === delKey && <span>Confirm?</span>}
                         </button>
                       </div>
                     </div>
@@ -1040,26 +1339,45 @@ export function OpsConsoleClient({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="font-display text-xl font-semibold text-[#F4F3EF]">
-                    Orbital Wire News ({data.news.length})
+                    Orbital Wire News ({filteredNews.length}/{data.news.length})
                   </h2>
                   <p className="text-xs text-[#8B8B94]">
                     Create, design, pin, approve, revoke, or bulk-clean stale signals.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#71717A]" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Filter Orbital Wire..."
+                      className="h-10 w-48 rounded-full border border-white/[0.1] bg-[#141418] pr-3 pl-8 text-xs text-[#F4F3EF] placeholder:text-[#71717A] focus:border-[#FF3B1F] focus:outline-none"
+                    />
+                  </div>
                   <button
                     type="button"
                     onClick={() =>
-                      void runAction(
+                      handleConfirmedDelete(
+                        "bulk-clean-news",
                         "remove_old_posts",
                         { entity: "news", older_than_days: 14 },
                         "Cleaned stale Orbital Wire items older than 14 days."
                       )
                     }
-                    className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.12] bg-[#141418] px-4 text-xs font-medium text-[#D4D4D8] hover:border-[#FF3B1F]/40 hover:text-[#FF8A7A]"
+                    className={`inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-xs font-medium ${
+                      confirmDeleteKey === "bulk-clean-news"
+                        ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
+                        : "border-white/[0.12] bg-[#141418] text-[#D4D4D8] hover:border-[#FF3B1F]/40 hover:text-[#FF8A7A]"
+                    }`}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    <span>Clean Old (&gt;14d)</span>
+                    <span>
+                      {confirmDeleteKey === "bulk-clean-news"
+                        ? "Confirm Clean >14d?"
+                        : "Clean Old (>14d)"}
+                    </span>
                   </button>
                   <button
                     type="button"
@@ -1075,110 +1393,119 @@ export function OpsConsoleClient({
               </div>
 
               <div className="space-y-3">
-                {data.news.map((n) => (
-                  <div
-                    key={n.id}
-                    className={`flex flex-col justify-between gap-4 rounded-2xl border p-5 lg:flex-row lg:items-center ${
-                      n.is_published
-                        ? "border-white/[0.08] bg-[#111114]"
-                        : "border-[#FF3B1F]/35 bg-[#FF3B1F]/[0.05]"
-                    }`}
-                  >
-                    <div className="min-w-0 max-w-3xl">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-white/[0.1] bg-[#18181D] px-2.5 py-0.5 text-[11px] font-medium text-[#D4D4D8]">
-                          {n.category}
-                        </span>
-                        <span className="text-xs text-[#8B8B94]">{n.source_name}</span>
-                        <span className="font-mono text-xs text-[#34D399]">
-                          Impact {n.impact_score}/100
-                        </span>
-                        {n.is_pinned && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-[#FF3B1F] px-2.5 py-0.5 text-[11px] font-semibold text-[#08080A]">
-                            <Pin className="h-3 w-3" />
-                            <span>Pinned</span>
+                {filteredNews.map((n) => {
+                  const delKey = `news-${n.id}`;
+                  return (
+                    <div
+                      key={n.id}
+                      className={`flex flex-col justify-between gap-4 rounded-2xl border p-5 lg:flex-row lg:items-center ${
+                        n.is_published
+                          ? "border-white/[0.08] bg-[#111114]"
+                          : "border-[#FF3B1F]/35 bg-[#FF3B1F]/[0.05]"
+                      }`}
+                    >
+                      <div className="min-w-0 max-w-3xl">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full border border-white/[0.1] bg-[#18181D] px-2.5 py-0.5 text-[11px] font-medium text-[#D4D4D8]">
+                            {n.category}
                           </span>
-                        )}
-                        {!n.is_published && (
-                          <span className="rounded-full bg-[#FF3B1F]/20 px-2.5 py-0.5 text-[11px] font-medium text-[#FF8A7A]">
-                            {n.approval_status || "Pending Review"}
+                          <span className="text-xs text-[#8B8B94]">{n.source_name}</span>
+                          <span className="font-mono text-xs text-[#34D399]">
+                            Impact {n.impact_score}/100
                           </span>
-                        )}
+                          {n.is_pinned && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#FF3B1F] px-2.5 py-0.5 text-[11px] font-semibold text-[#08080A]">
+                              <Pin className="h-3 w-3" />
+                              <span>Pinned</span>
+                            </span>
+                          )}
+                          {!n.is_published && (
+                            <span className="rounded-full bg-[#FF3B1F]/20 px-2.5 py-0.5 text-[11px] font-medium text-[#FF8A7A]">
+                              {n.approval_status || "Pending Review"}
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="mt-2 text-base font-semibold text-[#F4F3EF]">
+                          {n.title}
+                        </h3>
+                        <p className="mt-1 text-xs leading-relaxed text-[#A1A1AA]">
+                          {n.gravity_take}
+                        </p>
                       </div>
-                      <h3 className="mt-2 text-base font-semibold text-[#F4F3EF]">
-                        {n.title}
-                      </h3>
-                      <p className="mt-1 text-xs leading-relaxed text-[#A1A1AA]">
-                        {n.gravity_take}
-                      </p>
-                    </div>
 
-                    <div className="flex shrink-0 flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void runAction("update_news_item", {
-                            id: n.id,
-                            is_pinned: !n.is_pinned,
-                          })
-                        }
-                        className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold ${
-                          n.is_pinned
-                            ? "border-[#FF3B1F] bg-[#FF3B1F] text-[#08080A]"
-                            : "border-white/[0.1] bg-[#18181D] text-[#D4D4D8]"
-                        }`}
-                      >
-                        <Pin className="h-3.5 w-3.5" />
-                        <span>{n.is_pinned ? "Unpin" : "Pin"}</span>
-                      </button>
+                      <div className="flex shrink-0 flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void runAction("update_news_item", {
+                              id: n.id,
+                              is_pinned: !n.is_pinned,
+                            })
+                          }
+                          className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold ${
+                            n.is_pinned
+                              ? "border-[#FF3B1F] bg-[#FF3B1F] text-[#08080A]"
+                              : "border-white/[0.1] bg-[#18181D] text-[#D4D4D8]"
+                          }`}
+                        >
+                          <Pin className="h-3.5 w-3.5" />
+                          <span>{n.is_pinned ? "Unpin" : "Pin"}</span>
+                        </button>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setDesignerState({ entity: "news", existing: n })
-                        }
-                        className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-3.5 text-xs text-[#F4F3EF]"
-                      >
-                        <Edit3 className="h-3.5 w-3.5" />
-                        <span>Design</span>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDesignerState({ entity: "news", existing: n })
+                          }
+                          className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-3.5 text-xs text-[#F4F3EF]"
+                        >
+                          <Edit3 className="h-3.5 w-3.5" />
+                          <span>Design</span>
+                        </button>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void runAction(
-                            n.is_published ? "revoke_approval" : "approve_content",
-                            { entity: "news", id: n.id },
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void runAction(
+                              n.is_published ? "revoke_approval" : "approve_content",
+                              { entity: "news", id: n.id },
+                              n.is_published
+                                ? "Approval revoked."
+                                : "News item approved & published."
+                            )
+                          }
+                          className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold ${
                             n.is_published
-                              ? "Approval revoked."
-                              : "News item approved & published."
-                          )
-                        }
-                        className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold ${
-                          n.is_published
-                            ? "border border-white/[0.1] bg-[#18181D] text-[#D4D4D8]"
-                            : "bg-[#10B981] text-[#08080A]"
-                        }`}
-                      >
-                        {n.is_published ? "Revoke Approval" : "Approve"}
-                      </button>
+                              ? "border border-white/[0.1] bg-[#18181D] text-[#D4D4D8]"
+                              : "bg-[#10B981] text-[#08080A]"
+                          }`}
+                        >
+                          {n.is_published ? "Revoke Approval" : "Approve"}
+                        </button>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void runAction(
-                            "delete_news_item",
-                            { id: n.id },
-                            "Deleted news item."
-                          )
-                        }
-                        className="inline-flex h-9 cursor-pointer items-center rounded-full border border-[#FF3B1F]/30 bg-[#FF3B1F]/10 px-3 text-xs text-[#FF8A7A]"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleConfirmedDelete(
+                              delKey,
+                              "delete_news_item",
+                              { id: n.id },
+                              "Deleted news item."
+                            )
+                          }
+                          className={`inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border px-3 text-xs ${
+                            confirmDeleteKey === delKey
+                              ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
+                              : "border-[#FF3B1F]/30 bg-[#FF3B1F]/10 text-[#FF8A7A]"
+                          }`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          {confirmDeleteKey === delKey && <span>Confirm?</span>}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1189,26 +1516,45 @@ export function OpsConsoleClient({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="font-display text-xl font-semibold text-[#F4F3EF]">
-                    Hackathons ({data.hackathons.length})
+                    Hackathons ({filteredHackathons.length}/{data.hackathons.length})
                   </h2>
                   <p className="text-xs text-[#8B8B94]">
                     Approve community/AI hackathons, assign OXAKALABS squads, design visual cards, or clean expired events.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#71717A]" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Filter hackathons..."
+                      className="h-10 w-48 rounded-full border border-white/[0.1] bg-[#141418] pr-3 pl-8 text-xs text-[#F4F3EF] placeholder:text-[#71717A] focus:border-[#FF3B1F] focus:outline-none"
+                    />
+                  </div>
                   <button
                     type="button"
                     onClick={() =>
-                      void runAction(
+                      handleConfirmedDelete(
+                        "bulk-clean-hackathons",
                         "remove_old_posts",
                         { entity: "hackathons", older_than_days: 0 },
                         "Removed expired hackathons."
                       )
                     }
-                    className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.12] bg-[#141418] px-4 text-xs font-medium text-[#D4D4D8] hover:border-[#FF3B1F]/40 hover:text-[#FF8A7A]"
+                    className={`inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-xs font-medium ${
+                      confirmDeleteKey === "bulk-clean-hackathons"
+                        ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
+                        : "border-white/[0.12] bg-[#141418] text-[#D4D4D8] hover:border-[#FF3B1F]/40 hover:text-[#FF8A7A]"
+                    }`}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    <span>Clean Expired</span>
+                    <span>
+                      {confirmDeleteKey === "bulk-clean-hackathons"
+                        ? "Confirm Clean?"
+                        : "Clean Expired"}
+                    </span>
                   </button>
                   <button
                     type="button"
@@ -1224,105 +1570,114 @@ export function OpsConsoleClient({
               </div>
 
               <div className="space-y-3">
-                {data.hackathons.map((h) => (
-                  <div
-                    key={h.id}
-                    className={`flex flex-col justify-between gap-4 rounded-2xl border p-5 lg:flex-row lg:items-center ${
-                      h.is_published
-                        ? "border-white/[0.08] bg-[#111114]"
-                        : "border-[#FF3B1F]/35 bg-[#FF3B1F]/[0.05]"
-                    }`}
-                  >
-                    <div className="min-w-0 max-w-2xl">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                {filteredHackathons.map((h) => {
+                  const delKey = `hackathon-${h.id}`;
+                  return (
+                    <div
+                      key={h.id}
+                      className={`flex flex-col justify-between gap-4 rounded-2xl border p-5 lg:flex-row lg:items-center ${
+                        h.is_published
+                          ? "border-white/[0.08] bg-[#111114]"
+                          : "border-[#FF3B1F]/35 bg-[#FF3B1F]/[0.05]"
+                      }`}
+                    >
+                      <div className="min-w-0 max-w-2xl">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                              h.is_published
+                                ? "border border-[#10B981]/30 bg-[#10B981]/15 text-[#34D399]"
+                                : "bg-[#FF3B1F] text-[#08080A]"
+                            }`}
+                          >
+                            {h.is_published ? "Published" : h.approval_status || "Pending Review"}
+                          </span>
+                          <span className="font-mono text-[11px] text-[#8B8B94]">
+                            {h.created_by || "ingestion"} · Confidence {Math.round(h.confidence_score * 100)}%
+                          </span>
+                        </div>
+                        <h3 className="font-display mt-2 text-base font-semibold text-[#F4F3EF]">
+                          {h.title}
+                        </h3>
+                        <p className="mt-1 text-xs text-[#A1A1AA]">
+                          {h.organizer} · <span className="font-mono text-[#34D399]">{h.prize_display}</span> · Deadline{" "}
+                          {formatUtc(h.deadline_at)}
+                        </p>
+                      </div>
+
+                      <div className="flex shrink-0 flex-wrap items-center gap-2">
+                        <select
+                          aria-label="OXAKALABS status"
+                          value={h.oxakalabs_status}
+                          onChange={(e) =>
+                            void runAction("update_hackathon", {
+                              id: h.id,
+                              oxakalabs_status: e.target.value as OxakalabsStatus,
+                            })
+                          }
+                          className="h-9 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
+                        >
+                          <option value="NONE">OXA None</option>
+                          <option value="SCOUTING">OXA Scouting</option>
+                          <option value="SQUAD_DEPLOYED">OXA Deployed</option>
+                          <option value="SUBMITTED">OXA Submitted</option>
+                          <option value="WON">OXA Won</option>
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDesignerState({ entity: "hackathon", existing: h })
+                          }
+                          className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-3.5 text-xs text-[#F4F3EF]"
+                        >
+                          <Edit3 className="h-3.5 w-3.5" />
+                          <span>Design</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void runAction(
+                              h.is_published ? "revoke_approval" : "approve_content",
+                              { entity: "hackathon", id: h.id },
+                              h.is_published
+                                ? "Approval revoked."
+                                : "Hackathon approved & published."
+                            )
+                          }
+                          className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold ${
                             h.is_published
-                              ? "border border-[#10B981]/30 bg-[#10B981]/15 text-[#34D399]"
-                              : "bg-[#FF3B1F] text-[#08080A]"
+                              ? "border border-white/[0.1] bg-[#18181D] text-[#D4D4D8]"
+                              : "bg-[#10B981] text-[#08080A]"
                           }`}
                         >
-                          {h.is_published ? "Published" : h.approval_status || "Pending Review"}
-                        </span>
-                        <span className="font-mono text-[11px] text-[#8B8B94]">
-                          {h.created_by || "ingestion"} · Confidence {Math.round(h.confidence_score * 100)}%
-                        </span>
+                          {h.is_published ? "Revoke Approval" : "Approve"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleConfirmedDelete(
+                              delKey,
+                              "delete_hackathon",
+                              { id: h.id },
+                              "Deleted hackathon."
+                            )
+                          }
+                          className={`inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border px-3 text-xs ${
+                            confirmDeleteKey === delKey
+                              ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
+                              : "border-[#FF3B1F]/30 bg-[#FF3B1F]/10 text-[#FF8A7A]"
+                          }`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          {confirmDeleteKey === delKey && <span>Confirm?</span>}
+                        </button>
                       </div>
-                      <h3 className="font-display mt-2 text-base font-semibold text-[#F4F3EF]">
-                        {h.title}
-                      </h3>
-                      <p className="mt-1 text-xs text-[#A1A1AA]">
-                        {h.organizer} · <span className="font-mono text-[#34D399]">{h.prize_display}</span> · Deadline{" "}
-                        {formatUtc(h.deadline_at)}
-                      </p>
                     </div>
-
-                    <div className="flex shrink-0 flex-wrap items-center gap-2">
-                      <select
-                        aria-label="OXAKALABS status"
-                        value={h.oxakalabs_status}
-                        onChange={(e) =>
-                          void runAction("update_hackathon", {
-                            id: h.id,
-                            oxakalabs_status: e.target.value as OxakalabsStatus,
-                          })
-                        }
-                        className="h-9 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
-                      >
-                        <option value="NONE">OXA None</option>
-                        <option value="SCOUTING">OXA Scouting</option>
-                        <option value="SQUAD_DEPLOYED">OXA Deployed</option>
-                        <option value="SUBMITTED">OXA Submitted</option>
-                        <option value="WON">OXA Won</option>
-                      </select>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setDesignerState({ entity: "hackathon", existing: h })
-                        }
-                        className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-3.5 text-xs text-[#F4F3EF]"
-                      >
-                        <Edit3 className="h-3.5 w-3.5" />
-                        <span>Design</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void runAction(
-                            h.is_published ? "revoke_approval" : "approve_content",
-                            { entity: "hackathon", id: h.id },
-                            h.is_published
-                              ? "Approval revoked."
-                              : "Hackathon approved & published."
-                          )
-                        }
-                        className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold ${
-                          h.is_published
-                            ? "border border-white/[0.1] bg-[#18181D] text-[#D4D4D8]"
-                            : "bg-[#10B981] text-[#08080A]"
-                        }`}
-                      >
-                        {h.is_published ? "Revoke Approval" : "Approve"}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void runAction(
-                            "delete_hackathon",
-                            { id: h.id },
-                            "Deleted hackathon."
-                          )
-                        }
-                        className="inline-flex h-9 cursor-pointer items-center rounded-full border border-[#FF3B1F]/30 bg-[#FF3B1F]/10 px-3 text-xs text-[#FF8A7A]"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1333,20 +1688,32 @@ export function OpsConsoleClient({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="font-display text-xl font-semibold text-[#F4F3EF]">
-                    Labs &amp; OXAKALABS Skunkworks ({data.labs.length})
+                    Labs &amp; OXAKALABS Skunkworks ({filteredLabs.length}/{data.labs.length})
                   </h2>
                   <p className="text-xs text-[#8B8B94]">
                     Create, promote, score (25-pt Graduation Scorecard), or retire projects across G-XX and OXA-XX.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => openLabEditor(null)}
-                  className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-[#FF3B1F] px-5 text-xs font-semibold text-[#08080A]"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>New Lab / Skunkworks</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#71717A]" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Filter labs..."
+                      className="h-10 w-48 rounded-full border border-white/[0.1] bg-[#141418] pr-3 pl-8 text-xs text-[#F4F3EF] placeholder:text-[#71717A] focus:border-[#FF3B1F] focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openLabEditor(null)}
+                    className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-[#FF3B1F] px-5 text-xs font-semibold text-[#08080A]"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>New Lab / Skunkworks</span>
+                  </button>
+                </div>
               </div>
 
               {showLabForm && (
@@ -1424,12 +1791,35 @@ export function OpsConsoleClient({
                     placeholder="Technical description"
                     className="w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] p-3 text-xs text-[#F4F3EF]"
                   />
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <textarea
+                      rows={2}
+                      value={labThesis}
+                      onChange={(e) => setLabThesis(e.target.value)}
+                      placeholder="Core thesis / problem statement (optional)"
+                      className="w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] p-3 text-xs text-[#F4F3EF]"
+                    />
+                    <textarea
+                      rows={2}
+                      value={labArchNotes}
+                      onChange={(e) => setLabArchNotes(e.target.value)}
+                      placeholder="Architecture notes (one bullet per line, optional)"
+                      className="w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] p-3 text-xs text-[#F4F3EF]"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <input
                       type="text"
                       value={labStack}
                       onChange={(e) => setLabStack(e.target.value)}
                       placeholder="Tech stack (comma-separated)"
+                      className="h-10 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
+                    />
+                    <input
+                      type="text"
+                      value={labHackOrigin}
+                      onChange={(e) => setLabHackOrigin(e.target.value)}
+                      placeholder="Hackathon origin (optional)"
                       className="h-10 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
                     />
                     <input
@@ -1490,7 +1880,7 @@ export function OpsConsoleClient({
               )}
 
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                {data.labs.map((p) => {
+                {filteredLabs.map((p) => {
                   const total = p.scorecard
                     ? p.scorecard.pain_intensity +
                       p.scorecard.willingness_to_pay +
@@ -1498,6 +1888,7 @@ export function OpsConsoleClient({
                       p.scorecard.distribution_hook +
                       p.scorecard.lean_maintainability
                     : null;
+                  const delKey = `lab-${p.id}`;
                   return (
                     <div
                       key={p.id}
@@ -1523,6 +1914,11 @@ export function OpsConsoleClient({
                           {p.name}
                         </h3>
                         <p className="mt-1 text-xs text-[#A1A1AA]">{p.tagline}</p>
+                        {p.hackathon_origin && (
+                          <p className="mt-1.5 font-mono text-[11px] text-[#8B8B94]">
+                            Origin: {p.hackathon_origin}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center justify-end gap-2">
                         <button
@@ -1536,15 +1932,21 @@ export function OpsConsoleClient({
                         <button
                           type="button"
                           onClick={() =>
-                            void runAction(
+                            handleConfirmedDelete(
+                              delKey,
                               "delete_lab_project",
                               { id: p.id },
                               `Deleted ${p.code}`
                             )
                           }
-                          className="inline-flex h-8 cursor-pointer items-center rounded-full border border-[#FF3B1F]/30 bg-[#FF3B1F]/10 px-3 text-xs text-[#FF8A7A]"
+                          className={`inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border px-3 text-xs ${
+                            confirmDeleteKey === delKey
+                              ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
+                              : "border-[#FF3B1F]/30 bg-[#FF3B1F]/10 text-[#FF8A7A]"
+                          }`}
                         >
                           <Trash2 className="h-3 w-3" />
+                          {confirmDeleteKey === delKey && <span>Confirm?</span>}
                         </button>
                       </div>
                     </div>
@@ -1557,134 +1959,222 @@ export function OpsConsoleClient({
           {/* TAB 6: CRM & AUDIENCE */}
           {activeTab === "CRM" && (
             <div className="space-y-8">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-display text-xl font-semibold text-[#F4F3EF]">
+                    CRM, Inquiries &amp; Audience
+                  </h2>
+                  <p className="text-xs text-[#8B8B94]">
+                    Triage client inquiries, review Orbit applications with notes, and manage newsletter subscribers.
+                  </p>
+                </div>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#71717A]" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Filter inquiries & Orbit..."
+                    className="h-10 w-56 rounded-full border border-white/[0.1] bg-[#141418] pr-3 pl-8 text-xs text-[#F4F3EF] placeholder:text-[#71717A] focus:border-[#FF3B1F] focus:outline-none"
+                  />
+                </div>
+              </div>
+
               {/* Inquiries */}
               <section className="space-y-3">
-                <h2 className="font-display text-xl font-semibold text-[#F4F3EF]">
-                  B2B Systems Inquiries ({data.inquiries.length})
-                </h2>
-                {data.inquiries.map((inq) => (
-                  <div
-                    key={inq.id}
-                    className="flex flex-col justify-between gap-4 rounded-2xl border border-white/[0.08] bg-[#111114] p-5 lg:flex-row lg:items-center"
-                  >
-                    <div className="max-w-2xl">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-[#FF3B1F] px-2.5 py-0.5 text-[11px] font-semibold text-[#08080A]">
-                          {inq.tier}
-                        </span>
-                        <span className="font-mono text-xs text-[#34D399]">
-                          {inq.budget_range || "Custom"}
-                        </span>
-                        <span className="text-xs text-[#8B8B94]">
-                          {inq.timeline || "Flexible"}
-                        </span>
+                <h3 className="font-display text-lg font-semibold text-[#F4F3EF]">
+                  B2B Systems Inquiries ({filteredInquiries.length}/{data.inquiries.length})
+                </h3>
+                {filteredInquiries.map((inq) => {
+                  const delKey = `inq-${inq.id}`;
+                  return (
+                    <div
+                      key={inq.id}
+                      className="flex flex-col justify-between gap-4 rounded-2xl border border-white/[0.08] bg-[#111114] p-5 lg:flex-row lg:items-center"
+                    >
+                      <div className="max-w-2xl">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-[#FF3B1F] px-2.5 py-0.5 text-[11px] font-semibold text-[#08080A]">
+                            {inq.tier}
+                          </span>
+                          <span className="font-mono text-xs text-[#34D399]">
+                            {inq.budget_range || "Custom"}
+                          </span>
+                          <span className="text-xs text-[#8B8B94]">
+                            {inq.timeline || "Flexible"}
+                          </span>
+                        </div>
+                        <h4 className="font-display mt-2 text-base font-semibold text-[#F4F3EF]">
+                          {inq.name} ·{" "}
+                          <span className="font-normal text-[#A1A1AA]">
+                            {inq.company || "Independent"} ({inq.email})
+                          </span>
+                        </h4>
+                        <p className="mt-1.5 text-xs leading-relaxed text-[#A1A1AA]">
+                          {inq.project_brief}
+                        </p>
                       </div>
-                      <h3 className="font-display mt-2 text-base font-semibold text-[#F4F3EF]">
-                        {inq.name} ·{" "}
-                        <span className="font-normal text-[#A1A1AA]">
-                          {inq.company || "Independent"} ({inq.email})
-                        </span>
-                      </h3>
-                      <p className="mt-1.5 text-xs leading-relaxed text-[#A1A1AA]">
-                        {inq.project_brief}
-                      </p>
-                    </div>
 
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={inq.status}
-                        onChange={(e) =>
-                          void runAction("update_inquiry_status", {
-                            id: inq.id,
-                            status: e.target.value as InquiryStatus,
-                          })
-                        }
-                        className="h-9 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
-                      >
-                        <option value="NEW">New</option>
-                        <option value="REVIEWED">Reviewed</option>
-                        <option value="DISCOVERY_CALL">Discovery Call</option>
-                        <option value="CLOSED_WON">Closed Won</option>
-                        <option value="ARCHIVED">Archived</option>
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void runAction(
-                            "delete_inquiry",
-                            { id: inq.id },
-                            "Deleted inquiry"
-                          )
-                        }
-                        className="inline-flex h-9 cursor-pointer items-center rounded-full border border-[#FF3B1F]/30 bg-[#FF3B1F]/10 px-3 text-xs text-[#FF8A7A]"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={inq.status}
+                          onChange={(e) =>
+                            void runAction("update_inquiry_status", {
+                              id: inq.id,
+                              status: e.target.value as InquiryStatus,
+                            })
+                          }
+                          className="h-9 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
+                        >
+                          <option value="NEW">New</option>
+                          <option value="REVIEWED">Reviewed</option>
+                          <option value="DISCOVERY_CALL">Discovery Call</option>
+                          <option value="CLOSED_WON">Closed Won</option>
+                          <option value="ARCHIVED">Archived</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleConfirmedDelete(
+                              delKey,
+                              "delete_inquiry",
+                              { id: inq.id },
+                              "Deleted inquiry"
+                            )
+                          }
+                          className={`inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border px-3 text-xs ${
+                            confirmDeleteKey === delKey
+                              ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
+                              : "border-[#FF3B1F]/30 bg-[#FF3B1F]/10 text-[#FF8A7A]"
+                          }`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          {confirmDeleteKey === delKey && <span>Confirm?</span>}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </section>
 
               {/* Orbit + Subscribers */}
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <section className="space-y-3">
-                  <h2 className="font-display text-lg font-semibold text-[#F4F3EF]">
-                    Orbit Applications ({data.orbit.length})
-                  </h2>
-                  {data.orbit.map((app) => (
-                    <div
-                      key={app.id}
-                      className="space-y-3 rounded-2xl border border-white/[0.08] bg-[#111114] p-4"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <div className="text-sm font-semibold text-[#F4F3EF]">
-                            {app.full_name}
+                  <h3 className="font-display text-lg font-semibold text-[#F4F3EF]">
+                    Orbit Applications ({filteredOrbit.length}/{data.orbit.length})
+                  </h3>
+                  {filteredOrbit.map((app) => {
+                    const delKey = `orbit-${app.id}`;
+                    const draftNote =
+                      orbitNotesDraft[app.id] !== undefined
+                        ? orbitNotesDraft[app.id]
+                        : app.notes || "";
+                    const noteChanged = draftNote.trim() !== (app.notes || "").trim();
+                    return (
+                      <div
+                        key={app.id}
+                        className="space-y-3 rounded-2xl border border-white/[0.08] bg-[#111114] p-4"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <div className="text-sm font-semibold text-[#F4F3EF]">
+                              {app.full_name}
+                            </div>
+                            <div className="text-xs text-[#8B8B94]">
+                              {app.email} · {app.track}
+                            </div>
                           </div>
-                          <div className="text-xs text-[#8B8B94]">
-                            {app.email} · {app.track}
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={app.status || "NEW"}
+                              onChange={(e) =>
+                                void runAction("update_orbit_application", {
+                                  id: app.id,
+                                  status: e.target.value as OrbitApplicationStatus,
+                                })
+                              }
+                              className="h-8 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-2.5 text-xs text-[#F4F3EF]"
+                            >
+                              <option value="NEW">New</option>
+                              <option value="REVIEWING">Reviewing</option>
+                              <option value="ACCEPTED">Accepted</option>
+                              <option value="WAITLISTED">Waitlisted</option>
+                              <option value="REJECTED">Rejected</option>
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleConfirmedDelete(
+                                  delKey,
+                                  "delete_orbit_application",
+                                  { id: app.id },
+                                  `Deleted Orbit application for ${app.full_name}`
+                                )
+                              }
+                              className={`inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border px-2.5 text-xs ${
+                                confirmDeleteKey === delKey
+                                  ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
+                                  : "border-[#FF3B1F]/30 bg-[#FF3B1F]/10 text-[#FF8A7A]"
+                              }`}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              {confirmDeleteKey === delKey && <span>Confirm?</span>}
+                            </button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <select
-                            value={app.status || "NEW"}
+                        <p className="text-xs leading-relaxed text-[#A1A1AA]">
+                          {app.proof_of_work}
+                        </p>
+                        {app.portfolio_url && (
+                          <a
+                            href={app.portfolio_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-xs font-medium text-[#34D399] hover:underline"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            <span className="truncate">{app.portfolio_url}</span>
+                          </a>
+                        )}
+                        <div className="flex items-center gap-2 pt-1">
+                          <input
+                            type="text"
+                            value={draftNote}
                             onChange={(e) =>
-                              void runAction("update_orbit_application", {
-                                id: app.id,
-                                status: e.target.value as OrbitApplicationStatus,
-                              })
+                              setOrbitNotesDraft((prev) => ({
+                                ...prev,
+                                [app.id]: e.target.value,
+                              }))
                             }
-                            className="h-8 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-2.5 text-xs text-[#F4F3EF]"
-                          >
-                            <option value="NEW">New</option>
-                            <option value="REVIEWING">Reviewing</option>
-                            <option value="ACCEPTED">Accepted</option>
-                            <option value="WAITLISTED">Waitlisted</option>
-                            <option value="REJECTED">Rejected</option>
-                          </select>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void runAction("delete_orbit_application", { id: app.id })
-                            }
-                            className="inline-flex h-8 cursor-pointer items-center rounded-full border border-[#FF3B1F]/30 bg-[#FF3B1F]/10 px-2.5 text-xs text-[#FF8A7A]"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
+                            placeholder="Internal reviewer notes..."
+                            className="h-8 flex-1 rounded-lg border border-white/[0.1] bg-[#0B0B0E] px-2.5 text-xs text-[#F4F3EF] placeholder:text-[#71717A]"
+                          />
+                          {noteChanged && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void runAction(
+                                  "update_orbit_application",
+                                  { id: app.id, notes: draftNote.trim() },
+                                  `Saved reviewer note for ${app.full_name}`
+                                )
+                              }
+                              className="h-8 cursor-pointer rounded-lg bg-[#F4F3EF] px-3 text-xs font-semibold text-[#08080A]"
+                            >
+                              Save
+                            </button>
+                          )}
                         </div>
                       </div>
-                      <p className="text-xs leading-relaxed text-[#A1A1AA]">
-                        {app.proof_of_work}
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </section>
 
                 <section className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
-                    <h2 className="font-display text-lg font-semibold text-[#F4F3EF]">
+                    <h3 className="font-display text-lg font-semibold text-[#F4F3EF]">
                       Newsletter Subscribers ({data.subscribers.length})
-                    </h2>
+                    </h3>
                     <button
                       type="button"
                       onClick={handleDownloadSubscribersCsv}
@@ -1725,30 +2215,44 @@ export function OpsConsoleClient({
 
                   <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#111114]">
                     <ul className="divide-y divide-white/[0.06]">
-                      {data.subscribers.map((s) => (
-                        <li
-                          key={s.id}
-                          className="flex items-center justify-between gap-2 px-4 py-3 text-xs"
-                        >
-                          <div>
-                            <span className="text-[#F4F3EF]">{s.email}</span>
-                            <span className="ml-2 rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] text-[#A1A1AA]">
-                              {s.source}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void runAction("delete_newsletter_subscriber", {
-                                id: s.id,
-                              })
-                            }
-                            className="text-[#8B8B94] hover:text-[#FF8A7A]"
+                      {data.subscribers.map((s) => {
+                        const delKey = `sub-${s.id}`;
+                        return (
+                          <li
+                            key={s.id}
+                            className="flex items-center justify-between gap-2 px-4 py-3 text-xs"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </li>
-                      ))}
+                            <div>
+                              <span className="text-[#F4F3EF]">{s.email}</span>
+                              <span className="ml-2 rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] text-[#A1A1AA]">
+                                {s.source}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleConfirmedDelete(
+                                  delKey,
+                                  "delete_newsletter_subscriber",
+                                  { id: s.id },
+                                  `Removed ${s.email}`
+                                )
+                              }
+                              className={`cursor-pointer text-xs ${
+                                confirmDeleteKey === delKey
+                                  ? "font-semibold text-[#FF3B1F]"
+                                  : "text-[#8B8B94] hover:text-[#FF8A7A]"
+                              }`}
+                            >
+                              {confirmDeleteKey === delKey ? (
+                                "Confirm?"
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 </section>
@@ -1783,17 +2287,36 @@ export function OpsConsoleClient({
                   <button
                     type="button"
                     disabled={!mediaPrompt.trim() || busyAction !== null}
-                    onClick={() =>
-                      void runAction(
-                        "generate_post_image",
-                        { prompt: mediaPrompt, title: mediaPrompt },
-                        "Image generated and saved to library."
-                      ).then(() => setMediaPrompt(""))
-                    }
+                    onClick={async () => {
+                      const promptVal = mediaPrompt.trim();
+                      if (!promptVal) return;
+                      const res = (await runAction("generate_post_image", {
+                        prompt: promptVal,
+                        title: promptVal,
+                      })) as { generator?: string } | null;
+                      if (res) {
+                        setMediaPrompt("");
+                        setNotice({
+                          tone: "success",
+                          text:
+                            res.generator === "gemini"
+                              ? "Generated with Gemini Image AI and saved to Media Library."
+                              : "Generated with Studio Editorial SVG fallback and saved to Media Library.",
+                        });
+                      }
+                    }}
                     className="inline-flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full bg-[#FF3B1F] text-xs font-semibold text-[#08080A] disabled:opacity-50"
                   >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    <span>Generate &amp; Store</span>
+                    {busyAction === "generate_post_image" ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5" />
+                    )}
+                    <span>
+                      {busyAction === "generate_post_image"
+                        ? "Generating..."
+                        : "Generate & Store"}
+                    </span>
                   </button>
                 </div>
 
@@ -1816,12 +2339,22 @@ export function OpsConsoleClient({
                         "import_image_from_url",
                         { url: mediaImportUrl },
                         "Image imported into Media Library."
-                      ).then(() => setMediaImportUrl(""))
+                      ).then((res) => {
+                        if (res) setMediaImportUrl("");
+                      })
                     }
                     className="inline-flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full bg-[#F4F3EF] text-xs font-semibold text-[#08080A] disabled:opacity-50"
                   >
-                    <Download className="h-3.5 w-3.5" />
-                    <span>Import &amp; Host</span>
+                    {busyAction === "import_image_from_url" ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5" />
+                    )}
+                    <span>
+                      {busyAction === "import_image_from_url"
+                        ? "Importing..."
+                        : "Import & Host"}
+                    </span>
                   </button>
                 </div>
 
@@ -1836,9 +2369,16 @@ export function OpsConsoleClient({
                     className="hidden"
                     onChange={async (e) => {
                       const f = e.target.files?.[0];
+                      e.target.value = "";
                       if (!f) return;
-                      const reader = new FileReader();
-                      reader.onload = async () => {
+                      setMediaUploading(true);
+                      try {
+                        const dataUrl: string = await new Promise((resolve, reject) => {
+                          const reader = new FileReader();
+                          reader.onload = () => resolve(String(reader.result || ""));
+                          reader.onerror = () => reject(new Error("Could not read file."));
+                          reader.readAsDataURL(f);
+                        });
                         const res = await fetch("/api/ops/media", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
@@ -1846,27 +2386,46 @@ export function OpsConsoleClient({
                             action: "upload",
                             filename: f.name,
                             mimeType: f.type || "image/png",
-                            base64Data: String(reader.result || ""),
+                            base64Data: dataUrl,
                           }),
                         });
-                        if (res.ok) {
+                        const json = (await res.json().catch(() => null)) as {
+                          error?: string;
+                        } | null;
+                        if (!res.ok) {
                           setNotice({
-                            tone: "success",
-                            text: `Uploaded ${f.name}`,
+                            tone: "error",
+                            text: json?.error || `Failed to upload ${f.name}.`,
                           });
-                          await refreshBootstrap();
+                          return;
                         }
-                      };
-                      reader.readAsDataURL(f);
+                        setNotice({
+                          tone: "success",
+                          text: `Uploaded ${f.name}`,
+                        });
+                        await refreshBootstrap();
+                      } catch {
+                        setNotice({
+                          tone: "error",
+                          text: `Network or file read error uploading ${f.name}.`,
+                        });
+                      } finally {
+                        setMediaUploading(false);
+                      }
                     }}
                   />
                   <button
                     type="button"
+                    disabled={mediaUploading}
                     onClick={() => mediaUploadRef.current?.click()}
-                    className="inline-flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-white/[0.15] bg-[#18181D] text-xs font-medium text-[#F4F3EF]"
+                    className="inline-flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-white/[0.15] bg-[#18181D] text-xs font-medium text-[#F4F3EF] disabled:opacity-50"
                   >
-                    <Upload className="h-3.5 w-3.5" />
-                    <span>Upload Image File</span>
+                    {mediaUploading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="h-3.5 w-3.5" />
+                    )}
+                    <span>{mediaUploading ? "Uploading..." : "Upload Image File"}</span>
                   </button>
                   <p className="text-[11px] text-[#8B8B94]">
                     Stored securely and served via /api/media/[id]
@@ -1875,60 +2434,69 @@ export function OpsConsoleClient({
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {data.mediaAssets.map((m) => (
-                  <div
-                    key={m.id}
-                    className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#111114]"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={m.url}
-                      alt={m.alt_text || m.filename}
-                      className="h-44 w-full object-cover"
-                    />
-                    <div className="space-y-2 p-4">
-                      <div className="flex items-center justify-between gap-2 text-xs">
-                        <span className="truncate font-semibold text-[#F4F3EF]">
-                          {m.filename}
-                        </span>
-                        <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] uppercase text-[#A1A1AA]">
-                          {m.source_type}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => void handleCopy(m.id, m.url)}
-                          className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-3 text-xs text-[#D4D4D8]"
-                        >
-                          <Copy className="h-3 w-3" />
-                          <span>{copiedKey === m.id ? "Copied" : "Copy URL"}</span>
-                        </button>
-                        <a
-                          href={`${m.url}?download=1`}
-                          download={m.filename}
-                          className="inline-flex h-8 items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-3 text-xs text-[#34D399]"
-                        >
-                          <Download className="h-3 w-3" />
-                          <span>Download</span>
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            void runAction(
-                              "delete_media_asset",
-                              { id: m.id },
-                              "Deleted media asset"
-                            )
-                          }
-                          className="ml-auto inline-flex h-8 cursor-pointer items-center rounded-full border border-[#FF3B1F]/30 bg-[#FF3B1F]/10 px-2.5 text-xs text-[#FF8A7A]"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
+                {data.mediaAssets.map((m) => {
+                  const delKey = `media-${m.id}`;
+                  return (
+                    <div
+                      key={m.id}
+                      className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#111114]"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={m.url}
+                        alt={m.alt_text || m.filename}
+                        className="h-44 w-full object-cover"
+                      />
+                      <div className="space-y-2 p-4">
+                        <div className="flex items-center justify-between gap-2 text-xs">
+                          <span className="truncate font-semibold text-[#F4F3EF]">
+                            {m.filename}
+                          </span>
+                          <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] uppercase text-[#A1A1AA]">
+                            {m.source_type}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => void handleCopy(m.id, m.url)}
+                            className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-3 text-xs text-[#D4D4D8]"
+                          >
+                            <Copy className="h-3 w-3" />
+                            <span>{copiedKey === m.id ? "Copied" : "Copy URL"}</span>
+                          </button>
+                          <a
+                            href={`${m.url}?download=1`}
+                            download={m.filename}
+                            className="inline-flex h-8 items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-3 text-xs text-[#34D399]"
+                          >
+                            <Download className="h-3 w-3" />
+                            <span>Download</span>
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleConfirmedDelete(
+                                delKey,
+                                "delete_media_asset",
+                                { id: m.id },
+                                "Deleted media asset"
+                              )
+                            }
+                            className={`ml-auto inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border px-2.5 text-xs ${
+                              confirmDeleteKey === delKey
+                                ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
+                                : "border-[#FF3B1F]/30 bg-[#FF3B1F]/10 text-[#FF8A7A]"
+                            }`}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            {confirmDeleteKey === delKey && <span>Confirm?</span>}
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1956,7 +2524,7 @@ export function OpsConsoleClient({
                     [
                       "full_admin_parity",
                       "Full Admin Parity Mode",
-                      "AI Assistant can perform any operational action an Admin performs.",
+                      "Master preset: enables all operational AI capabilities (create, edit, approve, revoke, delete, labs, CRM, ingestion, research, media).",
                     ],
                     [
                       "community_hackathons_require_approval",
@@ -2186,47 +2754,59 @@ export function OpsConsoleClient({
 
                 {data.mcpTokens.length > 0 && (
                   <div className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.08] bg-[#0B0B0E]">
-                    {data.mcpTokens.map((t) => (
-                      <div
-                        key={t.id}
-                        className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-xs"
-                      >
-                        <div>
-                          <span className="font-semibold text-[#F4F3EF]">{t.name}</span>
-                          <span className="ml-2 font-mono text-[#8B8B94]">
-                            {t.prefix}...
-                          </span>
-                          <span className="ml-2 rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] text-[#D4D4D8]">
-                            {t.permissions_mode}
-                          </span>
-                          {!t.is_active && (
-                            <span className="ml-2 text-[#FF8A7A]">Revoked</span>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          {t.is_active && (
+                    {data.mcpTokens.map((t) => {
+                      const delKey = `mcp-${t.id}`;
+                      return (
+                        <div
+                          key={t.id}
+                          className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-xs"
+                        >
+                          <div>
+                            <span className="font-semibold text-[#F4F3EF]">{t.name}</span>
+                            <span className="ml-2 font-mono text-[#8B8B94]">
+                              {t.prefix}...
+                            </span>
+                            <span className="ml-2 rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] text-[#D4D4D8]">
+                              {t.permissions_mode}
+                            </span>
+                            {!t.is_active && (
+                              <span className="ml-2 text-[#FF8A7A]">Revoked</span>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            {t.is_active && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void runAction("revoke_mcp_token", { id: t.id })
+                                }
+                                className="cursor-pointer text-xs text-[#FBBF24] hover:underline"
+                              >
+                                Revoke
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() =>
-                                void runAction("revoke_mcp_token", { id: t.id })
+                                handleConfirmedDelete(
+                                  delKey,
+                                  "delete_mcp_token",
+                                  { id: t.id },
+                                  `Deleted MCP token "${t.name}"`
+                                )
                               }
-                              className="text-xs text-[#FBBF24] hover:underline"
+                              className={`cursor-pointer text-xs hover:underline ${
+                                confirmDeleteKey === delKey
+                                  ? "font-semibold text-[#FF3B1F]"
+                                  : "text-[#FF8A7A]"
+                              }`}
                             >
-                              Revoke
+                              {confirmDeleteKey === delKey ? "Confirm?" : "Delete"}
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void runAction("delete_mcp_token", { id: t.id })
-                            }
-                            className="text-xs text-[#FF8A7A] hover:underline"
-                          >
-                            Delete
-                          </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
 
@@ -2296,30 +2876,45 @@ export function OpsConsoleClient({
 
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <div className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.08] bg-[#0B0B0E]">
-                    {data.adminUsers.map((u) => (
-                      <div
-                        key={u.id}
-                        className="flex items-center justify-between gap-2 px-4 py-3 text-xs"
-                      >
-                        <div>
-                          <div className="font-semibold text-[#F4F3EF]">
-                            {u.name} ({u.role})
+                    {data.adminUsers.map((u) => {
+                      const delKey = `admin-${u.id}`;
+                      const canRemove =
+                        u.id !== user.id &&
+                        (u.role !== "SUPER_ADMIN" || user.role === "SUPER_ADMIN");
+                      return (
+                        <div
+                          key={u.id}
+                          className="flex items-center justify-between gap-2 px-4 py-3 text-xs"
+                        >
+                          <div>
+                            <div className="font-semibold text-[#F4F3EF]">
+                              {u.name} ({u.role})
+                            </div>
+                            <div className="text-[#8B8B94]">{u.email}</div>
                           </div>
-                          <div className="text-[#8B8B94]">{u.email}</div>
+                          {canRemove && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleConfirmedDelete(
+                                  delKey,
+                                  "delete_admin_user",
+                                  { id: u.id },
+                                  `Removed admin ${u.email}`
+                                )
+                              }
+                              className={`cursor-pointer hover:underline ${
+                                confirmDeleteKey === delKey
+                                  ? "font-semibold text-[#FF3B1F]"
+                                  : "text-[#FF8A7A]"
+                              }`}
+                            >
+                              {confirmDeleteKey === delKey ? "Confirm?" : "Remove"}
+                            </button>
+                          )}
                         </div>
-                        {u.id !== user.id && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void runAction("delete_admin_user", { id: u.id })
-                            }
-                            className="text-[#FF8A7A] hover:underline"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   <div className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.08] bg-[#0B0B0E]">
@@ -2349,7 +2944,7 @@ export function OpsConsoleClient({
                               onClick={() =>
                                 void runAction("revoke_invite", { id: inv.id })
                               }
-                              className="text-[#FF8A7A] hover:underline"
+                              className="cursor-pointer text-[#FF8A7A] hover:underline"
                             >
                               Revoke
                             </button>
@@ -2439,6 +3034,7 @@ export function OpsConsoleClient({
         open={aiOpen}
         onClose={() => setAiOpen(false)}
         onMutated={refreshBootstrap}
+        systemHealth={data.systemHealth}
       />
     </div>
   );

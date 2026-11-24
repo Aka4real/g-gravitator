@@ -19,6 +19,8 @@ import {
   listMcpTokens,
   listMediaAssets,
 } from "@/lib/db/repository";
+import { getGeminiModelName, isGeminiConfigured } from "@/lib/gemini/client";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 export const metadata: Metadata = {
   title: "Command Center",
@@ -88,6 +90,8 @@ export default async function GgCommandPage() {
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
     (host ? `${proto}://${host}` : "https://www.ggravitator.xyz");
 
+  const supabaseConfigured = isSupabaseConfigured();
+
   const initialData: OpsBootstrapData = {
     user: admin,
     dispatches,
@@ -131,6 +135,13 @@ export default async function GgCommandPage() {
     adminInvites,
     auditLogs,
     mcpEndpointUrl: `${baseUrl}/api/mcp`,
+    systemHealth: {
+      geminiConfigured: isGeminiConfigured(),
+      geminiModel: getGeminiModelName(),
+      supabaseConfigured,
+      storageMode: supabaseConfigured ? "supabase" : "local",
+      resendConfigured: Boolean(process.env.RESEND_API_KEY?.trim()),
+    },
   };
 
   return (

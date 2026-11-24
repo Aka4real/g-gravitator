@@ -302,6 +302,7 @@ export async function getHackathons(
 ): Promise<{ items: Hackathon[]; lastSyncAt: string }> {
   const store = readLocalStore();
   let list: Hackathon[] = store.hackathons;
+  let meta = store.meta;
 
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
@@ -310,7 +311,11 @@ export async function getHackathons(
       if (!filters.includeUnpublished) {
         query = query.eq("is_published", true);
       }
-      const { data, error } = await query;
+      const [{ data, error }, syncMeta] = await Promise.all([
+        query,
+        readSupabaseSyncMeta(store.meta),
+      ]);
+      meta = syncMeta;
       if (error) {
         logSupabaseError("getHackathons", error);
       } else if (data !== null) {
@@ -372,8 +377,6 @@ export async function getHackathons(
     }
     return new Date(a.deadline_at).getTime() - new Date(b.deadline_at).getTime();
   });
-
-  const meta = await readSupabaseSyncMeta(store.meta);
 
   return {
     items: filtered,
@@ -562,7 +565,21 @@ export async function createHackathon(
   const nowIso = new Date().toISOString();
   const slugBase = slugifyText(payload.slug || payload.title) || `hackathon-${Date.now()}`;
   const uniqueSuffix = crypto.randomUUID().slice(0, 6);
-  const slug = store.hackathons.some((h) => h.slug === slugBase)
+
+  let existingSlugs = store.hackathons.map((h) => h.slug);
+  if (isSupabaseConfigured()) {
+    const sb = getSupabaseAdminClient();
+    if (sb) {
+      const { data, error } = await sb.from("hackathons").select("slug");
+      if (error) {
+        logSupabaseError("createHackathon:fetchSlugs", error);
+      } else if (data) {
+        existingSlugs = data.map((row) => String(row.slug));
+      }
+    }
+  }
+
+  const slug = existingSlugs.includes(slugBase)
     ? `${slugBase}-${uniqueSuffix}`
     : slugBase;
   const fingerprint =
@@ -611,9 +628,11 @@ export async function createHackathon(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
+      const { id: _omitId, ...sbPayload } = record;
+      void _omitId;
       const { data, error } = await sb
         .from("hackathons")
-        .upsert(record, { onConflict: "fingerprint" })
+        .upsert(sbPayload, { onConflict: "fingerprint" })
         .select("*")
         .maybeSingle();
       if (error) {
@@ -686,8 +705,16 @@ export async function deleteHackathon(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { error } = await sb.from("hackathons").delete().eq("id", id);
-      if (!error) removedSb = true;
+      const { data, error } = await sb
+        .from("hackathons")
+        .delete()
+        .eq("id", id)
+        .select("id");
+      if (error) {
+        logSupabaseError("deleteHackathon", error);
+      } else {
+        removedSb = Array.isArray(data) && data.length > 0;
+      }
     }
   }
 
@@ -709,6 +736,7 @@ export async function getNewsItems(
 ): Promise<{ items: NewsItem[]; lastSyncAt: string }> {
   const store = readLocalStore();
   let list = store.news_items;
+  let meta = store.meta;
 
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
@@ -717,7 +745,11 @@ export async function getNewsItems(
       if (!filters.includeUnpublished) {
         query = query.eq("is_published", true);
       }
-      const { data, error } = await query;
+      const [{ data, error }, syncMeta] = await Promise.all([
+        query,
+        readSupabaseSyncMeta(store.meta),
+      ]);
+      meta = syncMeta;
       if (error) {
         logSupabaseError("getNewsItems", error);
       } else if (data !== null) {
@@ -743,8 +775,6 @@ export async function getNewsItems(
     if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
     return new Date(b.published_at).getTime() - new Date(a.published_at).getTime();
   });
-
-  const meta = await readSupabaseSyncMeta(store.meta);
 
   return {
     items: filtered,
@@ -879,9 +909,11 @@ export async function createNewsItem(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
+      const { id: _omitId, ...sbPayload } = record;
+      void _omitId;
       const { data, error } = await sb
         .from("news_items")
-        .upsert(record, { onConflict: "url_hash" })
+        .upsert(sbPayload, { onConflict: "url_hash" })
         .select("*")
         .maybeSingle();
       if (error) {
@@ -952,11 +984,15 @@ export async function deleteNewsItem(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { error } = await sb.from("news_items").delete().eq("id", id);
+      const { data, error } = await sb
+        .from("news_items")
+        .delete()
+        .eq("id", id)
+        .select("id");
       if (error) {
         logSupabaseError("deleteNewsItem", error);
       } else {
-        removedSb = true;
+        removedSb = Array.isArray(data) && data.length > 0;
       }
     }
   }
@@ -1088,9 +1124,11 @@ export async function createDispatch(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
+      const { id: _omitId, ...sbPayload } = record;
+      void _omitId;
       const { data, error } = await sb
         .from("dispatches")
-        .upsert(record, { onConflict: "slug" })
+        .upsert(sbPayload, { onConflict: "slug" })
         .select("*")
         .maybeSingle();
       if (error) {
@@ -1156,8 +1194,16 @@ export async function deleteDispatch(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { error } = await sb.from("dispatches").delete().eq("id", id);
-      if (!error) removedSb = true;
+      const { data, error } = await sb
+        .from("dispatches")
+        .delete()
+        .eq("id", id)
+        .select("id");
+      if (error) {
+        logSupabaseError("deleteDispatch", error);
+      } else {
+        removedSb = Array.isArray(data) && data.length > 0;
+      }
     }
   }
 
@@ -1208,11 +1254,34 @@ export async function createLabProject(
 ): Promise<LabProject> {
   const store = readLocalStore();
   const nowIso = new Date().toISOString();
-  const slug = slugifyText(payload.slug || payload.name) || `lab-${Date.now()}`;
+  const code = payload.code.trim().toUpperCase();
+  const baseSlug = slugifyText(payload.slug || payload.name) || `lab-${Date.now()}`;
+
+  let existingOtherSlugs = store.lab_projects
+    .filter((p) => p.code.toUpperCase() !== code)
+    .map((p) => p.slug);
+
+  if (isSupabaseConfigured()) {
+    const sb = getSupabaseAdminClient();
+    if (sb) {
+      const { data, error } = await sb.from("lab_projects").select("code, slug");
+      if (error) {
+        logSupabaseError("createLabProject:fetchSlugs", error);
+      } else if (data) {
+        existingOtherSlugs = data
+          .filter((row) => String(row.code).toUpperCase() !== code)
+          .map((row) => String(row.slug));
+      }
+    }
+  }
+
+  const slug = existingOtherSlugs.includes(baseSlug)
+    ? `${baseSlug}-${crypto.randomUUID().slice(0, 4)}`
+    : baseSlug;
 
   const record: LabProject = {
     id: crypto.randomUUID(),
-    code: payload.code.trim().toUpperCase(),
+    code,
     division: payload.division,
     name: payload.name.trim(),
     slug,
@@ -1237,9 +1306,11 @@ export async function createLabProject(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
+      const { id: _omitId, ...sbPayload } = record;
+      void _omitId;
       const { data, error } = await sb
         .from("lab_projects")
-        .upsert(record, { onConflict: "code" })
+        .upsert(sbPayload, { onConflict: "code" })
         .select("*")
         .maybeSingle();
       if (error) {
@@ -1303,11 +1374,15 @@ export async function deleteLabProject(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { error } = await sb.from("lab_projects").delete().eq("id", id);
+      const { data, error } = await sb
+        .from("lab_projects")
+        .delete()
+        .eq("id", id)
+        .select("id");
       if (error) {
         logSupabaseError("deleteLabProject", error);
       } else {
-        removedSb = true;
+        removedSb = Array.isArray(data) && data.length > 0;
       }
     }
   }
@@ -1415,11 +1490,15 @@ export async function deleteClientInquiry(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { error } = await sb.from("client_inquiries").delete().eq("id", id);
+      const { data, error } = await sb
+        .from("client_inquiries")
+        .delete()
+        .eq("id", id)
+        .select("id");
       if (error) {
         logSupabaseError("deleteClientInquiry", error);
       } else {
-        removedSb = true;
+        removedSb = Array.isArray(data) && data.length > 0;
       }
     }
   }
@@ -1463,10 +1542,36 @@ export async function createOrbitApplication(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { data, error } = await sb
+      // Preserve admin status & notes when an applicant resubmits on a cold serverless instance
+      const { data: existingSb, error: lookupError } = await sb
         .from("orbit_waitlist")
-        .upsert(
-          {
+        .select("id")
+        .eq("email", normalizedEmail)
+        .maybeSingle();
+
+      if (lookupError) {
+        logSupabaseError("createOrbitApplication:lookup", lookupError);
+      } else if (existingSb?.id) {
+        const { data, error } = await sb
+          .from("orbit_waitlist")
+          .update({
+            full_name: payload.full_name,
+            track: payload.track,
+            portfolio_url: payload.portfolio_url,
+            proof_of_work: payload.proof_of_work,
+          })
+          .eq("id", existingSb.id)
+          .select("*")
+          .maybeSingle();
+        if (error) {
+          logSupabaseError("createOrbitApplication:update", error);
+        } else if (data) {
+          return data as OrbitApplication;
+        }
+      } else {
+        const { data, error } = await sb
+          .from("orbit_waitlist")
+          .insert({
             full_name: payload.full_name,
             email: normalizedEmail,
             track: payload.track,
@@ -1474,15 +1579,14 @@ export async function createOrbitApplication(
             proof_of_work: payload.proof_of_work,
             status: localRecord.status,
             notes: localRecord.notes,
-          },
-          { onConflict: "email" }
-        )
-        .select("*")
-        .maybeSingle();
-      if (error) {
-        logSupabaseError("createOrbitApplication", error);
-      } else if (data) {
-        return data as OrbitApplication;
+          })
+          .select("*")
+          .maybeSingle();
+        if (error) {
+          logSupabaseError("createOrbitApplication:insert", error);
+        } else if (data) {
+          return data as OrbitApplication;
+        }
       }
     }
   }
@@ -1552,11 +1656,15 @@ export async function deleteOrbitApplication(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { error } = await sb.from("orbit_waitlist").delete().eq("id", id);
+      const { data, error } = await sb
+        .from("orbit_waitlist")
+        .delete()
+        .eq("id", id)
+        .select("id");
       if (error) {
         logSupabaseError("deleteOrbitApplication", error);
       } else {
-        removedSb = true;
+        removedSb = Array.isArray(data) && data.length > 0;
       }
     }
   }
@@ -1639,8 +1747,16 @@ export async function deleteNewsletterSubscriber(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { error } = await sb.from("newsletter_subscribers").delete().eq("id", id);
-      if (!error) removedSb = true;
+      const { data, error } = await sb
+        .from("newsletter_subscribers")
+        .delete()
+        .eq("id", id)
+        .select("id");
+      if (error) {
+        logSupabaseError("deleteNewsletterSubscriber", error);
+      } else {
+        removedSb = Array.isArray(data) && data.length > 0;
+      }
     }
   }
   return removedLocal || removedSb;
@@ -1735,11 +1851,15 @@ export async function deleteMediaAsset(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { error } = await sb.from("media_assets").delete().eq("id", id);
+      const { data, error } = await sb
+        .from("media_assets")
+        .delete()
+        .eq("id", id)
+        .select("id");
       if (error) {
         logSupabaseError("deleteMediaAsset", error);
       } else {
-        removedSb = true;
+        removedSb = Array.isArray(data) && data.length > 0;
       }
     }
   }
@@ -1883,7 +2003,11 @@ export async function updateAdminLastLogin(id: string): Promise<void> {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      await sb.from("admin_users").update({ last_login_at: nowIso }).eq("id", id);
+      const { error } = await sb
+        .from("admin_users")
+        .update({ last_login_at: nowIso })
+        .eq("id", id);
+      logSupabaseError("updateAdminLastLogin", error);
     }
   }
 }
@@ -1899,8 +2023,16 @@ export async function deleteAdminUser(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { error } = await sb.from("admin_users").delete().eq("id", id);
-      if (!error) removedSb = true;
+      const { data, error } = await sb
+        .from("admin_users")
+        .delete()
+        .eq("id", id)
+        .select("id");
+      if (error) {
+        logSupabaseError("deleteAdminUser", error);
+      } else {
+        removedSb = Array.isArray(data) && data.length > 0;
+      }
     }
   }
   return removedLocal || removedSb;
@@ -1915,7 +2047,9 @@ export async function listAdminInvites(): Promise<AdminInvite[]> {
         .from("admin_invites")
         .select("*")
         .order("created_at", { ascending: false });
-      if (!error && data) {
+      if (error) {
+        logSupabaseError("listAdminInvites", error);
+      } else if (data !== null) {
         return data as AdminInvite[];
       }
     }
@@ -1940,7 +2074,8 @@ export async function createAdminInvite(createdBy: string): Promise<AdminInvite>
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      await sb.from("admin_invites").insert(record);
+      const { error } = await sb.from("admin_invites").insert(record);
+      logSupabaseError("createAdminInvite", error);
     }
   }
 
@@ -1967,14 +2102,18 @@ export async function consumeAdminInvite(
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { data } = await sb
+      const { data, error } = await sb
         .from("admin_invites")
         .update({ used_by: usedByEmail.toLowerCase() })
         .eq("code", trimmed)
         .is("used_by", null)
         .select("id")
         .maybeSingle();
-      if (data) consumedSb = true;
+      if (error) {
+        logSupabaseError("consumeAdminInvite", error);
+      } else if (data) {
+        consumedSb = true;
+      }
     }
   }
 
@@ -1992,8 +2131,16 @@ export async function deleteAdminInvite(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { error } = await sb.from("admin_invites").delete().eq("id", id);
-      if (!error) removedSb = true;
+      const { data, error } = await sb
+        .from("admin_invites")
+        .delete()
+        .eq("id", id)
+        .select("id");
+      if (error) {
+        logSupabaseError("deleteAdminInvite", error);
+      } else {
+        removedSb = Array.isArray(data) && data.length > 0;
+      }
     }
   }
   return removedLocal || removedSb;
@@ -2012,7 +2159,9 @@ export async function listMcpTokens(): Promise<McpToken[]> {
         .from("mcp_tokens")
         .select("*")
         .order("created_at", { ascending: false });
-      if (!error && data) {
+      if (error) {
+        logSupabaseError("listMcpTokens", error);
+      } else if (data !== null) {
         return data as McpToken[];
       }
     }
@@ -2050,7 +2199,8 @@ export async function createMcpToken(payload: {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      await sb.from("mcp_tokens").insert(tokenRecord);
+      const { error } = await sb.from("mcp_tokens").insert(tokenRecord);
+      logSupabaseError("createMcpToken", error);
     }
   }
 
@@ -2075,7 +2225,11 @@ export async function touchMcpTokenLastUsed(id: string): Promise<void> {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      await sb.from("mcp_tokens").update({ last_used_at: nowIso }).eq("id", id);
+      const { error } = await sb
+        .from("mcp_tokens")
+        .update({ last_used_at: nowIso })
+        .eq("id", id);
+      logSupabaseError("touchMcpTokenLastUsed", error);
     }
   }
 }
@@ -2094,11 +2248,16 @@ export async function revokeMcpToken(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { error } = await sb
+      const { data, error } = await sb
         .from("mcp_tokens")
         .update({ is_active: false })
-        .eq("id", id);
-      if (!error) updatedSb = true;
+        .eq("id", id)
+        .select("id");
+      if (error) {
+        logSupabaseError("revokeMcpToken", error);
+      } else {
+        updatedSb = Array.isArray(data) && data.length > 0;
+      }
     }
   }
   return updatedLocal || updatedSb;
@@ -2115,8 +2274,16 @@ export async function deleteMcpToken(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
-      const { error } = await sb.from("mcp_tokens").delete().eq("id", id);
-      if (!error) removedSb = true;
+      const { data, error } = await sb
+        .from("mcp_tokens")
+        .delete()
+        .eq("id", id)
+        .select("id");
+      if (error) {
+        logSupabaseError("deleteMcpToken", error);
+      } else {
+        removedSb = Array.isArray(data) && data.length > 0;
+      }
     }
   }
   return removedLocal || removedSb;

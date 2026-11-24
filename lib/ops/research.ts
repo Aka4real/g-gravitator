@@ -1,4 +1,10 @@
-import { getGeminiBetaClient } from "@/lib/gemini/client";
+import {
+  buildThinkingConfigForModel,
+  GEMINI_MAX_PERMISSION_SAFETY_SETTINGS,
+  getGeminiBetaClient,
+  getOrderedGeminiModels,
+  isAuthGeminiError,
+} from "@/lib/gemini/client";
 
 export interface ResearchFinding {
   title: string;
@@ -174,31 +180,47 @@ async function searchGeminiGrounded(query: string): Promise<{
   const ai = getGeminiBetaClient();
   if (!ai) return { summary: null, findings: [] };
 
-  try {
-    const res = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
-      contents: `Research the latest factual information for: ${query}. Provide a concise factual engineering brief.`,
-      config: {
-        tools: [{ googleSearch: {} }],
-      },
-    });
-    const chunks = res.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
-    const findings: ResearchFinding[] = chunks
-      .filter((c) => c.web?.uri)
-      .slice(0, 6)
-      .map((c) => ({
-        title: c.web?.title || c.web?.uri || "Web result",
-        url: c.web!.uri!,
-        source: "Google Search Grounding",
-        snippet: "Verified web grounding citation.",
-      }));
-    return {
-      summary: res.text?.trim() || null,
-      findings,
-    };
-  } catch {
-    return { summary: null, findings: [] };
+  const models = getOrderedGeminiModels().slice(0, 3);
+  for (const model of models) {
+    try {
+      const thinkingConfig = buildThinkingConfigForModel(model, "low");
+      const res = await ai.models.generateContent({
+        model,
+        contents: `Research the latest factual information for: ${query}. Provide a concise factual engineering brief with concrete dates, versions, and key facts.`,
+        config: {
+          abortSignal: AbortSignal.timeout(12_000),
+          safetySettings: GEMINI_MAX_PERMISSION_SAFETY_SETTINGS,
+          ...(thinkingConfig ? { thinkingConfig } : {}),
+          tools: [{ googleSearch: {} }],
+        },
+      });
+      const chunks = res.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+      const findings: ResearchFinding[] = chunks
+        .filter((c) => c.web?.uri)
+        .slice(0, 6)
+        .map((c) => ({
+          title: c.web?.title || c.web?.uri || "Web result",
+          url: c.web!.uri!,
+          source: "Google Search Grounding",
+          snippet: "Verified web grounding citation.",
+        }));
+      return {
+        summary: res.text?.trim() || null,
+        findings,
+      };
+    } catch (error) {
+      console.warn(
+        `[ops:research] ${model} grounded search failed: ${
+          error instanceof Error ? error.message.slice(0, 140) : String(error)
+        }`
+      );
+      if (isAuthGeminiError(error)) {
+        return { summary: null, findings: [] };
+      }
+    }
   }
+
+  return { summary: null, findings: [] };
 }
 
 export async function runLiveWebResearch(
