@@ -27,6 +27,7 @@ import {
   Radar,
   RefreshCw,
   Search,
+  Share2,
   Shield,
   Sparkles,
   Star,
@@ -36,6 +37,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
+import { JournalShareModal } from "@/components/journal/JournalShareModal";
 import { AiVoiceAssistantPanel } from "@/components/ops/AiVoiceAssistantPanel";
 import { McpGovernanceSection } from "@/components/ops/McpGovernanceSection";
 import { OpsAuthScreen } from "@/components/ops/OpsAuthScreen";
@@ -127,6 +129,7 @@ export function OpsConsoleClient({
     entity: DesignerEntityType;
     existing: Dispatch | NewsItem | Hackathon | null;
   } | null>(null);
+  const [shareDispatchTarget, setShareDispatchTarget] = useState<Dispatch | null>(null);
 
   // AI & Voice Assistant Panel
   const [aiOpen, setAiOpen] = useState(false);
@@ -236,6 +239,7 @@ export function OpsConsoleClient({
 
     setAiOpen(false);
     setDesignerState(null);
+    setShareDispatchTarget(null);
     setUser(null);
     setData(null);
     setBootstrapError(null);
@@ -1232,6 +1236,19 @@ export function OpsConsoleClient({
                           <ExternalLink className="h-3.5 w-3.5" />
                           {!published && <span className="text-[11px]">Preview</span>}
                         </a>
+                        <button
+                          type="button"
+                          onClick={() => setShareDispatchTarget(d)}
+                          title={
+                            published
+                              ? "Share dispatch & inspect Open Graph preview"
+                              : "Generate private draft share link & inspect Open Graph preview"
+                          }
+                          className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.1] bg-[#18181D] px-3 text-xs font-medium text-[#D4D4D8] hover:border-white/[0.22] hover:text-[#F4F3EF]"
+                        >
+                          <Share2 className="h-3.5 w-3.5 text-[#FF3B1F]" />
+                          <span>Share</span>
+                        </button>
                         <button
                           type="button"
                           onClick={() =>
@@ -2995,6 +3012,13 @@ export function OpsConsoleClient({
         onClose={() => setAiOpen(false)}
         onMutated={refreshBootstrap}
         systemHealth={data.systemHealth}
+      />
+
+      {/* Journal Share & Open Graph Preview Modal */}
+      <JournalShareModal
+        dispatch={shareDispatchTarget}
+        open={Boolean(shareDispatchTarget)}
+        onClose={() => setShareDispatchTarget(null)}
       />
     </div>
   );

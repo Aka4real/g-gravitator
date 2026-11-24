@@ -10,7 +10,9 @@ import {
   ChevronDown,
   X,
   RotateCcw,
+  Share2,
 } from "lucide-react";
+import { JournalShareModal } from "@/components/journal/JournalShareModal";
 import { NewsletterBar } from "@/components/journal/NewsletterBar";
 import { EASE_OUT_EXPO } from "@/lib/motion";
 import type {
@@ -117,6 +119,7 @@ export function JournalHubClient({
   );
   // Hydration-safe timestamp: remains null during SSR and first client render
   const [nowMs, setNowMs] = useState<number | null>(null);
+  const [shareDispatch, setShareDispatch] = useState<Dispatch | null>(null);
 
   useEffect(() => {
     const syncNow = () => setNowMs(Date.now());
@@ -243,13 +246,25 @@ export function JournalHubClient({
               ))}
             </div>
 
-            <PreloadLink
-              href={`/journal/${featuredDispatch.slug}`}
-              className="press-tactile inline-flex h-11 shrink-0 items-center justify-center gap-2 self-start rounded-full bg-[#F4F3EF] px-6 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF3B1F] sm:self-auto"
-            >
-              <span>Read dispatch</span>
-              <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
-            </PreloadLink>
+            <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+              <button
+                type="button"
+                id="featured-dispatch-share-btn"
+                onClick={() => setShareDispatch(featuredDispatch)}
+                className="press-tactile inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full border border-white/[0.12] bg-[#18181D] px-5 text-sm font-medium whitespace-nowrap text-[#F4F3EF] transition-colors hover:border-white/[0.25]"
+              >
+                <Share2 className="h-4 w-4 text-[#FF3B1F]" strokeWidth={1.8} />
+                <span>Share</span>
+              </button>
+
+              <PreloadLink
+                href={`/journal/${featuredDispatch.slug}`}
+                className="press-tactile inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[#F4F3EF] px-6 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF3B1F]"
+              >
+                <span>Read dispatch</span>
+                <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+              </PreloadLink>
+            </div>
           </div>
         </article>
       )}
@@ -427,17 +442,33 @@ export function JournalHubClient({
                         ))}
                       </div>
 
-                      <PreloadLink
-                        href={`/journal/${disp.slug}`}
-                        className="group inline-flex items-center gap-1.5 text-sm font-medium text-[#F4F3EF] transition-colors hover:text-[#FF6B54]"
-                      >
-                        <span>Open reader</span>
-                        <ArrowUpRight
-                          className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-                          style={{ color: dispAccent }}
-                          strokeWidth={1.8}
-                        />
-                      </PreloadLink>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setShareDispatch(disp)}
+                          aria-label={`Share Issue ${disp.issue_number}: ${disp.title}`}
+                          className="press-tactile inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.1] bg-[#18181D] px-3 py-1.5 text-xs font-medium text-[#D4D4D8] transition-colors hover:border-white/[0.22] hover:text-[#F4F3EF]"
+                        >
+                          <Share2
+                            className="h-3.5 w-3.5"
+                            style={{ color: dispAccent }}
+                            strokeWidth={1.8}
+                          />
+                          <span>Share</span>
+                        </button>
+
+                        <PreloadLink
+                          href={`/journal/${disp.slug}`}
+                          className="group inline-flex items-center gap-1.5 text-sm font-medium text-[#F4F3EF] transition-colors hover:text-[#FF6B54]"
+                        >
+                          <span>Open reader</span>
+                          <ArrowUpRight
+                            className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                            style={{ color: dispAccent }}
+                            strokeWidth={1.8}
+                          />
+                        </PreloadLink>
+                      </div>
                     </div>
                   </article>
                 );
@@ -617,6 +648,12 @@ export function JournalHubClient({
           )}
         </aside>
       </div>
+
+      <JournalShareModal
+        dispatch={shareDispatch}
+        open={Boolean(shareDispatch)}
+        onClose={() => setShareDispatch(null)}
+      />
     </div>
   );
 }

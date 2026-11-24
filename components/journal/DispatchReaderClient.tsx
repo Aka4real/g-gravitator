@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useSyncExternalStore } from "react";
 import { PreloadLink } from "@/components/layout/PreloadLink";
 import { motion, useReducedMotion } from "framer-motion";
 import {
@@ -13,8 +13,16 @@ import {
   Check,
   Sparkles,
   ExternalLink,
+  Share2,
+  Link2,
 } from "lucide-react";
+import { JournalShareModal } from "@/components/journal/JournalShareModal";
 import { NewsletterBar } from "@/components/journal/NewsletterBar";
+import {
+  buildJournalShareUrls,
+  buildSocialShareTargets,
+  copyTextToClipboard,
+} from "@/lib/journal/share";
 import { SPRING_UI } from "@/lib/motion";
 import type { Dispatch, DispatchCategory } from "@/lib/supabase/types";
 
@@ -22,6 +30,9 @@ interface DispatchReaderClientProps {
   dispatch: Dispatch;
   otherDispatches: Dispatch[];
   isAdminPreview?: boolean;
+  isSharedDraft?: boolean;
+  initialShareToken?: string | null;
+  initialOrigin?: string;
 }
 
 interface ParsedBlock {
@@ -208,14 +219,48 @@ function formatTagLabel(tag: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+const noopSubscribe = () => () => {};
+
 export function DispatchReaderClient({
   dispatch,
   otherDispatches,
   isAdminPreview = false,
+  isSharedDraft = false,
+  initialShareToken = null,
+  initialOrigin = "https://ggravitator.com",
 }: DispatchReaderClientProps) {
   const prefersReducedMotion = useReducedMotion();
   const [readingMode, setReadingMode] = useState<"DARK" | "LIGHT">("DARK");
   const [copiedCodeIdx, setCopiedCodeIdx] = useState<number | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [copiedShareLink, setCopiedShareLink] = useState(false);
+
+  const clientOrigin = useSyncExternalStore(
+    noopSubscribe,
+    () => window.location.origin,
+    () => initialOrigin
+  );
+
+  const shareUrls = useMemo(
+    () =>
+      buildJournalShareUrls({
+        dispatch,
+        origin: clientOrigin,
+        shareToken: initialShareToken,
+      }),
+    [dispatch, clientOrigin, initialShareToken]
+  );
+
+  const socialTargets = useMemo(
+    () =>
+      buildSocialShareTargets({
+        url: shareUrls.shareUrl,
+        title: dispatch.title,
+        subtitle: dispatch.subtitle,
+        issueNumber: dispatch.issue_number,
+      }),
+    [shareUrls.shareUrl, dispatch.title, dispatch.subtitle, dispatch.issue_number]
+  );
 
   const accentColor =
     /^#[0-9a-fA-F]{3,8}$/.test(dispatch.design?.accent_color || "")
@@ -248,6 +293,15 @@ export function DispatchReaderClient({
     } catch {
       // Clipboard unavailable
     }
+  };
+
+  const handleQuickCopyShareLink = () => {
+    void copyTextToClipboard(shareUrls.shareUrl).then((ok) => {
+      if (ok) {
+        setCopiedShareLink(true);
+        window.setTimeout(() => setCopiedShareLink(false), 2000);
+      }
+    });
   };
 
   return (
@@ -292,9 +346,9 @@ export function DispatchReaderClient({
               <span>Journal</span>
             </PreloadLink>
 
-            <div className="flex items-center gap-3 sm:gap-4">
+            <div className="flex items-center gap-2.5 sm:gap-3.5">
               <span
-                className={`font-mono-telemetry hidden items-center gap-1.5 text-xs sm:inline-flex ${
+                className={`font-mono-telemetry hidden items-center gap-1.5 text-xs md:inline-flex ${
                   isLight ? "text-[#52525B]" : "text-[#A1A1AA]"
                 }`}
               >
@@ -307,6 +361,24 @@ export function DispatchReaderClient({
                   Issue {dispatch.issue_number} · {dispatch.reading_time_mins} min read
                 </span>
               </span>
+
+              <button
+                type="button"
+                id="dispatch-toolbar-share-btn"
+                onClick={() => setShareOpen(true)}
+                className={`press-tactile inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  isLight
+                    ? "border-black/[0.12] bg-[#E8E6DF] text-[#111114] hover:border-black/[0.25]"
+                    : "border-white/[0.1] bg-[#18181D] text-[#F4F3EF] hover:border-white/[0.22]"
+                }`}
+              >
+                <Share2
+                  className="h-3.5 w-3.5"
+                  style={{ color: accentColor }}
+                  strokeWidth={1.8}
+                />
+                <span>Share</span>
+              </button>
 
               {/* Dark / Light Editorial Reading Mode Segmented Switch */}
               <div
@@ -382,15 +454,56 @@ export function DispatchReaderClient({
                 <span className="font-mono uppercase">
                   {dispatch.approval_status || "UNPUBLISHED"}
                 </span>{" "}
-                — hidden from public readers until approved.
+                , hidden from public readers until approved.
               </span>
             </div>
-            <a
-              href="/gg-command"
-              className="rounded-full border border-[#FF3B1F]/40 bg-[#FF3B1F] px-3 py-1 font-semibold text-[#08080A] hover:bg-[#FF5238]"
-            >
-              Return to Command Center
-            </a>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleQuickCopyShareLink}
+                className={`press-tactile inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 font-semibold ${
+                  isLight
+                    ? "border-black/[0.15] bg-white text-[#111114]"
+                    : "border-white/[0.15] bg-[#18181D] text-[#F4F3EF]"
+                }`}
+              >
+                {copiedShareLink ? (
+                  <>
+                    <Check className="h-3.5 w-3.5 text-[#10B981]" strokeWidth={2} />
+                    <span>Copied preview link</span>
+                  </>
+                ) : (
+                  <>
+                    <Link2 className="h-3.5 w-3.5 text-[#FF3B1F]" strokeWidth={1.8} />
+                    <span>Copy preview share link</span>
+                  </>
+                )}
+              </button>
+              <a
+                href="/gg-command"
+                className="rounded-full border border-[#FF3B1F]/40 bg-[#FF3B1F] px-3 py-1 font-semibold text-[#08080A] hover:bg-[#FF5238]"
+              >
+                Return to Command Center
+              </a>
+            </div>
+          </div>
+        )}
+
+        {isSharedDraft && !isAdminPreview && (
+          <div
+            role="status"
+            className={`mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-xs ${
+              isLight
+                ? "border-[#F59E0B]/40 bg-[#F59E0B]/10 text-[#92400E]"
+                : "border-[#F59E0B]/35 bg-[#F59E0B]/10 text-[#FBBF24]"
+            }`}
+          >
+            <div className="flex items-center gap-2 font-medium">
+              <span className="inline-block h-2 w-2 rounded-full bg-[#F59E0B]" />
+              <span>
+                Shared Draft Preview · You are reading an unlisted dispatch shared via a private preview link.
+              </span>
+            </div>
           </div>
         )}
 
@@ -485,6 +598,9 @@ export function DispatchReaderClient({
                   <img
                     src={dispatch.cover_image_url}
                     alt={dispatch.title}
+                    loading="eager"
+                    fetchPriority="high"
+                    decoding="async"
                     className="h-auto w-full object-cover"
                   />
                 </div>
@@ -502,6 +618,9 @@ export function DispatchReaderClient({
               <img
                 src={dispatch.cover_image_url}
                 alt={dispatch.title}
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
                 className="w-full object-cover"
               />
             </div>
@@ -796,8 +915,104 @@ export function DispatchReaderClient({
                 </section>
               )}
 
+              {/* Share This Dispatch Card */}
+              <section
+                aria-label="Share this dispatch"
+                className={`mt-6 rounded-2xl border p-6 sm:p-7 ${
+                  isLight
+                    ? "border-black/[0.1] bg-[#E8E6DF]/80"
+                    : "border-white/[0.08] bg-[#111114]"
+                }`}
+              >
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="font-display text-lg font-semibold tracking-[-0.02em]">
+                      Share this dispatch
+                    </h2>
+                    <p
+                      className={`mt-1 text-xs leading-relaxed ${
+                        isLight ? "text-[#52525B]" : "text-[#8B8B94]"
+                      }`}
+                    >
+                      Generate a link with a rich social preview and matching cover artwork.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      id="dispatch-footer-copy-link-btn"
+                      onClick={handleQuickCopyShareLink}
+                      className={`press-tactile inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full px-4 text-xs font-semibold ${
+                        copiedShareLink
+                          ? "bg-[#10B981] text-[#08080A]"
+                          : "bg-[#FF3B1F] text-[#08080A] hover:bg-[#FF5238]"
+                      }`}
+                    >
+                      {copiedShareLink ? (
+                        <>
+                          <Check className="h-3.5 w-3.5" strokeWidth={2.1} />
+                          <span>Copied link</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5" strokeWidth={1.9} />
+                          <span>Copy link</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      id="dispatch-footer-share-modal-btn"
+                      onClick={() => setShareOpen(true)}
+                      className={`press-tactile inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-xs font-medium transition-colors ${
+                        isLight
+                          ? "border-black/[0.12] bg-[#F4F3EF] text-[#111114] hover:border-black/[0.25]"
+                          : "border-white/[0.12] bg-[#18181D] text-[#F4F3EF] hover:border-white/[0.25]"
+                      }`}
+                    >
+                      <Share2
+                        className="h-3.5 w-3.5"
+                        style={{ color: accentColor }}
+                        strokeWidth={1.8}
+                      />
+                      <span>Preview &amp; share</span>
+                    </button>
+
+                    <a
+                      href={socialTargets.x}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className={`press-tactile inline-flex h-10 items-center gap-1 rounded-full border px-3.5 text-xs font-medium transition-colors ${
+                        isLight
+                          ? "border-black/[0.1] bg-[#F4F3EF] text-[#27272A] hover:text-[#08080A]"
+                          : "border-white/[0.1] bg-[#18181D] text-[#D4D4D8] hover:text-[#F4F3EF]"
+                      }`}
+                    >
+                      <span>X</span>
+                      <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.7} />
+                    </a>
+
+                    <a
+                      href={socialTargets.linkedin}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className={`press-tactile inline-flex h-10 items-center gap-1 rounded-full border px-3.5 text-xs font-medium transition-colors ${
+                        isLight
+                          ? "border-black/[0.1] bg-[#F4F3EF] text-[#27272A] hover:text-[#08080A]"
+                          : "border-white/[0.1] bg-[#18181D] text-[#D4D4D8] hover:text-[#F4F3EF]"
+                      }`}
+                    >
+                      <span>LinkedIn</span>
+                      <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.7} />
+                    </a>
+                  </div>
+                </div>
+              </section>
+
               {/* Theme-Adaptive Newsletter Capture */}
-              <div className="pt-10">
+              <div className="pt-8">
                 <NewsletterBar source={`dispatch-${dispatch.issue_number}`} />
               </div>
             </div>
@@ -861,6 +1076,15 @@ export function DispatchReaderClient({
           </section>
         )}
       </div>
+
+      <JournalShareModal
+        dispatch={dispatch}
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        shareToken={initialShareToken}
+        originOverride={clientOrigin}
+        isLight={isLight}
+      />
     </div>
   );
 }

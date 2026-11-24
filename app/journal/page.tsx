@@ -7,6 +7,20 @@ export const metadata: Metadata = {
   title: "Journal and The Orbital Wire | AI Intelligence and Lab Dispatches",
   description:
     "Dual-track intelligence center combining G-Gravitator and OXAKALABS original Lab Dispatches with The Orbital Wire automated AI and tech news radar.",
+  openGraph: {
+    title: "Journal & The Orbital Wire | G-Gravitator",
+    description:
+      "Long-form engineering dispatches from G-Gravitator and OXAKALABS paired with The Orbital Wire real-time AI intelligence.",
+    type: "website",
+    siteName: "G-Gravitator",
+    url: "/journal",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Journal & The Orbital Wire | G-Gravitator",
+    description:
+      "Long-form engineering dispatches from G-Gravitator and OXAKALABS paired with The Orbital Wire real-time AI intelligence.",
+  },
 };
 
 export const dynamic = "force-dynamic";
