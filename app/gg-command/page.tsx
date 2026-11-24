@@ -21,6 +21,7 @@ import {
   listMediaAssets,
 } from "@/lib/db/repository";
 import { getGeminiModelName, isGeminiConfigured } from "@/lib/gemini/client";
+import { resolveCanonicalOrigin } from "@/lib/seo/site";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 export const metadata: Metadata = {
@@ -85,11 +86,7 @@ export default async function GgCommandPage() {
     headers(),
   ]);
 
-  const host = hdrs.get("x-forwarded-host") || hdrs.get("host") || "";
-  const proto = hdrs.get("x-forwarded-proto") || "https";
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
-    (host ? `${proto}://${host}` : "https://www.ggravitator.xyz");
+  const baseUrl = resolveCanonicalOrigin({ headers: hdrs });
 
   const supabaseConfigured = isSupabaseConfigured();
 

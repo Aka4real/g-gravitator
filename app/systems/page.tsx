@@ -4,9 +4,18 @@ import { ArrowDown, ArrowRight } from "lucide-react";
 import { PricingMatrix } from "@/components/systems/PricingMatrix";
 
 export const metadata: Metadata = {
-  title: "G-Gravitator Systems | B2B AI & Software Foundry",
+  title: "Systems · B2B AI & Software Foundry",
   description:
     "Software systems shipped in weeks, not quarters. Commission a 5-day Gravity Audit, 4-week Velocity MVP, or fractional Lab Retainer.",
+  alternates: {
+    canonical: "/systems",
+  },
+  openGraph: {
+    title: "G-Gravitator Systems · B2B AI & Software Foundry",
+    description:
+      "Software systems shipped in weeks, not quarters. Commission a 5-day Gravity Audit, 4-week Velocity MVP, or fractional Lab Retainer.",
+    url: "/systems",
+  },
 };
 
 export default function SystemsPage() {

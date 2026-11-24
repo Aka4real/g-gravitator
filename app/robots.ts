@@ -1,12 +1,15 @@
 import type { MetadataRoute } from "next";
+import { getSiteOrigin } from "@/lib/seo/server";
 
-export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://ggravitator.com";
+export const dynamic = "force-dynamic";
+
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const baseUrl = await getSiteOrigin();
   return {
     rules: {
       userAgent: "*",
-      allow: "/",
-      disallow: ["/api/"],
+      allow: ["/", "/api/media/"],
+      disallow: ["/api/", "/gg-command", "/gg-command/"],
     },
     sitemap: `${baseUrl}/sitemap.xml`,
   };

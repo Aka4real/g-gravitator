@@ -227,7 +227,7 @@ export function DispatchReaderClient({
   isAdminPreview = false,
   isSharedDraft = false,
   initialShareToken = null,
-  initialOrigin = "https://ggravitator.com",
+  initialOrigin = "https://www.ggravitator.xyz",
 }: DispatchReaderClientProps) {
   const prefersReducedMotion = useReducedMotion();
   const [readingMode, setReadingMode] = useState<"DARK" | "LIGHT">("DARK");

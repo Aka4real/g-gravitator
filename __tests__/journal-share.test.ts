@@ -107,24 +107,24 @@ describe("Sharable Journals, Share Links & Matching Cover Open Graph Preload", (
 
     const pubUrls = buildJournalShareUrls({
       dispatch: baseDispatch,
-      origin: "https://ggravitator.com/",
+      origin: "https://www.ggravitator.xyz/",
     });
     expect(pubUrls.canonicalUrl).toBe(
-      "https://ggravitator.com/journal/kinetic-telemetry-architecture"
+      "https://www.ggravitator.xyz/journal/kinetic-telemetry-architecture"
     );
     expect(pubUrls.shareUrl).toBe(pubUrls.canonicalUrl);
     expect(pubUrls.ogImageUrl).toBe(
-      `https://ggravitator.com/journal/kinetic-telemetry-architecture/og?v=${v1}`
+      `https://www.ggravitator.xyz/journal/kinetic-telemetry-architecture/og?v=${v1}`
     );
     expect(pubUrls.isPrivatePreview).toBe(false);
 
     const draftUrls = buildJournalShareUrls({
       dispatch: { ...baseDispatch, is_published: false },
-      origin: "https://ggravitator.com",
+      origin: "https://ggravitator.xyz",
       shareToken: "tok.sig",
     });
     expect(draftUrls.shareUrl).toBe(
-      "https://ggravitator.com/journal/kinetic-telemetry-architecture?share=tok.sig"
+      "https://ggravitator.xyz/journal/kinetic-telemetry-architecture?share=tok.sig"
     );
     expect(draftUrls.ogImageUrl).toContain("&share=tok.sig");
     expect(draftUrls.isPrivatePreview).toBe(true);
@@ -254,7 +254,7 @@ describe("Sharable Journals, Share Links & Matching Cover Open Graph Preload", (
 
     // Without token: POST /api/journal/share returns 404 (no draft leak)
     const unauthShareRes = await postJournalShareRoute(
-      new Request("https://ggravitator.com/api/journal/share", {
+      new Request("https://www.ggravitator.xyz/api/journal/share", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug: draftDispatch.slug }),
@@ -264,7 +264,7 @@ describe("Sharable Journals, Share Links & Matching Cover Open Graph Preload", (
 
     // Without token: GET /journal/[slug]/og returns non-cacheable brand fallback (center pixel is obsidian #08080A, NOT amber #F59E0B)
     const unauthOgRes = await getJournalOgRoute(
-      new Request(`https://ggravitator.com/journal/${draftDispatch.slug}/og`),
+      new Request(`https://www.ggravitator.xyz/journal/${draftDispatch.slug}/og`),
       { params: Promise.resolve({ slug: draftDispatch.slug }) }
     );
     expect(unauthOgRes.status).toBe(200);
@@ -277,7 +277,7 @@ describe("Sharable Journals, Share Links & Matching Cover Open Graph Preload", (
     const validToken = signDispatchShareToken(draftDispatch);
     const authOgRes = await getJournalOgRoute(
       new Request(
-        `https://ggravitator.com/journal/${draftDispatch.slug}/og?share=${encodeURIComponent(validToken)}`
+        `https://www.ggravitator.xyz/journal/${draftDispatch.slug}/og?share=${encodeURIComponent(validToken)}`
       ),
       { params: Promise.resolve({ slug: draftDispatch.slug }) }
     );
@@ -293,7 +293,7 @@ describe("Sharable Journals, Share Links & Matching Cover Open Graph Preload", (
 
     // Published dispatch works publicly via POST /api/journal/share
     const pubShareRes = await postJournalShareRoute(
-      new Request("https://ggravitator.com/api/journal/share", {
+      new Request("https://www.ggravitator.xyz/api/journal/share", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -309,7 +309,7 @@ describe("Sharable Journals, Share Links & Matching Cover Open Graph Preload", (
     };
     expect(pubJson.ok).toBe(true);
     expect(pubJson.shareUrl).toBe(
-      "https://ggravitator.com/journal/multi-provider-signal-extraction-x-hackathon-radar"
+      "https://www.ggravitator.xyz/journal/multi-provider-signal-extraction-x-hackathon-radar"
     );
     expect(pubJson.ogImageUrl).toContain(
       "/journal/multi-provider-signal-extraction-x-hackathon-radar/og?v="

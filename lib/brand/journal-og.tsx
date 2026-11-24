@@ -426,7 +426,7 @@ function renderJournalEditorialCard(dispatch: Dispatch): ImageResponse {
           </div>
 
           <div style={{ display: "flex", fontSize: 18, color: "#8B8B94" }}>
-            ggravitator.com/journal
+            ggravitator.xyz/journal
           </div>
         </div>
       </div>

@@ -4,9 +4,18 @@ import { HackathonRadar } from "@/components/hackathons/HackathonRadar";
 import { getHackathons } from "@/lib/db/repository";
 
 export const metadata: Metadata = {
-  title: "Live Hackathon Radar | Multi-Provider and X Signal Tracker",
+  title: "Live Hackathon Radar · Multi-Provider Tracker",
   description:
     "Real-time AI and software hackathon radar aggregating Devpost, DoraHacks, X (Twitter), Lablab.ai, Luma, MLH, ETHGlobal, Kaggle, Devfolio, and Unstop.",
+  alternates: {
+    canonical: "/hackathons",
+  },
+  openGraph: {
+    title: "Live Hackathon Radar · Multi-Provider Tracker",
+    description:
+      "Real-time AI and software hackathon radar aggregating Devpost, DoraHacks, X, Lablab.ai, Luma, MLH, ETHGlobal, Kaggle, Devfolio, and Unstop.",
+    url: "/hackathons",
+  },
 };
 
 export const dynamic = "force-dynamic";

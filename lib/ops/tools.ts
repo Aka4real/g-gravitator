@@ -56,6 +56,11 @@ import {
 } from "@/lib/ops/media";
 import { fetchWebpageMetadata, runLiveWebResearch } from "@/lib/ops/research";
 import { evaluateGraduationScorecard } from "@/lib/scorecard";
+import {
+  buildDispatchSeoDescription,
+  buildDispatchSeoTitle,
+  estimateWordCount,
+} from "@/lib/seo/site";
 import { isGeminiConfigured } from "@/lib/gemini/client";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import type {
@@ -184,6 +189,12 @@ function asDesignConfig(val: unknown): PostDesignConfig | undefined {
   if (Array.isArray(rec.featured_links)) {
     design.featured_links = asLinksArray(rec.featured_links);
   }
+  const seoTitle = asOptionalString(rec.seo_title);
+  if (seoTitle) design.seo_title = seoTitle;
+  const seoDesc = asOptionalString(rec.seo_description);
+  if (seoDesc) design.seo_description = seoDesc;
+  const seoKw = asStringArray(rec.seo_keywords);
+  if (seoKw && seoKw.length > 0) design.seo_keywords = seoKw;
   return design;
 }
 
@@ -313,6 +324,19 @@ const POST_DESIGN_SCHEMA = {
         },
         required: ["url"],
       },
+    },
+    seo_title: {
+      type: "string",
+      description: "Optional concise SEO <title> override (~50-60 chars before '| G-Gravitator').",
+    },
+    seo_description: {
+      type: "string",
+      description: "Optional concise meta description override (120-160 chars).",
+    },
+    seo_keywords: {
+      type: "array",
+      items: { type: "string" },
+      description: "Optional custom search keywords for article meta/JSON-LD.",
     },
   },
 };
@@ -1299,6 +1323,31 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
           score -= 5;
         }
         checkHex(d.design?.accent_color);
+        const seoTitle = buildDispatchSeoTitle(d);
+        const seoDesc = buildDispatchSeoDescription(d);
+        const words = estimateWordCount(d.mdx_content || "");
+        const seoRecommendations: string[] = [];
+        if ((d.title?.trim().length ?? 0) > 58 && !d.design?.seo_title) {
+          seoRecommendations.push(
+            `Display title is ${d.title.length} chars; add design.seo_title (<= 60 chars) for full Google SERP headline control.`
+          );
+        }
+        if ((d.subtitle?.trim().length ?? 0) > 160 && !d.design?.seo_description) {
+          seoRecommendations.push(
+            `Subtitle is ${d.subtitle.length} chars; add design.seo_description (120-160 chars) for crisp search snippets.`
+          );
+        }
+        if (d.design?.seo_title && d.design.seo_title.trim().length > 65) {
+          warnings.push("design.seo_title exceeds 65 characters and may truncate in Google SERPs.");
+          score -= 5;
+        }
+        if (d.design?.seo_description && d.design.seo_description.trim().length > 165) {
+          warnings.push("design.seo_description exceeds 165 characters and may truncate in Google SERPs.");
+          score -= 5;
+        }
+        if (words < 200) {
+          seoRecommendations.push(`Article has ${words} words; 300+ words improves organic search depth.`);
+        }
         return {
           entity,
           id: d.id,
@@ -1307,6 +1356,14 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
           ready_to_publish: errors.length === 0,
           errors,
           warnings,
+          seo: {
+            effective_seo_title: seoTitle,
+            seo_title_chars: seoTitle.length,
+            effective_seo_description: seoDesc,
+            seo_description_chars: seoDesc.length,
+            word_count: words,
+            recommendations: seoRecommendations,
+          },
         };
       }
 
@@ -1465,6 +1522,9 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
           type: "array",
           items: LINK_REF_ITEM_SCHEMA,
         },
+        seo_title: { type: "string" },
+        seo_description: { type: "string" },
+        seo_keywords: { type: "array", items: { type: "string" } },
         is_featured: { type: "boolean" },
         is_published: { type: "boolean" },
         design: POST_DESIGN_SCHEMA,
@@ -1502,6 +1562,16 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
       if (featuredLinks && featuredLinks.length > 0) {
         inlineDesign.featured_links = featuredLinks;
       }
+      if (asOptionalString(args.seo_title)) {
+        inlineDesign.seo_title = asOptionalString(args.seo_title);
+      }
+      if (asOptionalString(args.seo_description)) {
+        inlineDesign.seo_description = asOptionalString(args.seo_description);
+      }
+      const topSeoKeywords = asStringArray(args.seo_keywords);
+      if (topSeoKeywords && topSeoKeywords.length > 0) {
+        inlineDesign.seo_keywords = topSeoKeywords;
+      }
 
       const created = await createDispatch({
         title: asString(args.title),
@@ -1529,7 +1599,7 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
   {
     name: "update_dispatch",
     description:
-      "Edit an existing Journal Lab Dispatch (title, subtitle, category, author, content, tags, cover image, accent color, featured status, links, publish state).",
+      "Edit an existing Journal Lab Dispatch (title, subtitle, category, author, content, tags, cover image, accent color, featured status, links, SEO metadata, publish state).",
     requiredPermission: "can_edit_posts",
     inputSchema: {
       type: "object",
@@ -1552,6 +1622,9 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
         mdx_content: { type: "string" },
         tags: { type: "array", items: { type: "string" } },
         cover_image_url: { type: "string" },
+        seo_title: { type: "string" },
+        seo_description: { type: "string" },
+        seo_keywords: { type: "array", items: { type: "string" } },
         is_featured: { type: "boolean" },
         is_published: { type: "boolean" },
         design: POST_DESIGN_SCHEMA,
@@ -1586,8 +1659,18 @@ export const OPS_TOOLS: OpsToolDefinition[] = [
         patch.is_published = reqPub;
         patch.approval_status = reqPub ? "APPROVED" : "PENDING_REVIEW";
       }
-      const nextDesign = asDesignConfig(args.design);
-      if (nextDesign) {
+      const nextDesign = asDesignConfig(args.design) ?? {};
+      if (asOptionalString(args.seo_title)) {
+        nextDesign.seo_title = asOptionalString(args.seo_title);
+      }
+      if (asOptionalString(args.seo_description)) {
+        nextDesign.seo_description = asOptionalString(args.seo_description);
+      }
+      const topSeoKeywords = asStringArray(args.seo_keywords);
+      if (topSeoKeywords && topSeoKeywords.length > 0) {
+        nextDesign.seo_keywords = topSeoKeywords;
+      }
+      if (Object.keys(nextDesign).length > 0) {
         patch.design = { ...(existing.design ?? {}), ...nextDesign };
       }
 

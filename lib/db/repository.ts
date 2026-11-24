@@ -38,6 +38,7 @@ import {
   SEED_NEWSLETTER_SUBSCRIBERS,
   SEED_ORBIT_WAITLIST,
 } from "@/lib/seed-fallback";
+import { revalidatePublicSeoPaths } from "@/lib/seo/revalidate";
 
 export const DEFAULT_AI_PERMISSIONS: AiPermissionsPolicy = {
   ai_enabled: true,
@@ -238,12 +239,20 @@ export function mergeHackathonSources(
   return Array.from(map.values());
 }
 
-function slugifyText(input: string): string {
-  return input
+export function slugifyText(input: string, maxLen = 72): string {
+  const clean = input
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 72);
+    .replace(/^-+|-+$/g, "");
+  if (clean.length <= maxLen) return clean;
+  const sliced = clean.slice(0, maxLen).replace(/-+$/g, "");
+  const lastDash = sliced.lastIndexOf("-");
+  if (lastDash >= Math.floor(maxLen * 0.5)) {
+    return sliced.slice(0, lastDash);
+  }
+  return sliced;
 }
 
 type SyncMeta = LocalStoreState["meta"];
@@ -1133,6 +1142,7 @@ export async function createDispatch(
   store.dispatches.unshift(record);
   writeLocalStore(store);
 
+  let result: Dispatch = record;
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
@@ -1146,12 +1156,13 @@ export async function createDispatch(
       if (error) {
         logSupabaseError("createDispatch", error);
       } else if (data) {
-        return data as Dispatch;
+        result = data as Dispatch;
       }
     }
   }
 
-  return record;
+  revalidatePublicSeoPaths([`/journal/${result.slug}`, `/journal/${result.slug}/og`]);
+  return result;
 }
 
 export async function updateDispatch(
@@ -1190,11 +1201,18 @@ export async function updateDispatch(
     }
   }
 
+  if (updatedRecord) {
+    revalidatePublicSeoPaths([
+      `/journal/${updatedRecord.slug}`,
+      `/journal/${updatedRecord.slug}/og`,
+    ]);
+  }
   return updatedRecord;
 }
 
 export async function deleteDispatch(id: string): Promise<boolean> {
   const store = readLocalStore();
+  const existing = store.dispatches.find((d) => d.id === id);
   const prevLen = store.dispatches.length;
   store.dispatches = store.dispatches.filter((d) => d.id !== id);
   const removedLocal = store.dispatches.length < prevLen;
@@ -1219,7 +1237,11 @@ export async function deleteDispatch(id: string): Promise<boolean> {
     }
   }
 
-  return removedLocal || removedSb;
+  const removed = removedLocal || removedSb;
+  if (removed) {
+    revalidatePublicSeoPaths(existing ? [`/journal/${existing.slug}`] : []);
+  }
+  return removed;
 }
 
 // =============================================================================
@@ -1315,6 +1337,7 @@ export async function createLabProject(
   store.lab_projects.push(record);
   writeLocalStore(store);
 
+  let result: LabProject = record;
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdminClient();
     if (sb) {
@@ -1328,12 +1351,13 @@ export async function createLabProject(
       if (error) {
         logSupabaseError("createLabProject", error);
       } else if (data) {
-        return data as LabProject;
+        result = data as LabProject;
       }
     }
   }
 
-  return record;
+  revalidatePublicSeoPaths([`/labs/${result.slug}`]);
+  return result;
 }
 
 export async function updateLabProject(
@@ -1370,11 +1394,15 @@ export async function updateLabProject(
     }
   }
 
+  if (updatedRecord) {
+    revalidatePublicSeoPaths([`/labs/${updatedRecord.slug}`]);
+  }
   return updatedRecord;
 }
 
 export async function deleteLabProject(id: string): Promise<boolean> {
   const store = readLocalStore();
+  const existing = store.lab_projects.find((p) => p.id === id);
   const prevLen = store.lab_projects.length;
   store.lab_projects = store.lab_projects.filter((p) => p.id !== id);
   const removedLocal = store.lab_projects.length < prevLen;
@@ -1399,7 +1427,11 @@ export async function deleteLabProject(id: string): Promise<boolean> {
     }
   }
 
-  return removedLocal || removedSb;
+  const removed = removedLocal || removedSb;
+  if (removed) {
+    revalidatePublicSeoPaths(existing ? [`/labs/${existing.slug}`] : []);
+  }
+  return removed;
 }
 
 // =============================================================================

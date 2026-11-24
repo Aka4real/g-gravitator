@@ -7,6 +7,11 @@ import { Reveal, StaggerGroup, StaggerItem } from "@/lib/motion";
 import { getLabProjectBySlug, getLabProjects } from "@/lib/db/repository";
 import { evaluateGraduationScorecard } from "@/lib/scorecard";
 import { NewsletterBar } from "@/components/journal/NewsletterBar";
+import {
+  buildBreadcrumbJsonLd,
+  truncateWordBoundary,
+} from "@/lib/seo/site";
+import { getSiteOrigin } from "@/lib/seo/server";
 import type { LabProjectStatus } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
@@ -75,22 +80,34 @@ export async function generateMetadata({
   const { slug } = await params;
   const project = await getLabProjectBySlug(slug);
   if (!project) {
-    return { title: "Drop Not Found | G-Gravitator Labs" };
+    return { title: "Drop Not Found | Labs" };
   }
   const displayName = formatDropName(project.code, project.name);
+  const desc = truncateWordBoundary(sanitizeText(project.tagline), 160);
+  const canonicalPath = `/labs/${project.slug}`;
   return {
-    title: `${project.code} ${displayName} | G-Gravitator Labs`,
-    description: sanitizeText(project.tagline),
+    title: `${project.code} ${displayName} · Labs`,
+    description: desc,
+    keywords: [
+      ...project.tech_stack,
+      project.code,
+      displayName,
+      "G-Gravitator Labs",
+    ],
+    alternates: {
+      canonical: canonicalPath,
+    },
     openGraph: {
-      title: `${project.code} ${displayName}`,
-      description: sanitizeText(project.tagline),
+      title: `${project.code} ${displayName} | G-Gravitator Labs`,
+      description: desc,
       type: "website",
       siteName: "G-Gravitator",
+      url: canonicalPath,
     },
     twitter: {
       card: "summary_large_image",
       title: `${project.code} ${displayName}`,
-      description: sanitizeText(project.tagline),
+      description: desc,
     },
   };
 }
@@ -101,7 +118,10 @@ export default async function LabDropDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const project = await getLabProjectBySlug(slug);
+  const [project, origin] = await Promise.all([
+    getLabProjectBySlug(slug),
+    getSiteOrigin(),
+  ]);
   if (!project) {
     notFound();
   }
@@ -111,9 +131,44 @@ export default async function LabDropDetailPage({
     ? evaluateGraduationScorecard(project.scorecard)
     : null;
   const displayName = formatDropName(project.code, project.name);
+  const canonicalUrl = `${origin}/labs/${project.slug}`;
+
+  const softwareJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: `${project.code} ${displayName}`,
+    applicationCategory: "DeveloperApplication",
+    operatingSystem: "Web",
+    description: sanitizeText(project.tagline),
+    url: canonicalUrl,
+    ...(project.live_url ? { sameAs: [project.live_url] } : {}),
+    creator: {
+      "@type": "Organization",
+      name: "G-Gravitator",
+      url: origin,
+    },
+  };
+
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "Home", url: origin },
+    { name: "Labs", url: `${origin}/labs` },
+    { name: `${project.code} ${displayName}`, url: canonicalUrl },
+  ]);
 
   return (
     <div className="mx-auto max-w-[1360px] px-5 pt-10 pb-24 sm:px-8 lg:px-12 lg:pt-14 lg:pb-32">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(softwareJsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
       {/* Clean Back Navigation Pill */}
       <nav aria-label="Labs breadcrumb" className="flex flex-wrap items-center justify-between gap-4">
         <Link

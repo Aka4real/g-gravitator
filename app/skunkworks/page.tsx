@@ -12,9 +12,18 @@ import {
 } from "@/lib/scorecard";
 
 export const metadata: Metadata = {
-  title: "OXAKALABS Skunkworks | G-Gravitator 48-Hour R&D Foundry",
+  title: "OXAKALABS Skunkworks · 48-Hour R&D Foundry",
   description:
     "Founded in 2022, OXAKALABS is G-Gravitator's 48-hour build engine, hackathon strike team, and open-source R&D foundry.",
+  alternates: {
+    canonical: "/skunkworks",
+  },
+  openGraph: {
+    title: "OXAKALABS Skunkworks · 48-Hour R&D Foundry",
+    description:
+      "Founded in 2022, OXAKALABS is G-Gravitator's 48-hour build engine, hackathon strike team, and open-source R&D foundry.",
+    url: "/skunkworks",
+  },
 };
 
 export const dynamic = "force-dynamic";

@@ -17,6 +17,7 @@ import {
   listMediaAssets,
 } from "@/lib/db/repository";
 import { getGeminiModelName, isGeminiConfigured } from "@/lib/gemini/client";
+import { resolveCanonicalOrigin } from "@/lib/seo/site";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 export async function GET(request: Request) {
@@ -55,10 +56,10 @@ export async function GET(request: Request) {
     getAuditLogs(100),
   ]);
 
-  const url = new URL(request.url);
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
-    `${url.protocol}//${url.host}`;
+  const baseUrl = resolveCanonicalOrigin({
+    headers: request.headers,
+    requestUrl: request.url,
+  });
 
   const supabaseConfigured = isSupabaseConfigured();
 

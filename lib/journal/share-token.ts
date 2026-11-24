@@ -1,5 +1,10 @@
 import crypto from "node:crypto";
 import { headers } from "next/headers";
+import {
+  DEFAULT_CANONICAL_ORIGIN,
+  resolveCanonicalOrigin,
+} from "@/lib/seo/site";
+import { getSiteOrigin } from "@/lib/seo/server";
 import type { Dispatch } from "@/lib/supabase/types";
 
 const DEFAULT_SHARE_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
@@ -79,61 +84,26 @@ export function verifyDispatchShareToken(
   }
 }
 
-function isLocalHostname(host: string): boolean {
-  const bare = host.split(":")[0].toLowerCase();
-  return bare === "localhost" || bare === "127.0.0.1" || bare === "0.0.0.0";
-}
-
 export function resolveOriginFromHeaders(
   hdrs: Pick<Headers, "get">
 ): string {
-  const rawHost =
-    hdrs.get("x-forwarded-host")?.split(",")[0]?.trim() ||
-    hdrs.get("host")?.split(",")[0]?.trim() ||
-    "";
-  const rawProto = hdrs.get("x-forwarded-proto")?.split(",")[0]?.trim();
-
-  if (rawHost && isLocalHostname(rawHost)) {
-    const proto = rawProto === "https" ? "https" : "http";
-    return `${proto}://${rawHost}`;
-  }
-
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
-  if (configured) return configured;
-
-  if (rawHost) {
-    const proto = rawProto || "https";
-    return `${proto}://${rawHost}`;
-  }
-
-  return "https://ggravitator.com";
+  return resolveCanonicalOrigin({ headers: hdrs });
 }
 
 export async function getRequestOrigin(): Promise<string> {
   try {
     const hdrs = await headers();
-    return resolveOriginFromHeaders(hdrs);
+    return resolveCanonicalOrigin({ headers: hdrs });
   } catch {
-    return (
-      process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "") ||
-      "https://ggravitator.com"
-    );
+    return getSiteOrigin();
   }
 }
 
 export function getRequestOriginFromRequest(request: Request): string {
-  const fromHeaders = resolveOriginFromHeaders(request.headers);
-  if (fromHeaders !== "https://ggravitator.com") {
-    return fromHeaders;
-  }
-  try {
-    const url = new URL(request.url);
-    if (isLocalHostname(url.host)) {
-      return `${url.protocol}//${url.host}`;
-    }
-    const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
-    return configured || `${url.protocol}//${url.host}`;
-  } catch {
-    return fromHeaders;
-  }
+  return resolveCanonicalOrigin({
+    headers: request.headers,
+    requestUrl: request.url,
+  });
 }
+
+export { DEFAULT_CANONICAL_ORIGIN };

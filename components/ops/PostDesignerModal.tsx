@@ -128,7 +128,7 @@ export function PostDesignerModal({
   );
   const [mdxContent, setMdxContent] = useState(
     disp?.mdx_content ||
-      `## Core Thesis\n\nWrite your technical analysis here. Use **bold**, \`inline code\`, and [clickable links](https://ggravitator.com).\n\n> [!ACCENT] Key architectural takeaway for builders.\n\n## System Breakdown\n\n- First concrete engineering point\n- Second concrete engineering point`
+      `## Core Thesis\n\nWrite your technical analysis here. Use **bold**, \`inline code\`, and [clickable links](https://ggravitator.xyz).\n\n> [!ACCENT] Key architectural takeaway for builders.\n\n## System Breakdown\n\n- First concrete engineering point\n- Second concrete engineering point`
   );
   const [isFeatured, setIsFeatured] = useState(
     entity === "dispatch"
@@ -1364,7 +1364,7 @@ export function PostDesignerModal({
                       },
                       {
                         label: "Link",
-                        snip: "[Resource Name](https://ggravitator.com)",
+                        snip: "[Resource Name](https://ggravitator.xyz)",
                       },
                     ].map((btn) => (
                       <button

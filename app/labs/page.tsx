@@ -9,9 +9,18 @@ import { evaluateGraduationScorecard } from "@/lib/scorecard";
 import type { LabProjectStatus } from "@/lib/supabase/types";
 
 export const metadata: Metadata = {
-  title: "G-Gravitator Labs | Numbered Software & AI Product Drops",
+  title: "Labs · Flagship Software & AI Product Drops",
   description:
     "Proprietary commercial software and AI tools shipped as numbered drops: G-01 Gravity Deck, G-02 OpsPilot, G-03 Kinetic Studio, and G-04 OrbitBench.",
+  alternates: {
+    canonical: "/labs",
+  },
+  openGraph: {
+    title: "G-Gravitator Labs · Flagship Product Drops",
+    description:
+      "Proprietary commercial software and AI tools shipped as numbered drops: G-01 Gravity Deck, G-02 OpsPilot, G-03 Kinetic Studio, and G-04 OrbitBench.",
+    url: "/labs",
+  },
 };
 
 export const dynamic = "force-dynamic";

@@ -4,9 +4,12 @@ import { JournalHubClient } from "@/components/journal/JournalHubClient";
 import { getDispatches, getNewsItems } from "@/lib/db/repository";
 
 export const metadata: Metadata = {
-  title: "Journal and The Orbital Wire | AI Intelligence and Lab Dispatches",
+  title: "Journal & Orbital Wire · AI Dispatches & Radar",
   description:
     "Dual-track intelligence center combining G-Gravitator and OXAKALABS original Lab Dispatches with The Orbital Wire automated AI and tech news radar.",
+  alternates: {
+    canonical: "/journal",
+  },
   openGraph: {
     title: "Journal & The Orbital Wire | G-Gravitator",
     description:

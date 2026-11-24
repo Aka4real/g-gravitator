@@ -30,7 +30,7 @@ export function generateHackathonIcs(hackathon: Hackathon): string {
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
-    `UID:hackathon-${hackathon.id}@ggravitator.com`,
+    `UID:hackathon-${hackathon.id}@ggravitator.xyz`,
     `DTSTAMP:${stamp}`,
     `DTSTART:${formatIcsDate(startIso)}`,
     `DTEND:${formatIcsDate(endIso)}`,

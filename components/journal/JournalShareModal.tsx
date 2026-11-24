@@ -19,6 +19,10 @@ import {
   copyTextToClipboard,
   sanitizeShareText,
 } from "@/lib/journal/share";
+import {
+  DEFAULT_CANONICAL_ORIGIN,
+  PRIMARY_BRAND_DOMAIN,
+} from "@/lib/seo/site";
 import type { Dispatch } from "@/lib/supabase/types";
 
 interface JournalShareModalProps {
@@ -53,7 +57,7 @@ function JournalShareDialogBody({
   const runtimeOrigin = useSyncExternalStore(
     noopSubscribe,
     () => window.location.origin,
-    () => originOverride || "https://ggravitator.com"
+    () => originOverride || DEFAULT_CANONICAL_ORIGIN
   );
 
   const canNativeShare = useSyncExternalStore(
@@ -145,7 +149,7 @@ function JournalShareDialogBody({
     try {
       return new URL(urls.shareUrl).host;
     } catch {
-      return "ggravitator.com";
+      return PRIMARY_BRAND_DOMAIN;
     }
   })();
 

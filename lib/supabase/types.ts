@@ -30,6 +30,9 @@ export interface PostDesignConfig {
   callout_style?: "left-bar" | "glass-card" | "tinted-banner";
   gallery_images?: PostGalleryImage[];
   featured_links?: PostLinkRef[];
+  seo_title?: string;
+  seo_description?: string;
+  seo_keywords?: string[];
 }
 
 export type HackathonProvider =

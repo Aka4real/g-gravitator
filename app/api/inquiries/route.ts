@@ -41,7 +41,9 @@ export async function POST(request: Request) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "G-Gravitator Systems <systems@ggravitator.com>",
+          from:
+            process.env.RESEND_FROM_EMAIL?.trim() ||
+            "G-Gravitator Systems <systems@ggravitator.com>",
           to: [process.env.FOUNDER_NOTIFICATION_EMAIL],
           subject: `[G-GRAVITATOR SYSTEMS] New ${inquiry.tier} Brief from ${inquiry.name}`,
           text: `Name: ${inquiry.name}\nEmail: ${inquiry.email}\nCompany: ${inquiry.company ?? "N/A"}\nTier: ${inquiry.tier}\nBudget: ${inquiry.budget_range ?? "N/A"}\nTimeline: ${inquiry.timeline ?? "N/A"}\n\nBrief:\n${inquiry.project_brief}`,

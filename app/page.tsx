@@ -1,4 +1,5 @@
 import React from "react";
+import type { Metadata } from "next";
 import Image from "next/image";
 import { PreloadLink } from "@/components/layout/PreloadLink";
 import { ArrowUpRight } from "lucide-react";
@@ -17,6 +18,15 @@ import {
   getNewsItems,
 } from "@/lib/db/repository";
 import type { LabProjectStatus } from "@/lib/supabase/types";
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    url: "/",
+  },
+};
 
 export const dynamic = "force-dynamic";
 
