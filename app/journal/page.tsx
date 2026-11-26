@@ -40,18 +40,20 @@ export default async function JournalPage({
   ]);
 
   return (
-    <div className="mx-auto max-w-[1360px] px-5 pt-10 pb-24 sm:px-8 lg:px-12 lg:pt-14 lg:pb-32">
-      {/* Open Editorial Header */}
+    <div className="mx-auto max-w-[1360px] px-5 pt-24 pb-24 sm:px-8 lg:px-12 lg:pt-28 lg:pb-32">
+      {/* Immediate Broadsheet Masthead */}
       <header className="max-w-3xl">
-        <h1 className="font-display text-[clamp(2rem,4.2vw,3.5rem)] font-bold tracking-[-0.03em] text-[#F4F3EF]">
-          Engineering dispatches and live AI intelligence
+        <h1 className="font-display text-[clamp(2rem,4.2vw,3.5rem)] font-bold leading-[1.04] tracking-[-0.035em] text-[var(--ink-primary)]">
+          Engineering dispatches and Orbital Wire
         </h1>
-        <p className="mt-4 max-w-[65ch] text-base leading-relaxed text-[#A1A1AA]">
-          Original architectural breakdowns and post-mortems written by G-Gravitator and
-          OXAKALABS engineers, paired with{" "}
-          <strong className="font-medium text-[#F4F3EF]">The Orbital Wire</strong>, our
-          real-time radar distilling breakthroughs across frontier models, agentic
-          tooling, arXiv research, and Hacker News into concise builder takeaways.
+        <p className="mt-3 max-w-[65ch] text-[16px] leading-[1.6] text-[var(--ink-muted)]">
+          Original architectural essays and post-mortems written by G-Gravitator
+          and OXAKALABS engineers, paired with{" "}
+          <strong className="font-semibold text-[var(--ink-primary)]">
+            The Orbital Wire
+          </strong>
+          , distilling frontier models, agentic tooling, arXiv papers, and
+          engineering releases into builder takeaways.
         </p>
       </header>
 

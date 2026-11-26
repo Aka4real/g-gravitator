@@ -8,7 +8,6 @@ import {
   Check,
   CheckCircle2,
   Copy,
-  Database,
   Download,
   Edit3,
   ExternalLink,
@@ -46,6 +45,7 @@ import {
   type DesignerEntityType,
 } from "@/components/ops/PostDesignerModal";
 import type { OpsBootstrapData, OpsUserInfo } from "@/components/ops/ops-types";
+import { BrandMark } from "@/lib/brand/mark";
 import type {
   AiPermissionsPolicy,
   Dispatch,
@@ -100,6 +100,15 @@ function formatUtc(iso: string | null | undefined): string {
   return d.toISOString().slice(0, 16).replace("T", " ") + " UTC";
 }
 
+const SECONDARY_BTN =
+  "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3.5 text-[13px] font-medium text-[var(--ink-primary)] transition-colors duration-150 hover:border-white/35 disabled:cursor-not-allowed disabled:opacity-50";
+
+const SEARCH_INPUT_CLASS =
+  "h-10 w-52 rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-surface)] pr-3.5 pl-9 text-[13px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:outline-none";
+
+const LAB_INPUT_CLASS =
+  "mt-1.5 h-10 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3.5 text-[13px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:outline-none";
+
 export function OpsConsoleClient({
   initialUser,
   hasAdmins,
@@ -108,7 +117,8 @@ export function OpsConsoleClient({
 }: OpsConsoleClientProps) {
   const [user, setUser] = useState<OpsUserInfo | null>(initialUser);
   const [hasAdminsState, setHasAdminsState] = useState(hasAdmins);
-  const [requiresInviteState, setRequiresInviteState] = useState(requiresInviteCode);
+  const [requiresInviteState, setRequiresInviteState] =
+    useState(requiresInviteCode);
   const [data, setData] = useState<OpsBootstrapData | null>(initialData);
   const [loadingBootstrap, setLoadingBootstrap] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
@@ -129,7 +139,8 @@ export function OpsConsoleClient({
     entity: DesignerEntityType;
     existing: Dispatch | NewsItem | Hackathon | null;
   } | null>(null);
-  const [shareDispatchTarget, setShareDispatchTarget] = useState<Dispatch | null>(null);
+  const [shareDispatchTarget, setShareDispatchTarget] =
+    useState<Dispatch | null>(null);
 
   // AI & Voice Assistant Panel
   const [aiOpen, setAiOpen] = useState(false);
@@ -146,7 +157,9 @@ export function OpsConsoleClient({
   const [labArchNotes, setLabArchNotes] = useState("");
   const [labHackOrigin, setLabHackOrigin] = useState("");
   const [labStatus, setLabStatus] = useState<LabProjectStatus>("PROTOTYPING");
-  const [labStack, setLabStack] = useState("Next.js, TypeScript, Gemini 3.8 Flash");
+  const [labStack, setLabStack] = useState(
+    "Next.js, TypeScript, Gemini 3.8 Flash"
+  );
   const [labLiveUrl, setLabLiveUrl] = useState("");
   const [labRepoUrl, setLabRepoUrl] = useState("");
   const [labScore, setLabScore] = useState({
@@ -158,7 +171,9 @@ export function OpsConsoleClient({
   });
 
   // Orbit notes draft state keyed by application ID
-  const [orbitNotesDraft, setOrbitNotesDraft] = useState<Record<string, string>>({});
+  const [orbitNotesDraft, setOrbitNotesDraft] = useState<
+    Record<string, string>
+  >({});
 
   // Media Tab Controls
   const [mediaPrompt, setMediaPrompt] = useState("");
@@ -171,7 +186,9 @@ export function OpsConsoleClient({
 
   // Invite & Audit State
   const [newInviteCode, setNewInviteCode] = useState<string | null>(null);
-  const [auditFilter, setAuditFilter] = useState<"ALL" | "admin" | "ai_assistant" | "mcp">("ALL");
+  const [auditFilter, setAuditFilter] = useState<
+    "ALL" | "admin" | "ai_assistant" | "mcp"
+  >("ALL");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const refreshBootstrap = async () => {
@@ -185,8 +202,12 @@ export function OpsConsoleClient({
         return;
       }
       if (!res.ok) {
-        const errJson = (await res.json().catch(() => null)) as { error?: string } | null;
-        const msg = errJson?.error || `Failed to load Command Center (HTTP ${res.status}).`;
+        const errJson = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        const msg =
+          errJson?.error ||
+          `Failed to load Command Center (HTTP ${res.status}).`;
         setBootstrapError(msg);
         setNotice({ tone: "error", text: msg });
         return;
@@ -219,7 +240,6 @@ export function OpsConsoleClient({
       body: JSON.stringify({ action: "logout" }),
     }).catch(() => null);
 
-    // Refresh live auth flags so the login screen never reverts to stale SSR first-run signup state
     try {
       const statusRes = await fetch("/api/ops/auth", { cache: "no-store" });
       if (statusRes.ok) {
@@ -227,7 +247,8 @@ export function OpsConsoleClient({
           hasAdmins?: boolean;
           requiresInviteCode?: boolean;
         };
-        if (typeof info.hasAdmins === "boolean") setHasAdminsState(info.hasAdmins);
+        if (typeof info.hasAdmins === "boolean")
+          setHasAdminsState(info.hasAdmins);
         if (typeof info.requiresInviteCode === "boolean") {
           setRequiresInviteState(info.requiresInviteCode);
         }
@@ -443,19 +464,21 @@ export function OpsConsoleClient({
 
   if (!data) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#08080A] px-4 text-[#F4F3EF]">
+      <div className="flex min-h-[100dvh] items-center justify-center bg-[var(--bg-canvas)] px-4 text-[var(--ink-primary)]">
         {bootstrapError ? (
-          <div className="w-full max-w-md space-y-4 rounded-2xl border border-[#FF3B1F]/35 bg-[#111114] p-6 text-center">
-            <AlertCircle className="mx-auto h-7 w-7 text-[#FF6B54]" />
-            <h2 className="font-display text-lg font-semibold">
-              Command Center Unavailable
+          <div className="w-full max-w-md space-y-4 rounded-2xl border border-[var(--accent)]/40 bg-[var(--bg-surface)] p-7 text-center">
+            <AlertCircle className="mx-auto h-7 w-7 text-[#FF8A7A]" />
+            <h2 className="font-display text-[20px] font-bold">
+              Command Center unavailable
             </h2>
-            <p className="text-xs text-[#A1A1AA]">{bootstrapError}</p>
-            <div className="flex items-center justify-center gap-2 pt-1">
+            <p className="text-[14px] text-[var(--ink-muted)]">
+              {bootstrapError}
+            </p>
+            <div className="flex items-center justify-center gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => void refreshBootstrap()}
-                className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full bg-[#FF3B1F] px-4 text-xs font-semibold text-[#08080A]"
+                className="press-tactile inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-[var(--accent)] px-5 text-[13px] font-semibold text-[#07090D]"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 <span>Retry</span>
@@ -463,7 +486,7 @@ export function OpsConsoleClient({
               <button
                 type="button"
                 onClick={() => void handleLogout()}
-                className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.12] px-4 text-xs font-medium text-[#D4D4D8]"
+                className={SECONDARY_BTN}
               >
                 <LogOut className="h-3.5 w-3.5" />
                 <span>Sign out</span>
@@ -471,8 +494,8 @@ export function OpsConsoleClient({
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-3 text-sm text-[#A1A1AA]">
-            <Loader2 className="h-5 w-5 animate-spin text-[#FF3B1F]" />
+          <div className="flex items-center gap-3 text-[14px] text-[var(--ink-muted)]">
+            <Loader2 className="h-5 w-5 animate-spin text-[var(--accent)]" />
             <span>Loading G-Gravitator Command Center...</span>
           </div>
         )}
@@ -491,7 +514,9 @@ export function OpsConsoleClient({
     setLabArchNotes(proj?.architecture_notes?.join("\n") || "");
     setLabHackOrigin(proj?.hackathon_origin || "");
     setLabStatus(proj?.status || "PROTOTYPING");
-    setLabStack(proj?.tech_stack?.join(", ") || "Next.js, TypeScript, Gemini 3.8 Flash");
+    setLabStack(
+      proj?.tech_stack?.join(", ") || "Next.js, TypeScript, Gemini 3.8 Flash"
+    );
     setLabLiveUrl(proj?.live_url || "");
     setLabRepoUrl(proj?.repo_url || "");
     setLabScore(
@@ -637,7 +662,9 @@ export function OpsConsoleClient({
       ["email", "source", "created_at"],
       ...data.subscribers.map((s) => [s.email, s.source, s.created_at]),
     ];
-    const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csv = rows
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -651,58 +678,58 @@ export function OpsConsoleClient({
     id: ConsoleTab;
     label: string;
     icon: React.ComponentType<{ className?: string }>;
-    badge?: number;
+    count?: number;
   }[] = [
     {
       id: "OVERVIEW",
-      label: "Review & Overview",
+      label: "Review & overview",
       icon: Activity,
-      badge: pendingReviews.length || undefined,
+      count: pendingReviews.length || undefined,
     },
     {
       id: "JOURNAL",
-      label: "Journal Dispatches",
+      label: "Journal dispatches",
       icon: FileText,
-      badge: data.dispatches.length,
+      count: data.dispatches.length,
     },
     {
       id: "NEWS",
       label: "Orbital Wire",
       icon: Newspaper,
-      badge: data.news.length,
+      count: data.news.length,
     },
     {
       id: "HACKATHONS",
       label: "Hackathons",
       icon: Radar,
-      badge: data.hackathons.length,
+      count: data.hackathons.length,
     },
     {
       id: "LABS",
       label: "Labs & Skunkworks",
       icon: FlaskConical,
-      badge: data.labs.length,
+      count: data.labs.length,
     },
     {
       id: "CRM",
-      label: "CRM & Audience",
+      label: "CRM & audience",
       icon: Users,
-      badge: data.inquiries.length + data.orbit.length,
+      count: data.inquiries.length + data.orbit.length,
     },
     {
       id: "MEDIA",
-      label: "Media Studio",
+      label: "Media studio",
       icon: ImageIcon,
-      badge: data.mediaAssets.length || undefined,
+      count: data.mediaAssets.length || undefined,
     },
     {
       id: "PERMISSIONS",
-      label: "AI Permissions",
+      label: "AI permissions",
       icon: Shield,
     },
     {
       id: "MCP_TEAM",
-      label: "MCP, Team & Audit",
+      label: "MCP, team & audit",
       icon: Plug,
     },
   ];
@@ -711,57 +738,53 @@ export function OpsConsoleClient({
     auditFilter === "ALL" ? true : l.actor_type === auditFilter
   );
 
+  const auditFilterLabels: Record<typeof auditFilter, string> = {
+    ALL: "All",
+    admin: "Admin",
+    ai_assistant: "AI",
+    mcp: "MCP",
+  };
+
   return (
-    <div className="min-h-screen bg-[#08080A] text-[#F4F3EF]">
-      {/* Top Command Bar */}
-      <header className="sticky top-0 z-30 border-b border-white/[0.08] bg-[#08080A]/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1480px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FF3B1F] font-mono text-xs font-bold text-[#08080A]">
-              GG
-            </div>
+    <div className="min-h-screen bg-[var(--bg-canvas)] text-[var(--ink-primary)]">
+      {/* Top Command Header */}
+      <header className="sticky top-0 z-30 border-b border-[var(--hairline)] bg-[var(--bg-canvas)]/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1480px] flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3.5">
+            <BrandMark size={30} title="G-Gravitator" />
             <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="font-display text-base font-bold tracking-tight text-[#F4F3EF]">
-                  G-Gravitator Command
-                </h1>
-                <span className="rounded-full border border-[#10B981]/35 bg-[#10B981]/12 px-2 py-0.5 font-mono text-[10px] font-semibold text-[#34D399]">
-                  {user.role}
+              <h1 className="font-display text-[17px] font-bold tracking-[-0.025em] text-[var(--ink-primary)]">
+                G-Gravitator Command
+              </h1>
+              <p className="flex flex-wrap items-center gap-x-2 text-[13px] text-[var(--ink-muted)]">
+                <span>
+                  {user.name} ({user.role})
                 </span>
                 {data.systemHealth && (
                   <>
+                    <span aria-hidden="true">·</span>
                     <span
                       title={`AI Model: ${data.systemHealth.geminiModel}`}
-                      className={`hidden items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] sm:inline-flex ${
+                      className={
                         data.systemHealth.geminiConfigured
-                          ? "border-[#10B981]/30 bg-[#10B981]/10 text-[#34D399]"
-                          : "border-[#F59E0B]/40 bg-[#F59E0B]/12 text-[#FBBF24]"
-                      }`}
+                          ? "text-[#34D399]"
+                          : "text-[#FBBF24]"
+                      }
                     >
-                      <Sparkles className="h-2.5 w-2.5" />
-                      <span>
-                        {data.systemHealth.geminiConfigured
-                          ? "Gemini Ready"
-                          : "Gemini Key Missing"}
-                      </span>
+                      {data.systemHealth.geminiConfigured
+                        ? "Gemini ready"
+                        : "Gemini key missing"}
                     </span>
-                    <span
-                      className={`hidden items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] md:inline-flex ${
-                        data.systemHealth.supabaseConfigured
-                          ? "border-white/[0.12] bg-[#18181D] text-[#D4D4D8]"
-                          : "border-[#F59E0B]/35 bg-[#F59E0B]/10 text-[#FBBF24]"
-                      }`}
-                    >
-                      <Database className="h-2.5 w-2.5" />
-                      <span>
-                        {data.systemHealth.supabaseConfigured ? "Supabase" : "Local Store"}
-                      </span>
+                    <span aria-hidden="true" className="hidden sm:inline">
+                      ·
+                    </span>
+                    <span className="hidden sm:inline">
+                      {data.systemHealth.supabaseConfigured
+                        ? "Supabase"
+                        : "Local store"}
                     </span>
                   </>
                 )}
-              </div>
-              <p className="text-[11px] text-[#8B8B94]">
-                Signed in as {user.name} ({user.email})
               </p>
             </div>
           </div>
@@ -770,7 +793,7 @@ export function OpsConsoleClient({
             <button
               type="button"
               onClick={() => setAiOpen(true)}
-              className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-full bg-[#FF3B1F] px-4 text-xs font-semibold text-[#08080A] transition-colors hover:bg-[#FF5238]"
+              className="press-tactile inline-flex h-9 cursor-pointer items-center gap-2 rounded-full bg-[var(--accent)] px-4 text-[13px] font-semibold text-[#07090D] hover:bg-[var(--accent-hover)]"
             >
               <Bot className="h-4 w-4" />
               <span>AI &amp; Voice Operator</span>
@@ -787,14 +810,14 @@ export function OpsConsoleClient({
                   "Live hackathon ingestion completed."
                 )
               }
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.1] bg-[#141418] px-3.5 text-xs font-medium text-[#D4D4D8] hover:border-white/[0.22] hover:text-[#F4F3EF] disabled:opacity-50"
+              className={SECONDARY_BTN}
             >
               <RefreshCw
-                className={`h-3.5 w-3.5 text-[#FF6B54] ${
+                className={`h-3.5 w-3.5 text-[var(--accent)] ${
                   busyAction === "run_hackathon_ingestion" ? "animate-spin" : ""
                 }`}
               />
-              <span>Sync Hackathons</span>
+              <span>Sync hackathons</span>
             </button>
 
             <button
@@ -807,45 +830,48 @@ export function OpsConsoleClient({
                   "Orbital Wire news ingestion completed."
                 )
               }
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.1] bg-[#141418] px-3.5 text-xs font-medium text-[#D4D4D8] hover:border-white/[0.22] hover:text-[#F4F3EF] disabled:opacity-50"
+              className={SECONDARY_BTN}
             >
               <RefreshCw
                 className={`h-3.5 w-3.5 text-[#34D399] ${
                   busyAction === "run_news_ingestion" ? "animate-spin" : ""
                 }`}
               />
-              <span>Sync Wire</span>
+              <span>Sync wire</span>
             </button>
 
             <button
               type="button"
               onClick={() => void refreshBootstrap()}
               title="Refresh data"
-              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/[0.1] bg-[#141418] text-[#A1A1AA] hover:text-[#F4F3EF]"
+              aria-label="Refresh command data"
+              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] text-[var(--ink-muted)] transition-colors duration-150 hover:border-white/35 hover:text-[var(--ink-primary)]"
             >
               <RefreshCw
-                className={`h-3.5 w-3.5 ${loadingBootstrap ? "animate-spin" : ""}`}
+                className={`h-3.5 w-3.5 ${
+                  loadingBootstrap ? "animate-spin" : ""
+                }`}
               />
             </button>
 
             <button
               type="button"
               onClick={() => void handleLogout()}
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.1] px-3.5 text-xs font-medium text-[#A1A1AA] hover:border-white/[0.22] hover:text-[#F4F3EF]"
+              className={SECONDARY_BTN}
             >
-              <LogOut className="h-3.5 w-3.5" />
+              <LogOut className="h-3.5 w-3.5 text-[var(--ink-muted)]" />
               <span>Sign out</span>
             </button>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-[1480px] grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-12 lg:px-8">
+      <div className="mx-auto grid max-w-[1480px] grid-cols-1 gap-8 px-4 py-7 sm:px-6 lg:grid-cols-12 lg:px-8">
         {/* Sidebar Navigation */}
         <aside className="lg:col-span-3 xl:col-span-2">
           <nav
             aria-label="Command sections"
-            className="flex gap-1.5 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-0"
+            className="flex gap-1 overflow-x-auto border-b border-[var(--hairline)] pb-2 lg:flex-col lg:overflow-visible lg:border-b-0 lg:pb-0"
           >
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -859,27 +885,31 @@ export function OpsConsoleClient({
                     setSearchQuery("");
                     setConfirmDeleteKey(null);
                   }}
-                  className={`flex shrink-0 cursor-pointer items-center justify-between gap-2 rounded-xl px-3.5 py-2.5 text-left text-xs font-medium transition-colors ${
+                  className={`flex shrink-0 cursor-pointer items-center justify-between gap-3 rounded-lg border-l-2 px-3 py-2.5 text-left text-[13px] transition-colors duration-150 ${
                     active
-                      ? "bg-[#F4F3EF] font-semibold text-[#08080A]"
-                      : "border border-white/[0.06] bg-[#111114] text-[#A1A1AA] hover:border-white/[0.14] hover:text-[#F4F3EF] lg:border-transparent lg:bg-transparent"
+                      ? "border-[var(--accent)] bg-[var(--bg-surface)] font-semibold text-[var(--ink-primary)]"
+                      : "border-transparent font-medium text-[var(--ink-muted)] hover:bg-[var(--bg-surface)]/60 hover:text-[var(--ink-primary)]"
                   }`}
                 >
                   <span className="flex items-center gap-2.5">
-                    <Icon className="h-4 w-4 shrink-0" />
+                    <Icon
+                      className={`h-4 w-4 shrink-0 ${
+                        active ? "text-[var(--accent)]" : "text-[var(--ink-muted)]"
+                      }`}
+                    />
                     <span className="whitespace-nowrap">{item.label}</span>
                   </span>
-                  {item.badge !== undefined && (
+                  {item.count !== undefined && (
                     <span
-                      className={`rounded-full px-2 py-0.5 font-mono text-[10px] ${
-                        active
-                          ? "bg-black/15 text-[#08080A]"
-                          : item.id === "OVERVIEW" && (item.badge ?? 0) > 0
-                          ? "bg-[#FF3B1F] font-semibold text-[#08080A]"
-                          : "bg-white/[0.08] text-[#D4D4D8]"
+                      className={`font-tabular text-[13px] ${
+                        item.id === "OVERVIEW" && item.count > 0
+                          ? "font-semibold text-[var(--accent)]"
+                          : active
+                          ? "text-[var(--ink-primary)]"
+                          : "text-[var(--ink-muted)]"
                       }`}
                     >
-                      {item.badge}
+                      {item.count}
                     </span>
                   )}
                 </button>
@@ -889,19 +919,19 @@ export function OpsConsoleClient({
         </aside>
 
         {/* Main Workspace */}
-        <main className="min-w-0 space-y-6 lg:col-span-9 xl:col-span-10">
+        <main className="min-w-0 space-y-8 lg:col-span-9 xl:col-span-10">
           {notice && (
             <div
               role={notice.tone === "error" ? "alert" : "status"}
-              className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${
+              className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-[14px] ${
                 notice.tone === "error"
-                  ? "border-[#FF3B1F]/40 bg-[#FF3B1F]/12 text-[#FF8A7A]"
+                  ? "border-[var(--accent)]/40 bg-[var(--accent-soft)] text-[#FF8A7A]"
                   : notice.tone === "success"
-                  ? "border-[#10B981]/35 bg-[#10B981]/12 text-[#34D399]"
-                  : "border-white/[0.1] bg-[#141418] text-[#D4D4D8]"
+                  ? "border-[#10B981]/35 bg-[#10B981]/10 text-[#34D399]"
+                  : "border-[var(--hairline-strong)] bg-[var(--bg-surface)] text-[var(--ink-primary)]"
               }`}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 {notice.tone === "error" ? (
                   <AlertCircle className="h-4 w-4 shrink-0" />
                 ) : (
@@ -911,34 +941,45 @@ export function OpsConsoleClient({
               </div>
               <button
                 type="button"
+                aria-label="Dismiss notification"
                 onClick={() => setNotice(null)}
-                className="rounded-full p-1 opacity-75 hover:opacity-100"
+                className="cursor-pointer rounded-full p-1 opacity-75 transition-opacity duration-150 hover:opacity-100"
               >
-                <X className="h-3.5 w-3.5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
           )}
 
           {/* TAB 1: OVERVIEW & MODERATION REVIEW QUEUE */}
           {activeTab === "OVERVIEW" && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="space-y-8">
+              {/* Architectural Single-Layer KPI Ledger */}
+              <div className="grid grid-cols-2 divide-y divide-[var(--hairline)] overflow-hidden rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)] sm:grid-cols-3 lg:grid-cols-6 lg:divide-x lg:divide-y-0">
                 {[
-                  { label: "Pending Review", val: pendingReviews.length, accent: "#FF3B1F" },
-                  { label: "Journal Issues", val: data.dispatches.length, accent: "#F4F3EF" },
-                  { label: "Orbital Wire", val: data.news.length, accent: "#10B981" },
-                  { label: "Hackathons", val: data.hackathons.length, accent: "#3B82F6" },
-                  { label: "B2B Inquiries", val: data.inquiries.length, accent: "#F59E0B" },
-                  { label: "Orbit + Subs", val: data.orbit.length + data.subscribers.length, accent: "#A855F7" },
+                  {
+                    label: "Pending review",
+                    val: pendingReviews.length,
+                    highlight: pendingReviews.length > 0,
+                  },
+                  { label: "Journal issues", val: data.dispatches.length },
+                  { label: "Orbital Wire", val: data.news.length },
+                  { label: "Hackathons", val: data.hackathons.length },
+                  { label: "B2B inquiries", val: data.inquiries.length },
+                  {
+                    label: "Orbit and subs",
+                    val: data.orbit.length + data.subscribers.length,
+                  },
                 ].map((k) => (
-                  <div
-                    key={k.label}
-                    className="rounded-2xl border border-white/[0.08] bg-[#111114] p-4"
-                  >
-                    <div className="text-xs text-[#8B8B94]">{k.label}</div>
+                  <div key={k.label} className="px-5 py-4">
+                    <div className="text-[13px] text-[var(--ink-muted)]">
+                      {k.label}
+                    </div>
                     <div
-                      className="font-mono mt-1.5 text-2xl font-bold"
-                      style={{ color: k.accent }}
+                      className={`font-display font-tabular mt-1.5 text-[28px] font-bold leading-none ${
+                        k.highlight
+                          ? "text-[var(--accent)]"
+                          : "text-[var(--ink-primary)]"
+                      }`}
                     >
                       {k.val}
                     </div>
@@ -946,14 +987,14 @@ export function OpsConsoleClient({
                 ))}
               </div>
 
-              {/* Quick Create + AI Banner */}
-              <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/[0.08] bg-[#111114] p-5">
+              {/* Quick Create Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--hairline)] pb-6">
                 <div>
-                  <h2 className="font-display text-lg font-semibold text-[#F4F3EF]">
-                    Design, Research &amp; Publish
+                  <h2 className="font-display text-[20px] font-bold tracking-[-0.02em] text-[var(--ink-primary)]">
+                    Design, research, and publish
                   </h2>
-                  <p className="mt-1 text-xs text-[#A1A1AA]">
-                    Create richly formatted posts with custom colors &amp; AI visuals, or command your AI Operator by voice.
+                  <p className="mt-1 text-[14px] text-[var(--ink-muted)]">
+                    Author formatted posts with custom covers or command the AI Operator by voice.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -962,168 +1003,186 @@ export function OpsConsoleClient({
                     onClick={() =>
                       setDesignerState({ entity: "dispatch", existing: null })
                     }
-                    className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full bg-[#F4F3EF] px-4 text-xs font-semibold text-[#08080A] hover:bg-white"
+                    className="press-tactile inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-[var(--ink-primary)] px-4 text-[13px] font-semibold text-[#07090D] hover:bg-white"
                   >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span>New Journal Dispatch</span>
+                    <Plus className="h-4 w-4" />
+                    <span>New dispatch</span>
                   </button>
                   <button
                     type="button"
                     onClick={() =>
                       setDesignerState({ entity: "news", existing: null })
                     }
-                    className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.12] bg-[#18181D] px-4 text-xs font-medium text-[#F4F3EF]"
+                    className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-surface)] px-4 text-[13px] font-medium text-[var(--ink-primary)] transition-colors duration-150 hover:border-white/35"
                   >
-                    <Plus className="h-3.5 w-3.5 text-[#34D399]" />
-                    <span>New Wire Post</span>
+                    <Plus className="h-4 w-4 text-[#34D399]" />
+                    <span>New wire post</span>
                   </button>
                   <button
                     type="button"
                     onClick={() =>
                       setDesignerState({ entity: "hackathon", existing: null })
                     }
-                    className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.12] bg-[#18181D] px-4 text-xs font-medium text-[#F4F3EF]"
+                    className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-surface)] px-4 text-[13px] font-medium text-[var(--ink-primary)] transition-colors duration-150 hover:border-white/35"
                   >
-                    <Plus className="h-3.5 w-3.5 text-[#FF6B54]" />
-                    <span>New Hackathon</span>
+                    <Plus className="h-4 w-4 text-[var(--accent)]" />
+                    <span>New hackathon</span>
                   </button>
                 </div>
               </div>
 
               {/* Pending Review Queue */}
               <section className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <h2 className="font-display text-xl font-semibold text-[#F4F3EF]">
-                      Approval &amp; Review Queue ({pendingReviews.length})
-                    </h2>
-                    <p className="text-xs text-[#8B8B94]">
-                      Community-submitted hackathons and AI-authored posts wait here until you approve them or allow direct AI publishing.
-                    </p>
-                  </div>
+                <div>
+                  <h2 className="font-display text-[20px] font-bold tracking-[-0.02em] text-[var(--ink-primary)]">
+                    Approval and review queue{" "}
+                    <span className="font-tabular font-normal text-[var(--ink-muted)]">
+                      ({pendingReviews.length})
+                    </span>
+                  </h2>
+                  <p className="mt-1 text-[14px] text-[var(--ink-muted)]">
+                    Community hackathons and AI-authored drafts wait here until approved or direct publishing is enabled.
+                  </p>
                 </div>
 
                 {pendingReviews.length === 0 ? (
-                  <div className="rounded-2xl border border-white/[0.08] bg-[#111114] p-8 text-center text-sm text-[#8B8B94]">
+                  <div className="rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)] p-8 text-center text-[14px] text-[var(--ink-muted)]">
                     All submissions and AI drafts have been reviewed.
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {pendingReviews.map((item) => (
-                      <div
-                        key={`${item.entity}-${item.id}`}
-                        className="flex flex-col justify-between gap-4 rounded-2xl border border-[#FF3B1F]/35 bg-[#FF3B1F]/[0.05] p-5 lg:flex-row lg:items-center"
-                      >
-                        <div className="min-w-0 max-w-2xl">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-[#FF3B1F] px-2.5 py-0.5 text-[11px] font-semibold uppercase text-[#08080A]">
-                              {item.entity}
-                            </span>
-                            <span className="rounded-full border border-white/[0.12] bg-[#18181D] px-2.5 py-0.5 text-[11px] font-medium text-[#D4D4D8]">
-                              By {item.createdBy}
-                            </span>
-                            <span className="font-mono text-[11px] text-[#FBBF24]">
-                              {item.status}
-                            </span>
-                            {item.confidence !== undefined && (
-                              <span className="font-mono text-[11px] text-[#8B8B94]">
-                                Confidence {Math.round(item.confidence * 100)}%
+                  <div className="divide-y divide-[var(--hairline)] overflow-hidden rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)]">
+                    {pendingReviews.map((item) => {
+                      const delKey = `pending-${item.entity}-${item.id}`;
+                      return (
+                        <div
+                          key={`${item.entity}-${item.id}`}
+                          className="flex flex-col justify-between gap-4 border-l-2 border-l-[var(--accent)] p-5 lg:flex-row lg:items-center"
+                        >
+                          <div className="min-w-0 max-w-2xl">
+                            <div className="flex flex-wrap items-center gap-x-2 text-[13px]">
+                              <span className="font-semibold capitalize text-[var(--accent)]">
+                                {item.entity}
                               </span>
-                            )}
+                              <span className="text-[var(--ink-muted)]">·</span>
+                              <span className="text-[var(--ink-primary)]">
+                                By {item.createdBy}
+                              </span>
+                              <span className="text-[var(--ink-muted)]">·</span>
+                              <span className="text-[#FBBF24]">
+                                {item.status}
+                              </span>
+                              {item.confidence !== undefined && (
+                                <>
+                                  <span className="text-[var(--ink-muted)]">
+                                    ·
+                                  </span>
+                                  <span className="font-tabular text-[var(--ink-muted)]">
+                                    Confidence{" "}
+                                    {Math.round(item.confidence * 100)}%
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            <h3 className="font-display mt-2 text-[17px] font-semibold text-[var(--ink-primary)]">
+                              {item.title}
+                            </h3>
+                            <p className="mt-1 text-[14px] text-[var(--ink-muted)]">
+                              {item.subtitle}
+                            </p>
                           </div>
-                          <h3 className="font-display mt-2.5 text-lg font-semibold text-[#F4F3EF]">
-                            {item.title}
-                          </h3>
-                          <p className="mt-1 text-xs text-[#A1A1AA]">{item.subtitle}</p>
-                        </div>
 
-                        <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void runAction(
-                                "approve_content",
-                                { entity: item.entity, id: item.id },
-                                `Approved & published ${item.title}`
-                              )
-                            }
-                            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full bg-[#10B981] px-4 text-xs font-semibold text-[#08080A] hover:bg-[#34D399]"
-                          >
-                            <Check className="h-3.5 w-3.5" />
-                            <span>Approve &amp; Publish</span>
-                          </button>
-
-                          {(item.createdBy === "ai_assistant" ||
-                            item.createdBy === "mcp") && (
+                          <div className="flex flex-wrap items-center gap-2">
                             <button
                               type="button"
                               onClick={() =>
-                                void handleApproveAndGrantDirect(item.entity, item.id)
+                                void runAction(
+                                  "approve_content",
+                                  { entity: item.entity, id: item.id },
+                                  `Approved and published ${item.title}`
+                                )
                               }
-                              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-[#34D399]/40 bg-[#10B981]/15 px-3.5 text-xs font-medium text-[#34D399] hover:bg-[#10B981]/25"
+                              className="press-tactile inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full bg-[#10B981] px-4 text-[13px] font-semibold text-[#07090D] hover:bg-[#34D399]"
                             >
-                              <Sparkles className="h-3.5 w-3.5" />
-                              <span>Approve + Allow AI Direct Post</span>
+                              <Check className="h-3.5 w-3.5" />
+                              <span>Approve &amp; publish</span>
                             </button>
-                          )}
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setDesignerState({
-                                entity: item.entity,
-                                existing: item.raw,
-                              })
-                            }
-                            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.12] bg-[#18181D] px-3.5 text-xs font-medium text-[#F4F3EF]"
-                          >
-                            <Edit3 className="h-3.5 w-3.5" />
-                            <span>Design / Edit</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void runAction(
-                                "reject_content",
-                                { entity: item.entity, id: item.id },
-                                `Marked ${item.title} rejected`
-                              )
-                            }
-                            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.1] bg-[#18181D] px-3.5 text-xs font-medium text-[#FBBF24]"
-                          >
-                            <XCircle className="h-3.5 w-3.5" />
-                            <span>Reject</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleConfirmedDelete(
-                                `pending-${item.entity}-${item.id}`,
-                                item.entity === "dispatch"
-                                  ? "delete_dispatch"
-                                  : item.entity === "news"
-                                  ? "delete_news_item"
-                                  : "delete_hackathon",
-                                { id: item.id },
-                                `Deleted ${item.title}`
-                              )
-                            }
-                            className={`inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border px-3 text-xs font-medium ${
-                              confirmDeleteKey === `pending-${item.entity}-${item.id}`
-                                ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
-                                : "border-[#FF3B1F]/30 bg-[#FF3B1F]/10 text-[#FF8A7A]"
-                            }`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            {confirmDeleteKey === `pending-${item.entity}-${item.id}` && (
-                              <span>Confirm?</span>
+                            {(item.createdBy === "ai_assistant" ||
+                              item.createdBy === "mcp") && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void handleApproveAndGrantDirect(
+                                    item.entity,
+                                    item.id
+                                  )
+                                }
+                                className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-[#34D399]/40 bg-[#10B981]/12 px-3.5 text-[13px] font-medium text-[#34D399] transition-colors duration-150 hover:bg-[#10B981]/20"
+                              >
+                                <Sparkles className="h-3.5 w-3.5" />
+                                <span>Approve + AI direct</span>
+                              </button>
                             )}
-                          </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDesignerState({
+                                  entity: item.entity,
+                                  existing: item.raw,
+                                })
+                              }
+                              className={SECONDARY_BTN}
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                              <span>Design</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void runAction(
+                                  "reject_content",
+                                  { entity: item.entity, id: item.id },
+                                  `Marked ${item.title} rejected`
+                                )
+                              }
+                              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3.5 text-[13px] font-medium text-[#FBBF24] transition-colors duration-150 hover:border-[#FBBF24]/50"
+                            >
+                              <XCircle className="h-3.5 w-3.5" />
+                              <span>Reject</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              aria-label={`Delete ${item.title}`}
+                              onClick={() =>
+                                handleConfirmedDelete(
+                                  delKey,
+                                  item.entity === "dispatch"
+                                    ? "delete_dispatch"
+                                    : item.entity === "news"
+                                    ? "delete_news_item"
+                                    : "delete_hackathon",
+                                  { id: item.id },
+                                  `Deleted ${item.title}`
+                                )
+                              }
+                              className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium transition-colors duration-150 ${
+                                confirmDeleteKey === delKey
+                                  ? "border-[var(--accent)] bg-[var(--accent)] font-semibold text-[#07090D]"
+                                  : "border-[var(--accent)]/35 bg-[var(--accent-soft)] text-[#FF8A7A]"
+                              }`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              {confirmDeleteKey === delKey && (
+                                <span>Confirm?</span>
+                              )}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </section>
@@ -1132,25 +1191,29 @@ export function OpsConsoleClient({
 
           {/* TAB 2: JOURNAL DISPATCHES */}
           {activeTab === "JOURNAL" && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="font-display text-xl font-semibold text-[#F4F3EF]">
-                    Journal Lab Dispatches ({filteredDispatches.length}/{data.dispatches.length})
+                  <h2 className="font-display text-[22px] font-bold tracking-[-0.02em] text-[var(--ink-primary)]">
+                    Journal dispatches{" "}
+                    <span className="font-tabular font-normal text-[var(--ink-muted)]">
+                      ({filteredDispatches.length}/{data.dispatches.length})
+                    </span>
                   </h2>
-                  <p className="text-xs text-[#8B8B94]">
-                    Design rich long-form dispatches with cover images, accent colors, callouts, and links.
+                  <p className="mt-1 text-[14px] text-[var(--ink-muted)]">
+                    Author long-form technical issues with custom covers, accent colors, and links.
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2.5">
                   <div className="relative">
-                    <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#71717A]" />
+                    <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[var(--ink-muted)]" />
                     <input
                       type="text"
+                      aria-label="Filter dispatches"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Filter dispatches..."
-                      className="h-10 w-52 rounded-full border border-white/[0.1] bg-[#141418] pr-3 pl-8 text-xs text-[#F4F3EF] placeholder:text-[#71717A] focus:border-[#FF3B1F] focus:outline-none"
+                      className={SEARCH_INPUT_CLASS}
                     />
                   </div>
                   <button
@@ -1158,25 +1221,23 @@ export function OpsConsoleClient({
                     onClick={() =>
                       setDesignerState({ entity: "dispatch", existing: null })
                     }
-                    className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-[#FF3B1F] px-5 text-xs font-semibold text-[#08080A] hover:bg-[#FF5238]"
+                    className="press-tactile inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-[var(--accent)] px-5 text-[13px] font-semibold text-[#07090D] hover:bg-[var(--accent-hover)]"
                   >
                     <Plus className="h-4 w-4" />
-                    <span>Design New Dispatch</span>
+                    <span>Design new dispatch</span>
                   </button>
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="divide-y divide-[var(--hairline)] overflow-hidden rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)]">
                 {filteredDispatches.map((d) => {
                   const published = d.is_published !== false;
                   const delKey = `dispatch-${d.id}`;
                   return (
                     <div
                       key={d.id}
-                      className={`flex flex-col justify-between gap-4 rounded-2xl border p-5 lg:flex-row lg:items-center ${
-                        published
-                          ? "border-white/[0.08] bg-[#111114]"
-                          : "border-[#FF3B1F]/35 bg-[#FF3B1F]/[0.05]"
+                      className={`flex flex-col justify-between gap-4 p-5 lg:flex-row lg:items-center ${
+                        published ? "" : "border-l-2 border-l-[var(--accent)]"
                       }`}
                     >
                       <div className="flex min-w-0 items-start gap-4">
@@ -1185,41 +1246,52 @@ export function OpsConsoleClient({
                           <img
                             src={d.cover_image_url}
                             alt={d.title}
-                            className="hidden h-16 w-24 shrink-0 rounded-xl border border-white/[0.1] object-cover sm:block"
+                            className="hidden h-16 w-24 shrink-0 rounded-lg border border-[var(--hairline)] object-cover sm:block"
                           />
                         )}
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-x-2 text-[13px]">
                             <span
-                              className="rounded-full px-2.5 py-0.5 font-mono text-[11px] font-semibold text-[#08080A]"
+                              className="inline-block h-2 w-2 rounded-full"
                               style={{
-                                backgroundColor: d.design?.accent_color || "#FF3B1F",
+                                backgroundColor:
+                                  d.design?.accent_color || "#FF3B1F",
                               }}
-                            >
+                            />
+                            <span className="font-tabular font-semibold text-[var(--ink-primary)]">
                               Issue {d.issue_number}
                             </span>
-                            <span className="rounded-full border border-white/[0.1] bg-[#18181D] px-2.5 py-0.5 text-[11px] text-[#D4D4D8]">
+                            <span className="text-[var(--ink-muted)]">·</span>
+                            <span className="text-[var(--ink-muted)]">
                               {d.category}
                             </span>
+                            <span className="text-[var(--ink-muted)]">·</span>
                             <span
-                              className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
+                              className={
                                 published
-                                  ? "bg-[#10B981]/15 text-[#34D399]"
-                                  : "bg-[#FF3B1F] text-[#08080A]"
-                              }`}
+                                  ? "font-medium text-[#34D399]"
+                                  : "font-medium text-[#FF8A7A]"
+                              }
                             >
-                              {published ? "Published" : d.approval_status || "Pending"}
+                              {published
+                                ? "Published"
+                                : d.approval_status || "Pending"}
                             </span>
                             {d.created_by && (
-                              <span className="text-[11px] text-[#8B8B94]">
-                                by {d.created_by}
-                              </span>
+                              <>
+                                <span className="text-[var(--ink-muted)]">
+                                  ·
+                                </span>
+                                <span className="text-[var(--ink-muted)]">
+                                  by {d.created_by}
+                                </span>
+                              </>
                             )}
                           </div>
-                          <h3 className="font-display mt-2 text-base font-semibold text-[#F4F3EF]">
+                          <h3 className="font-display mt-1.5 text-[16px] font-semibold text-[var(--ink-primary)]">
                             {d.title}
                           </h3>
-                          <p className="mt-1 line-clamp-1 text-xs text-[#A1A1AA]">
+                          <p className="mt-1 line-clamp-1 text-[14px] text-[var(--ink-muted)]">
                             {d.subtitle}
                           </p>
                         </div>
@@ -1230,23 +1302,27 @@ export function OpsConsoleClient({
                           href={`/journal/${d.slug}`}
                           target="_blank"
                           rel="noreferrer"
-                          title={published ? "Open live dispatch" : "Open Admin Preview (unpublished)"}
-                          className="inline-flex h-9 items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-3 text-xs text-[#D4D4D8] hover:text-[#F4F3EF]"
+                          title={
+                            published
+                              ? "Open live dispatch"
+                              : "Open admin preview"
+                          }
+                          className={SECONDARY_BTN}
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
-                          {!published && <span className="text-[11px]">Preview</span>}
+                          {!published && <span>Preview</span>}
                         </a>
                         <button
                           type="button"
                           onClick={() => setShareDispatchTarget(d)}
                           title={
                             published
-                              ? "Share dispatch & inspect Open Graph preview"
-                              : "Generate private draft share link & inspect Open Graph preview"
+                              ? "Share dispatch and inspect Open Graph preview"
+                              : "Generate private draft share link and inspect Open Graph preview"
                           }
-                          className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.1] bg-[#18181D] px-3 text-xs font-medium text-[#D4D4D8] hover:border-white/[0.22] hover:text-[#F4F3EF]"
+                          className={SECONDARY_BTN}
                         >
-                          <Share2 className="h-3.5 w-3.5 text-[#FF3B1F]" />
+                          <Share2 className="h-3.5 w-3.5 text-[var(--accent)]" />
                           <span>Share</span>
                         </button>
                         <button
@@ -1258,10 +1334,11 @@ export function OpsConsoleClient({
                             })
                           }
                           title="Toggle featured"
-                          className={`inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border px-3 text-xs ${
+                          aria-label={`Toggle featured for ${d.title}`}
+                          className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border transition-colors duration-150 ${
                             d.is_featured
-                              ? "border-[#F59E0B]/40 bg-[#F59E0B]/15 text-[#FBBF24]"
-                              : "border-white/[0.1] bg-[#18181D] text-[#A1A1AA]"
+                              ? "border-[#F59E0B]/45 bg-[#F59E0B]/15 text-[#FBBF24]"
+                              : "border-[var(--hairline-strong)] bg-[var(--bg-canvas)] text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
                           }`}
                         >
                           <Star className="h-3.5 w-3.5" />
@@ -1271,10 +1348,10 @@ export function OpsConsoleClient({
                           onClick={() =>
                             setDesignerState({ entity: "dispatch", existing: d })
                           }
-                          className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.1] bg-[#18181D] px-3.5 text-xs font-medium text-[#F4F3EF]"
+                          className={SECONDARY_BTN}
                         >
                           <Edit3 className="h-3.5 w-3.5" />
-                          <span>Design / Edit</span>
+                          <span>Design</span>
                         </button>
                         <button
                           type="button"
@@ -1284,19 +1361,19 @@ export function OpsConsoleClient({
                               { entity: "dispatch", id: d.id },
                               published
                                 ? "Approval revoked (unpublished)."
-                                : "Dispatch approved & published."
+                                : "Dispatch approved and published."
                             )
                           }
-                          className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold ${
+                          className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors duration-150 ${
                             published
-                              ? "border border-white/[0.1] bg-[#18181D] text-[#D4D4D8]"
-                              : "bg-[#10B981] text-[#08080A]"
+                              ? "border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
+                              : "bg-[#10B981] text-[#07090D] hover:bg-[#34D399]"
                           }`}
                         >
                           {published ? (
                             <>
                               <EyeOff className="h-3.5 w-3.5" />
-                              <span>Revoke Approval</span>
+                              <span>Revoke</span>
                             </>
                           ) : (
                             <>
@@ -1307,6 +1384,7 @@ export function OpsConsoleClient({
                         </button>
                         <button
                           type="button"
+                          aria-label={`Delete dispatch ${d.issue_number}`}
                           onClick={() =>
                             handleConfirmedDelete(
                               delKey,
@@ -1315,10 +1393,10 @@ export function OpsConsoleClient({
                               `Deleted dispatch ${d.issue_number}`
                             )
                           }
-                          className={`inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border px-3 text-xs ${
+                          className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[13px] transition-colors duration-150 ${
                             confirmDeleteKey === delKey
-                              ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
-                              : "border-[#FF3B1F]/30 bg-[#FF3B1F]/10 text-[#FF8A7A]"
+                              ? "border-[var(--accent)] bg-[var(--accent)] font-semibold text-[#07090D]"
+                              : "border-[var(--accent)]/35 bg-[var(--accent-soft)] text-[#FF8A7A]"
                           }`}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -1334,25 +1412,29 @@ export function OpsConsoleClient({
 
           {/* TAB 3: ORBITAL WIRE NEWS */}
           {activeTab === "NEWS" && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="font-display text-xl font-semibold text-[#F4F3EF]">
-                    Orbital Wire News ({filteredNews.length}/{data.news.length})
+                  <h2 className="font-display text-[22px] font-bold tracking-[-0.02em] text-[var(--ink-primary)]">
+                    Orbital Wire{" "}
+                    <span className="font-tabular font-normal text-[var(--ink-muted)]">
+                      ({filteredNews.length}/{data.news.length})
+                    </span>
                   </h2>
-                  <p className="text-xs text-[#8B8B94]">
-                    Create, design, pin, approve, revoke, or bulk-clean stale signals.
+                  <p className="mt-1 text-[14px] text-[var(--ink-muted)]">
+                    Create, pin, approve, revoke, or bulk-clean stale industry signals.
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2.5">
                   <div className="relative">
-                    <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#71717A]" />
+                    <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[var(--ink-muted)]" />
                     <input
                       type="text"
+                      aria-label="Filter Orbital Wire"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Filter Orbital Wire..."
-                      className="h-10 w-48 rounded-full border border-white/[0.1] bg-[#141418] pr-3 pl-8 text-xs text-[#F4F3EF] placeholder:text-[#71717A] focus:border-[#FF3B1F] focus:outline-none"
+                      placeholder="Filter wire..."
+                      className={SEARCH_INPUT_CLASS}
                     />
                   </div>
                   <button
@@ -1365,17 +1447,17 @@ export function OpsConsoleClient({
                         "Cleaned stale Orbital Wire items older than 14 days."
                       )
                     }
-                    className={`inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-xs font-medium ${
+                    className={`inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-[13px] font-medium transition-colors duration-150 ${
                       confirmDeleteKey === "bulk-clean-news"
-                        ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
-                        : "border-white/[0.12] bg-[#141418] text-[#D4D4D8] hover:border-[#FF3B1F]/40 hover:text-[#FF8A7A]"
+                        ? "border-[var(--accent)] bg-[var(--accent)] font-semibold text-[#07090D]"
+                        : "border-[var(--hairline-strong)] bg-[var(--bg-surface)] text-[var(--ink-primary)] hover:border-[var(--accent)]/50 hover:text-[#FF8A7A]"
                     }`}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     <span>
                       {confirmDeleteKey === "bulk-clean-news"
-                        ? "Confirm Clean >14d?"
-                        : "Clean Old (>14d)"}
+                        ? "Confirm clean >14d?"
+                        : "Clean old (>14d)"}
                     </span>
                   </button>
                   <button
@@ -1383,51 +1465,60 @@ export function OpsConsoleClient({
                     onClick={() =>
                       setDesignerState({ entity: "news", existing: null })
                     }
-                    className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-[#FF3B1F] px-5 text-xs font-semibold text-[#08080A] hover:bg-[#FF5238]"
+                    className="press-tactile inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-[var(--accent)] px-5 text-[13px] font-semibold text-[#07090D] hover:bg-[var(--accent-hover)]"
                   >
                     <Plus className="h-4 w-4" />
-                    <span>New Wire Post</span>
+                    <span>New wire post</span>
                   </button>
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="divide-y divide-[var(--hairline)] overflow-hidden rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)]">
                 {filteredNews.map((n) => {
                   const delKey = `news-${n.id}`;
                   return (
                     <div
                       key={n.id}
-                      className={`flex flex-col justify-between gap-4 rounded-2xl border p-5 lg:flex-row lg:items-center ${
+                      className={`flex flex-col justify-between gap-4 p-5 lg:flex-row lg:items-center ${
                         n.is_published
-                          ? "border-white/[0.08] bg-[#111114]"
-                          : "border-[#FF3B1F]/35 bg-[#FF3B1F]/[0.05]"
+                          ? ""
+                          : "border-l-2 border-l-[var(--accent)]"
                       }`}
                     >
                       <div className="min-w-0 max-w-3xl">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full border border-white/[0.1] bg-[#18181D] px-2.5 py-0.5 text-[11px] font-medium text-[#D4D4D8]">
+                        <div className="flex flex-wrap items-center gap-x-2 text-[13px]">
+                          <span className="font-medium text-[var(--ink-primary)]">
                             {n.category}
                           </span>
-                          <span className="text-xs text-[#8B8B94]">{n.source_name}</span>
-                          <span className="font-mono text-xs text-[#34D399]">
+                          <span className="text-[var(--ink-muted)]">·</span>
+                          <span className="text-[var(--ink-muted)]">
+                            {n.source_name}
+                          </span>
+                          <span className="text-[var(--ink-muted)]">·</span>
+                          <span className="font-tabular text-[#34D399]">
                             Impact {n.impact_score}/100
                           </span>
                           {n.is_pinned && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[#FF3B1F] px-2.5 py-0.5 text-[11px] font-semibold text-[#08080A]">
-                              <Pin className="h-3 w-3" />
-                              <span>Pinned</span>
-                            </span>
+                            <>
+                              <span className="text-[var(--ink-muted)]">·</span>
+                              <span className="font-semibold text-[var(--accent)]">
+                                Pinned
+                              </span>
+                            </>
                           )}
                           {!n.is_published && (
-                            <span className="rounded-full bg-[#FF3B1F]/20 px-2.5 py-0.5 text-[11px] font-medium text-[#FF8A7A]">
-                              {n.approval_status || "Pending Review"}
-                            </span>
+                            <>
+                              <span className="text-[var(--ink-muted)]">·</span>
+                              <span className="font-medium text-[#FF8A7A]">
+                                {n.approval_status || "Pending review"}
+                              </span>
+                            </>
                           )}
                         </div>
-                        <h3 className="mt-2 text-base font-semibold text-[#F4F3EF]">
+                        <h3 className="font-display mt-1.5 text-[16px] font-semibold text-[var(--ink-primary)]">
                           {n.title}
                         </h3>
-                        <p className="mt-1 text-xs leading-relaxed text-[#A1A1AA]">
+                        <p className="mt-1 text-[14px] leading-relaxed text-[var(--ink-muted)]">
                           {n.gravity_take}
                         </p>
                       </div>
@@ -1441,10 +1532,10 @@ export function OpsConsoleClient({
                               is_pinned: !n.is_pinned,
                             })
                           }
-                          className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold ${
+                          className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold transition-colors duration-150 ${
                             n.is_pinned
-                              ? "border-[#FF3B1F] bg-[#FF3B1F] text-[#08080A]"
-                              : "border-white/[0.1] bg-[#18181D] text-[#D4D4D8]"
+                              ? "border-[var(--accent)] bg-[var(--accent)] text-[#07090D]"
+                              : "border-[var(--hairline-strong)] bg-[var(--bg-canvas)] text-[var(--ink-primary)]"
                           }`}
                         >
                           <Pin className="h-3.5 w-3.5" />
@@ -1456,7 +1547,7 @@ export function OpsConsoleClient({
                           onClick={() =>
                             setDesignerState({ entity: "news", existing: n })
                           }
-                          className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-3.5 text-xs text-[#F4F3EF]"
+                          className={SECONDARY_BTN}
                         >
                           <Edit3 className="h-3.5 w-3.5" />
                           <span>Design</span>
@@ -1466,24 +1557,27 @@ export function OpsConsoleClient({
                           type="button"
                           onClick={() =>
                             void runAction(
-                              n.is_published ? "revoke_approval" : "approve_content",
+                              n.is_published
+                                ? "revoke_approval"
+                                : "approve_content",
                               { entity: "news", id: n.id },
                               n.is_published
                                 ? "Approval revoked."
-                                : "News item approved & published."
+                                : "News item approved and published."
                             )
                           }
-                          className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold ${
+                          className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors duration-150 ${
                             n.is_published
-                              ? "border border-white/[0.1] bg-[#18181D] text-[#D4D4D8]"
-                              : "bg-[#10B981] text-[#08080A]"
+                              ? "border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
+                              : "bg-[#10B981] text-[#07090D] hover:bg-[#34D399]"
                           }`}
                         >
-                          {n.is_published ? "Revoke Approval" : "Approve"}
+                          {n.is_published ? "Revoke" : "Approve"}
                         </button>
 
                         <button
                           type="button"
+                          aria-label={`Delete ${n.title}`}
                           onClick={() =>
                             handleConfirmedDelete(
                               delKey,
@@ -1492,10 +1586,10 @@ export function OpsConsoleClient({
                               "Deleted news item."
                             )
                           }
-                          className={`inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border px-3 text-xs ${
+                          className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[13px] transition-colors duration-150 ${
                             confirmDeleteKey === delKey
-                              ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
-                              : "border-[#FF3B1F]/30 bg-[#FF3B1F]/10 text-[#FF8A7A]"
+                              ? "border-[var(--accent)] bg-[var(--accent)] font-semibold text-[#07090D]"
+                              : "border-[var(--accent)]/35 bg-[var(--accent-soft)] text-[#FF8A7A]"
                           }`}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -1511,25 +1605,29 @@ export function OpsConsoleClient({
 
           {/* TAB 4: HACKATHONS */}
           {activeTab === "HACKATHONS" && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="font-display text-xl font-semibold text-[#F4F3EF]">
-                    Hackathons ({filteredHackathons.length}/{data.hackathons.length})
+                  <h2 className="font-display text-[22px] font-bold tracking-[-0.02em] text-[var(--ink-primary)]">
+                    Hackathons{" "}
+                    <span className="font-tabular font-normal text-[var(--ink-muted)]">
+                      ({filteredHackathons.length}/{data.hackathons.length})
+                    </span>
                   </h2>
-                  <p className="text-xs text-[#8B8B94]">
-                    Approve community/AI hackathons, assign OXAKALABS squads, design visual cards, or clean expired events.
+                  <p className="mt-1 text-[14px] text-[var(--ink-muted)]">
+                    Approve hackathons, assign OXAKALABS squads, edit cards, or clean expired events.
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2.5">
                   <div className="relative">
-                    <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#71717A]" />
+                    <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[var(--ink-muted)]" />
                     <input
                       type="text"
+                      aria-label="Filter hackathons"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Filter hackathons..."
-                      className="h-10 w-48 rounded-full border border-white/[0.1] bg-[#141418] pr-3 pl-8 text-xs text-[#F4F3EF] placeholder:text-[#71717A] focus:border-[#FF3B1F] focus:outline-none"
+                      className={SEARCH_INPUT_CLASS}
                     />
                   </div>
                   <button
@@ -1542,17 +1640,17 @@ export function OpsConsoleClient({
                         "Removed expired hackathons."
                       )
                     }
-                    className={`inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-xs font-medium ${
+                    className={`inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-[13px] font-medium transition-colors duration-150 ${
                       confirmDeleteKey === "bulk-clean-hackathons"
-                        ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
-                        : "border-white/[0.12] bg-[#141418] text-[#D4D4D8] hover:border-[#FF3B1F]/40 hover:text-[#FF8A7A]"
+                        ? "border-[var(--accent)] bg-[var(--accent)] font-semibold text-[#07090D]"
+                        : "border-[var(--hairline-strong)] bg-[var(--bg-surface)] text-[var(--ink-primary)] hover:border-[var(--accent)]/50 hover:text-[#FF8A7A]"
                     }`}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     <span>
                       {confirmDeleteKey === "bulk-clean-hackathons"
-                        ? "Confirm Clean?"
-                        : "Clean Expired"}
+                        ? "Confirm clean?"
+                        : "Clean expired"}
                     </span>
                   </button>
                   <button
@@ -1560,47 +1658,57 @@ export function OpsConsoleClient({
                     onClick={() =>
                       setDesignerState({ entity: "hackathon", existing: null })
                     }
-                    className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-[#FF3B1F] px-5 text-xs font-semibold text-[#08080A] hover:bg-[#FF5238]"
+                    className="press-tactile inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-[var(--accent)] px-5 text-[13px] font-semibold text-[#07090D] hover:bg-[var(--accent-hover)]"
                   >
                     <Plus className="h-4 w-4" />
-                    <span>New Hackathon</span>
+                    <span>New hackathon</span>
                   </button>
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="divide-y divide-[var(--hairline)] overflow-hidden rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)]">
                 {filteredHackathons.map((h) => {
                   const delKey = `hackathon-${h.id}`;
                   return (
                     <div
                       key={h.id}
-                      className={`flex flex-col justify-between gap-4 rounded-2xl border p-5 lg:flex-row lg:items-center ${
+                      className={`flex flex-col justify-between gap-4 p-5 lg:flex-row lg:items-center ${
                         h.is_published
-                          ? "border-white/[0.08] bg-[#111114]"
-                          : "border-[#FF3B1F]/35 bg-[#FF3B1F]/[0.05]"
+                          ? ""
+                          : "border-l-2 border-l-[var(--accent)]"
                       }`}
                     >
                       <div className="min-w-0 max-w-2xl">
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-x-2 text-[13px]">
                           <span
-                            className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                            className={
                               h.is_published
-                                ? "border border-[#10B981]/30 bg-[#10B981]/15 text-[#34D399]"
-                                : "bg-[#FF3B1F] text-[#08080A]"
-                            }`}
+                                ? "font-medium text-[#34D399]"
+                                : "font-semibold text-[#FF8A7A]"
+                            }
                           >
-                            {h.is_published ? "Published" : h.approval_status || "Pending Review"}
+                            {h.is_published
+                              ? "Published"
+                              : h.approval_status || "Pending review"}
                           </span>
-                          <span className="font-mono text-[11px] text-[#8B8B94]">
-                            {h.created_by || "ingestion"} · Confidence {Math.round(h.confidence_score * 100)}%
+                          <span className="text-[var(--ink-muted)]">·</span>
+                          <span className="font-tabular text-[var(--ink-muted)]">
+                            {h.created_by || "ingestion"} · Confidence{" "}
+                            {Math.round(h.confidence_score * 100)}%
                           </span>
                         </div>
-                        <h3 className="font-display mt-2 text-base font-semibold text-[#F4F3EF]">
+                        <h3 className="font-display mt-1.5 text-[16px] font-semibold text-[var(--ink-primary)]">
                           {h.title}
                         </h3>
-                        <p className="mt-1 text-xs text-[#A1A1AA]">
-                          {h.organizer} · <span className="font-mono text-[#34D399]">{h.prize_display}</span> · Deadline{" "}
-                          {formatUtc(h.deadline_at)}
+                        <p className="mt-1 text-[14px] text-[var(--ink-muted)]">
+                          {h.organizer} ·{" "}
+                          <span className="font-tabular font-medium text-[#34D399]">
+                            {h.prize_display}
+                          </span>{" "}
+                          · Deadline{" "}
+                          <span className="font-tabular">
+                            {formatUtc(h.deadline_at)}
+                          </span>
                         </p>
                       </div>
 
@@ -1611,10 +1719,11 @@ export function OpsConsoleClient({
                           onChange={(e) =>
                             void runAction("update_hackathon", {
                               id: h.id,
-                              oxakalabs_status: e.target.value as OxakalabsStatus,
+                              oxakalabs_status: e.target
+                                .value as OxakalabsStatus,
                             })
                           }
-                          className="h-9 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
+                          className="h-9 rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3 text-[13px] text-[var(--ink-primary)] focus:border-[var(--accent)] focus:outline-none"
                         >
                           <option value="NONE">OXA None</option>
                           <option value="SCOUTING">OXA Scouting</option>
@@ -1626,9 +1735,12 @@ export function OpsConsoleClient({
                         <button
                           type="button"
                           onClick={() =>
-                            setDesignerState({ entity: "hackathon", existing: h })
+                            setDesignerState({
+                              entity: "hackathon",
+                              existing: h,
+                            })
                           }
-                          className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-3.5 text-xs text-[#F4F3EF]"
+                          className={SECONDARY_BTN}
                         >
                           <Edit3 className="h-3.5 w-3.5" />
                           <span>Design</span>
@@ -1638,24 +1750,27 @@ export function OpsConsoleClient({
                           type="button"
                           onClick={() =>
                             void runAction(
-                              h.is_published ? "revoke_approval" : "approve_content",
+                              h.is_published
+                                ? "revoke_approval"
+                                : "approve_content",
                               { entity: "hackathon", id: h.id },
                               h.is_published
                                 ? "Approval revoked."
-                                : "Hackathon approved & published."
+                                : "Hackathon approved and published."
                             )
                           }
-                          className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold ${
+                          className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors duration-150 ${
                             h.is_published
-                              ? "border border-white/[0.1] bg-[#18181D] text-[#D4D4D8]"
-                              : "bg-[#10B981] text-[#08080A]"
+                              ? "border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
+                              : "bg-[#10B981] text-[#07090D] hover:bg-[#34D399]"
                           }`}
                         >
-                          {h.is_published ? "Revoke Approval" : "Approve"}
+                          {h.is_published ? "Revoke" : "Approve"}
                         </button>
 
                         <button
                           type="button"
+                          aria-label={`Delete ${h.title}`}
                           onClick={() =>
                             handleConfirmedDelete(
                               delKey,
@@ -1664,10 +1779,10 @@ export function OpsConsoleClient({
                               "Deleted hackathon."
                             )
                           }
-                          className={`inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border px-3 text-xs ${
+                          className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[13px] transition-colors duration-150 ${
                             confirmDeleteKey === delKey
-                              ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
-                              : "border-[#FF3B1F]/30 bg-[#FF3B1F]/10 text-[#FF8A7A]"
+                              ? "border-[var(--accent)] bg-[var(--accent)] font-semibold text-[#07090D]"
+                              : "border-[var(--accent)]/35 bg-[var(--accent-soft)] text-[#FF8A7A]"
                           }`}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -1683,34 +1798,38 @@ export function OpsConsoleClient({
 
           {/* TAB 5: LABS & SKUNKWORKS */}
           {activeTab === "LABS" && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="font-display text-xl font-semibold text-[#F4F3EF]">
-                    Labs &amp; OXAKALABS Skunkworks ({filteredLabs.length}/{data.labs.length})
+                  <h2 className="font-display text-[22px] font-bold tracking-[-0.02em] text-[var(--ink-primary)]">
+                    Labs and Skunkworks{" "}
+                    <span className="font-tabular font-normal text-[var(--ink-muted)]">
+                      ({filteredLabs.length}/{data.labs.length})
+                    </span>
                   </h2>
-                  <p className="text-xs text-[#8B8B94]">
-                    Create, promote, score (25-pt Graduation Scorecard), or retire projects across G-XX and OXA-XX.
+                  <p className="mt-1 text-[14px] text-[var(--ink-muted)]">
+                    Create, score on the 25-point Graduation Scorecard, promote, or retire internal products.
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2.5">
                   <div className="relative">
-                    <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#71717A]" />
+                    <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[var(--ink-muted)]" />
                     <input
                       type="text"
+                      aria-label="Filter labs"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Filter labs..."
-                      className="h-10 w-48 rounded-full border border-white/[0.1] bg-[#141418] pr-3 pl-8 text-xs text-[#F4F3EF] placeholder:text-[#71717A] focus:border-[#FF3B1F] focus:outline-none"
+                      className={SEARCH_INPUT_CLASS}
                     />
                   </div>
                   <button
                     type="button"
                     onClick={() => openLabEditor(null)}
-                    className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-[#FF3B1F] px-5 text-xs font-semibold text-[#08080A]"
+                    className="press-tactile inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-[var(--accent)] px-5 text-[13px] font-semibold text-[#07090D] hover:bg-[var(--accent-hover)]"
                   >
                     <Plus className="h-4 w-4" />
-                    <span>New Lab / Skunkworks</span>
+                    <span>New lab or skunkworks</span>
                   </button>
                 </div>
               </div>
@@ -1718,141 +1837,262 @@ export function OpsConsoleClient({
               {showLabForm && (
                 <form
                   onSubmit={handleSaveLab}
-                  className="space-y-4 rounded-2xl border border-[#FF3B1F]/35 bg-[#111114] p-5"
+                  className="space-y-5 rounded-xl border border-[var(--accent)]/40 bg-[var(--bg-surface)] p-6"
                 >
                   <div className="flex items-center justify-between">
-                    <h3 className="font-display text-base font-semibold">
-                      {editingLab ? `Edit ${editingLab.code}` : "Create Project"}
+                    <h3 className="font-display text-[17px] font-bold text-[var(--ink-primary)]">
+                      {editingLab ? `Edit ${editingLab.code}` : "Create project"}
                     </h3>
                     <button
                       type="button"
                       onClick={() => setShowLabForm(false)}
-                      className="text-xs text-[#8B8B94] hover:text-[#F4F3EF]"
+                      className="cursor-pointer text-[13px] text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
                     >
                       Cancel
                     </button>
                   </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+
+                  <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                      <label
+                        htmlFor="lab-code"
+                        className="block text-[13px] font-medium text-[var(--ink-primary)]"
+                      >
+                        Project code *
+                      </label>
+                      <input
+                        id="lab-code"
+                        type="text"
+                        required
+                        disabled={Boolean(editingLab)}
+                        value={labCode}
+                        onChange={(e) => setLabCode(e.target.value)}
+                        placeholder="G-05 or OXA-07"
+                        className={`${LAB_INPUT_CLASS} disabled:opacity-50`}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="lab-division"
+                        className="block text-[13px] font-medium text-[var(--ink-primary)]"
+                      >
+                        Division
+                      </label>
+                      <select
+                        id="lab-division"
+                        value={labDivision}
+                        onChange={(e) =>
+                          setLabDivision(e.target.value as LabDivision)
+                        }
+                        className={LAB_INPUT_CLASS}
+                      >
+                        <option value="LABS">G-Gravitator LABS</option>
+                        <option value="SKUNKWORKS">OXAKALABS SKUNKWORKS</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="lab-status"
+                        className="block text-[13px] font-medium text-[var(--ink-primary)]"
+                      >
+                        Status
+                      </label>
+                      <select
+                        id="lab-status"
+                        value={labStatus}
+                        onChange={(e) =>
+                          setLabStatus(e.target.value as LabProjectStatus)
+                        }
+                        className={LAB_INPUT_CLASS}
+                      >
+                        <option value="CONCEPT">CONCEPT</option>
+                        <option value="PROTOTYPING">PROTOTYPING</option>
+                        <option value="R&D">R&amp;D</option>
+                        <option value="SKUNKWORKS CANDIDATE">
+                          SKUNKWORKS CANDIDATE
+                        </option>
+                        <option value="BETA">BETA</option>
+                        <option value="LIVE">LIVE</option>
+                        <option value="ARCHIVED">ARCHIVED</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="lab-name"
+                        className="block text-[13px] font-medium text-[var(--ink-primary)]"
+                      >
+                        Project name *
+                      </label>
+                      <input
+                        id="lab-name"
+                        type="text"
+                        required
+                        value={labName}
+                        onChange={(e) => setLabName(e.target.value)}
+                        placeholder="Project name"
+                        className={LAB_INPUT_CLASS}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="lab-tagline"
+                      className="block text-[13px] font-medium text-[var(--ink-primary)]"
+                    >
+                      One-line tagline *
+                    </label>
                     <input
+                      id="lab-tagline"
                       type="text"
                       required
-                      disabled={Boolean(editingLab)}
-                      value={labCode}
-                      onChange={(e) => setLabCode(e.target.value)}
-                      placeholder="Code (e.g. G-05 or OXA-07)"
-                      className="h-10 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
-                    />
-                    <select
-                      value={labDivision}
-                      onChange={(e) => setLabDivision(e.target.value as LabDivision)}
-                      className="h-10 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
-                    >
-                      <option value="LABS">G-Gravitator LABS</option>
-                      <option value="SKUNKWORKS">OXAKALABS SKUNKWORKS</option>
-                    </select>
-                    <select
-                      value={labStatus}
-                      onChange={(e) =>
-                        setLabStatus(e.target.value as LabProjectStatus)
-                      }
-                      className="h-10 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
-                    >
-                      <option value="CONCEPT">CONCEPT</option>
-                      <option value="PROTOTYPING">PROTOTYPING</option>
-                      <option value="R&D">R&amp;D</option>
-                      <option value="SKUNKWORKS CANDIDATE">SKUNKWORKS CANDIDATE</option>
-                      <option value="BETA">BETA</option>
-                      <option value="LIVE">LIVE</option>
-                      <option value="ARCHIVED">ARCHIVED</option>
-                    </select>
-                    <input
-                      type="text"
-                      required
-                      value={labName}
-                      onChange={(e) => setLabName(e.target.value)}
-                      placeholder="Project Name"
-                      className="h-10 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
-                    />
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    value={labTagline}
-                    onChange={(e) => setLabTagline(e.target.value)}
-                    placeholder="Concise one-line tagline"
-                    className="h-10 w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
-                  />
-                  <textarea
-                    rows={3}
-                    required
-                    value={labDesc}
-                    onChange={(e) => setLabDesc(e.target.value)}
-                    placeholder="Technical description"
-                    className="w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] p-3 text-xs text-[#F4F3EF]"
-                  />
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <textarea
-                      rows={2}
-                      value={labThesis}
-                      onChange={(e) => setLabThesis(e.target.value)}
-                      placeholder="Core thesis / problem statement (optional)"
-                      className="w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] p-3 text-xs text-[#F4F3EF]"
-                    />
-                    <textarea
-                      rows={2}
-                      value={labArchNotes}
-                      onChange={(e) => setLabArchNotes(e.target.value)}
-                      placeholder="Architecture notes (one bullet per line, optional)"
-                      className="w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] p-3 text-xs text-[#F4F3EF]"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <input
-                      type="text"
-                      value={labStack}
-                      onChange={(e) => setLabStack(e.target.value)}
-                      placeholder="Tech stack (comma-separated)"
-                      className="h-10 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
-                    />
-                    <input
-                      type="text"
-                      value={labHackOrigin}
-                      onChange={(e) => setLabHackOrigin(e.target.value)}
-                      placeholder="Hackathon origin (optional)"
-                      className="h-10 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
-                    />
-                    <input
-                      type="url"
-                      value={labLiveUrl}
-                      onChange={(e) => setLabLiveUrl(e.target.value)}
-                      placeholder="Live URL (optional)"
-                      className="h-10 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
-                    />
-                    <input
-                      type="url"
-                      value={labRepoUrl}
-                      onChange={(e) => setLabRepoUrl(e.target.value)}
-                      placeholder="Repo URL (optional)"
-                      className="h-10 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
+                      value={labTagline}
+                      onChange={(e) => setLabTagline(e.target.value)}
+                      placeholder="Concise one-line tagline"
+                      className={LAB_INPUT_CLASS}
                     />
                   </div>
 
+                  <div>
+                    <label
+                      htmlFor="lab-desc"
+                      className="block text-[13px] font-medium text-[var(--ink-primary)]"
+                    >
+                      Technical description *
+                    </label>
+                    <textarea
+                      id="lab-desc"
+                      rows={3}
+                      required
+                      value={labDesc}
+                      onChange={(e) => setLabDesc(e.target.value)}
+                      placeholder="Technical description"
+                      className="mt-1.5 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] p-3.5 text-[13px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] focus:border-[var(--accent)] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                    <div>
+                      <label
+                        htmlFor="lab-thesis"
+                        className="block text-[13px] font-medium text-[var(--ink-primary)]"
+                      >
+                        Core thesis (optional)
+                      </label>
+                      <textarea
+                        id="lab-thesis"
+                        rows={2}
+                        value={labThesis}
+                        onChange={(e) => setLabThesis(e.target.value)}
+                        placeholder="Problem statement or thesis"
+                        className="mt-1.5 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] p-3 text-[13px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] focus:border-[var(--accent)] focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="lab-arch"
+                        className="block text-[13px] font-medium text-[var(--ink-primary)]"
+                      >
+                        Architecture notes (one bullet per line)
+                      </label>
+                      <textarea
+                        id="lab-arch"
+                        rows={2}
+                        value={labArchNotes}
+                        onChange={(e) => setLabArchNotes(e.target.value)}
+                        placeholder="One architectural note per line"
+                        className="mt-1.5 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] p-3 text-[13px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] focus:border-[var(--accent)] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                      <label
+                        htmlFor="lab-stack"
+                        className="block text-[13px] font-medium text-[var(--ink-primary)]"
+                      >
+                        Tech stack
+                      </label>
+                      <input
+                        id="lab-stack"
+                        type="text"
+                        value={labStack}
+                        onChange={(e) => setLabStack(e.target.value)}
+                        placeholder="Comma-separated"
+                        className={LAB_INPUT_CLASS}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="lab-origin"
+                        className="block text-[13px] font-medium text-[var(--ink-primary)]"
+                      >
+                        Hackathon origin
+                      </label>
+                      <input
+                        id="lab-origin"
+                        type="text"
+                        value={labHackOrigin}
+                        onChange={(e) => setLabHackOrigin(e.target.value)}
+                        placeholder="Optional event name"
+                        className={LAB_INPUT_CLASS}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="lab-live"
+                        className="block text-[13px] font-medium text-[var(--ink-primary)]"
+                      >
+                        Live URL
+                      </label>
+                      <input
+                        id="lab-live"
+                        type="url"
+                        value={labLiveUrl}
+                        onChange={(e) => setLabLiveUrl(e.target.value)}
+                        placeholder="https://..."
+                        className={LAB_INPUT_CLASS}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="lab-repo"
+                        className="block text-[13px] font-medium text-[var(--ink-primary)]"
+                      >
+                        Repository URL
+                      </label>
+                      <input
+                        id="lab-repo"
+                        type="url"
+                        value={labRepoUrl}
+                        onChange={(e) => setLabRepoUrl(e.target.value)}
+                        placeholder="https://github.com/..."
+                        className={LAB_INPUT_CLASS}
+                      />
+                    </div>
+                  </div>
+
                   {/* 25-pt Scorecard */}
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                  <div className="grid grid-cols-2 gap-3 border-t border-[var(--hairline)] pt-4 sm:grid-cols-5">
                     {(
                       [
                         ["pain_intensity", "Pain (1-5)"],
                         ["willingness_to_pay", "WTP (1-5)"],
                         ["technical_moat", "Moat (1-5)"],
-                        ["distribution_hook", "Distrib (1-5)"],
+                        ["distribution_hook", "Distribution (1-5)"],
                         ["lean_maintainability", "Lean (1-5)"],
                       ] as const
                     ).map(([key, label]) => (
                       <div key={key}>
-                        <label className="block text-[11px] text-[#A1A1AA]">
+                        <label
+                          htmlFor={`lab-score-${key}`}
+                          className="block text-[13px] text-[var(--ink-muted)]"
+                        >
                           {label}
                         </label>
                         <input
+                          id={`lab-score-${key}`}
                           type="number"
                           min={1}
                           max={5}
@@ -1860,10 +2100,13 @@ export function OpsConsoleClient({
                           onChange={(e) =>
                             setLabScore((s) => ({
                               ...s,
-                              [key]: Math.min(5, Math.max(1, Number(e.target.value) || 1)),
+                              [key]: Math.min(
+                                5,
+                                Math.max(1, Number(e.target.value) || 1)
+                              ),
                             }))
                           }
-                          className="mt-1 h-9 w-full rounded-xl border border-white/[0.1] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
+                          className={`${LAB_INPUT_CLASS} font-tabular`}
                         />
                       </div>
                     ))}
@@ -1871,14 +2114,14 @@ export function OpsConsoleClient({
 
                   <button
                     type="submit"
-                    className="inline-flex h-10 cursor-pointer items-center rounded-full bg-[#FF3B1F] px-5 text-xs font-semibold text-[#08080A]"
+                    className="press-tactile inline-flex h-10 cursor-pointer items-center rounded-full bg-[var(--accent)] px-6 text-[13px] font-semibold text-[#07090D] hover:bg-[var(--accent-hover)]"
                   >
-                    {editingLab ? "Save Project" : "Create Project"}
+                    {editingLab ? "Save project" : "Create project"}
                   </button>
                 </form>
               )}
 
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {filteredLabs.map((p) => {
                   const total = p.scorecard
                     ? p.scorecard.pain_intensity +
@@ -1891,45 +2134,49 @@ export function OpsConsoleClient({
                   return (
                     <div
                       key={p.id}
-                      className="flex flex-col justify-between gap-4 rounded-2xl border border-white/[0.08] bg-[#111114] p-5"
+                      className="flex flex-col justify-between gap-4 rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)] p-5"
                     >
                       <div>
-                        <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
                           <div className="flex items-center gap-2">
-                            <span className="rounded-full bg-[#F4F3EF] px-2.5 py-0.5 font-mono text-[11px] font-bold text-[#08080A]">
+                            <span className="font-tabular font-semibold text-[var(--ink-primary)]">
                               {p.code}
                             </span>
-                            <span className="rounded-full border border-white/[0.1] bg-[#18181D] px-2.5 py-0.5 text-[11px] text-[#D4D4D8]">
+                            <span className="text-[var(--ink-muted)]">·</span>
+                            <span className="text-[var(--ink-muted)]">
                               {p.division} · {p.status}
                             </span>
                           </div>
                           {total !== null && (
-                            <span className="font-mono text-xs text-[#34D399]">
+                            <span className="font-tabular font-semibold text-[#34D399]">
                               {total}/25
                             </span>
                           )}
                         </div>
-                        <h3 className="font-display mt-2.5 text-base font-semibold text-[#F4F3EF]">
+                        <h3 className="font-display mt-2.5 text-[17px] font-semibold text-[var(--ink-primary)]">
                           {p.name}
                         </h3>
-                        <p className="mt-1 text-xs text-[#A1A1AA]">{p.tagline}</p>
+                        <p className="mt-1 text-[14px] text-[var(--ink-muted)]">
+                          {p.tagline}
+                        </p>
                         {p.hackathon_origin && (
-                          <p className="mt-1.5 font-mono text-[11px] text-[#8B8B94]">
+                          <p className="mt-2 text-[13px] text-[var(--ink-muted)]">
                             Origin: {p.hackathon_origin}
                           </p>
                         )}
                       </div>
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-2 border-t border-[var(--hairline)] pt-3">
                         <button
                           type="button"
                           onClick={() => openLabEditor(p)}
-                          className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-3 text-xs text-[#F4F3EF]"
+                          className={SECONDARY_BTN}
                         >
-                          <Edit3 className="h-3 w-3" />
+                          <Edit3 className="h-3.5 w-3.5" />
                           <span>Edit</span>
                         </button>
                         <button
                           type="button"
+                          aria-label={`Delete ${p.code}`}
                           onClick={() =>
                             handleConfirmedDelete(
                               delKey,
@@ -1938,13 +2185,13 @@ export function OpsConsoleClient({
                               `Deleted ${p.code}`
                             )
                           }
-                          className={`inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border px-3 text-xs ${
+                          className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[13px] transition-colors duration-150 ${
                             confirmDeleteKey === delKey
-                              ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
-                              : "border-[#FF3B1F]/30 bg-[#FF3B1F]/10 text-[#FF8A7A]"
+                              ? "border-[var(--accent)] bg-[var(--accent)] font-semibold text-[#07090D]"
+                              : "border-[var(--accent)]/35 bg-[var(--accent-soft)] text-[#FF8A7A]"
                           }`}
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Trash2 className="h-3.5 w-3.5" />
                           {confirmDeleteKey === delKey && <span>Confirm?</span>}
                         </button>
                       </div>
@@ -1960,224 +2207,264 @@ export function OpsConsoleClient({
             <div className="space-y-8">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="font-display text-xl font-semibold text-[#F4F3EF]">
-                    CRM, Inquiries &amp; Audience
+                  <h2 className="font-display text-[22px] font-bold tracking-[-0.02em] text-[var(--ink-primary)]">
+                    CRM, inquiries, and audience
                   </h2>
-                  <p className="text-xs text-[#8B8B94]">
-                    Triage client inquiries, review Orbit applications with notes, and manage newsletter subscribers.
+                  <p className="mt-1 text-[14px] text-[var(--ink-muted)]">
+                    Triage client inquiries, review Orbit applications with notes, and manage subscribers.
                   </p>
                 </div>
                 <div className="relative">
-                  <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#71717A]" />
+                  <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[var(--ink-muted)]" />
                   <input
                     type="text"
+                    aria-label="Filter inquiries and Orbit applications"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Filter inquiries & Orbit..."
-                    className="h-10 w-56 rounded-full border border-white/[0.1] bg-[#141418] pr-3 pl-8 text-xs text-[#F4F3EF] placeholder:text-[#71717A] focus:border-[#FF3B1F] focus:outline-none"
+                    placeholder="Filter inquiries and Orbit..."
+                    className={SEARCH_INPUT_CLASS}
                   />
                 </div>
               </div>
 
               {/* Inquiries */}
               <section className="space-y-3">
-                <h3 className="font-display text-lg font-semibold text-[#F4F3EF]">
-                  B2B Systems Inquiries ({filteredInquiries.length}/{data.inquiries.length})
+                <h3 className="font-display text-[18px] font-bold text-[var(--ink-primary)]">
+                  B2B systems inquiries{" "}
+                  <span className="font-tabular font-normal text-[var(--ink-muted)]">
+                    ({filteredInquiries.length}/{data.inquiries.length})
+                  </span>
                 </h3>
-                {filteredInquiries.map((inq) => {
-                  const delKey = `inq-${inq.id}`;
-                  return (
-                    <div
-                      key={inq.id}
-                      className="flex flex-col justify-between gap-4 rounded-2xl border border-white/[0.08] bg-[#111114] p-5 lg:flex-row lg:items-center"
-                    >
-                      <div className="max-w-2xl">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-[#FF3B1F] px-2.5 py-0.5 text-[11px] font-semibold text-[#08080A]">
-                            {inq.tier}
-                          </span>
-                          <span className="font-mono text-xs text-[#34D399]">
-                            {inq.budget_range || "Custom"}
-                          </span>
-                          <span className="text-xs text-[#8B8B94]">
-                            {inq.timeline || "Flexible"}
-                          </span>
-                        </div>
-                        <h4 className="font-display mt-2 text-base font-semibold text-[#F4F3EF]">
-                          {inq.name} ·{" "}
-                          <span className="font-normal text-[#A1A1AA]">
-                            {inq.company || "Independent"} ({inq.email})
-                          </span>
-                        </h4>
-                        <p className="mt-1.5 text-xs leading-relaxed text-[#A1A1AA]">
-                          {inq.project_brief}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <select
-                          value={inq.status}
-                          onChange={(e) =>
-                            void runAction("update_inquiry_status", {
-                              id: inq.id,
-                              status: e.target.value as InquiryStatus,
-                            })
-                          }
-                          className="h-9 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
-                        >
-                          <option value="NEW">New</option>
-                          <option value="REVIEWED">Reviewed</option>
-                          <option value="DISCOVERY_CALL">Discovery Call</option>
-                          <option value="CLOSED_WON">Closed Won</option>
-                          <option value="ARCHIVED">Archived</option>
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleConfirmedDelete(
-                              delKey,
-                              "delete_inquiry",
-                              { id: inq.id },
-                              "Deleted inquiry"
-                            )
-                          }
-                          className={`inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border px-3 text-xs ${
-                            confirmDeleteKey === delKey
-                              ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
-                              : "border-[#FF3B1F]/30 bg-[#FF3B1F]/10 text-[#FF8A7A]"
-                          }`}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          {confirmDeleteKey === delKey && <span>Confirm?</span>}
-                        </button>
-                      </div>
+                <div className="divide-y divide-[var(--hairline)] overflow-hidden rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)]">
+                  {filteredInquiries.length === 0 ? (
+                    <div className="p-6 text-[14px] text-[var(--ink-muted)]">
+                      No matching inquiries.
                     </div>
-                  );
-                })}
-              </section>
-
-              {/* Orbit + Subscribers */}
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <section className="space-y-3">
-                  <h3 className="font-display text-lg font-semibold text-[#F4F3EF]">
-                    Orbit Applications ({filteredOrbit.length}/{data.orbit.length})
-                  </h3>
-                  {filteredOrbit.map((app) => {
-                    const delKey = `orbit-${app.id}`;
-                    const draftNote =
-                      orbitNotesDraft[app.id] !== undefined
-                        ? orbitNotesDraft[app.id]
-                        : app.notes || "";
-                    const noteChanged = draftNote.trim() !== (app.notes || "").trim();
-                    return (
-                      <div
-                        key={app.id}
-                        className="space-y-3 rounded-2xl border border-white/[0.08] bg-[#111114] p-4"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div>
-                            <div className="text-sm font-semibold text-[#F4F3EF]">
-                              {app.full_name}
+                  ) : (
+                    filteredInquiries.map((inq) => {
+                      const delKey = `inq-${inq.id}`;
+                      return (
+                        <div
+                          key={inq.id}
+                          className="flex flex-col justify-between gap-4 p-5 lg:flex-row lg:items-center"
+                        >
+                          <div className="max-w-2xl">
+                            <div className="flex flex-wrap items-center gap-x-2 text-[13px]">
+                              <span className="font-semibold text-[var(--accent)]">
+                                {inq.tier}
+                              </span>
+                              <span className="text-[var(--ink-muted)]">·</span>
+                              <span className="font-tabular text-[#34D399]">
+                                {inq.budget_range || "Custom"}
+                              </span>
+                              <span className="text-[var(--ink-muted)]">·</span>
+                              <span className="text-[var(--ink-muted)]">
+                                {inq.timeline || "Flexible"}
+                              </span>
                             </div>
-                            <div className="text-xs text-[#8B8B94]">
-                              {app.email} · {app.track}
-                            </div>
+                            <h4 className="font-display mt-1.5 text-[16px] font-semibold text-[var(--ink-primary)]">
+                              {inq.name}{" "}
+                              <span className="font-sans text-[14px] font-normal text-[var(--ink-muted)]">
+                                · {inq.company || "Independent"} ({inq.email})
+                              </span>
+                            </h4>
+                            <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--ink-muted)]">
+                              {inq.project_brief}
+                            </p>
                           </div>
+
                           <div className="flex items-center gap-2">
                             <select
-                              value={app.status || "NEW"}
+                              aria-label={`Inquiry status for ${inq.name}`}
+                              value={inq.status}
                               onChange={(e) =>
-                                void runAction("update_orbit_application", {
-                                  id: app.id,
-                                  status: e.target.value as OrbitApplicationStatus,
+                                void runAction("update_inquiry_status", {
+                                  id: inq.id,
+                                  status: e.target.value as InquiryStatus,
                                 })
                               }
-                              className="h-8 rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-2.5 text-xs text-[#F4F3EF]"
+                              className="h-9 rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3 text-[13px] text-[var(--ink-primary)] focus:border-[var(--accent)] focus:outline-none"
                             >
                               <option value="NEW">New</option>
-                              <option value="REVIEWING">Reviewing</option>
-                              <option value="ACCEPTED">Accepted</option>
-                              <option value="WAITLISTED">Waitlisted</option>
-                              <option value="REJECTED">Rejected</option>
+                              <option value="REVIEWED">Reviewed</option>
+                              <option value="DISCOVERY_CALL">
+                                Discovery call
+                              </option>
+                              <option value="CLOSED_WON">Closed won</option>
+                              <option value="ARCHIVED">Archived</option>
                             </select>
                             <button
                               type="button"
+                              aria-label={`Delete inquiry from ${inq.name}`}
                               onClick={() =>
                                 handleConfirmedDelete(
                                   delKey,
-                                  "delete_orbit_application",
-                                  { id: app.id },
-                                  `Deleted Orbit application for ${app.full_name}`
+                                  "delete_inquiry",
+                                  { id: inq.id },
+                                  "Deleted inquiry"
                                 )
                               }
-                              className={`inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border px-2.5 text-xs ${
+                              className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[13px] transition-colors duration-150 ${
                                 confirmDeleteKey === delKey
-                                  ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
-                                  : "border-[#FF3B1F]/30 bg-[#FF3B1F]/10 text-[#FF8A7A]"
+                                  ? "border-[var(--accent)] bg-[var(--accent)] font-semibold text-[#07090D]"
+                                  : "border-[var(--accent)]/35 bg-[var(--accent-soft)] text-[#FF8A7A]"
                               }`}
                             >
-                              <Trash2 className="h-3 w-3" />
-                              {confirmDeleteKey === delKey && <span>Confirm?</span>}
+                              <Trash2 className="h-3.5 w-3.5" />
+                              {confirmDeleteKey === delKey && (
+                                <span>Confirm?</span>
+                              )}
                             </button>
                           </div>
                         </div>
-                        <p className="text-xs leading-relaxed text-[#A1A1AA]">
-                          {app.proof_of_work}
-                        </p>
-                        {app.portfolio_url && (
-                          <a
-                            href={app.portfolio_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-xs font-medium text-[#34D399] hover:underline"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            <span className="truncate">{app.portfolio_url}</span>
-                          </a>
-                        )}
-                        <div className="flex items-center gap-2 pt-1">
-                          <input
-                            type="text"
-                            value={draftNote}
-                            onChange={(e) =>
-                              setOrbitNotesDraft((prev) => ({
-                                ...prev,
-                                [app.id]: e.target.value,
-                              }))
-                            }
-                            placeholder="Internal reviewer notes..."
-                            className="h-8 flex-1 rounded-lg border border-white/[0.1] bg-[#0B0B0E] px-2.5 text-xs text-[#F4F3EF] placeholder:text-[#71717A]"
-                          />
-                          {noteChanged && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                void runAction(
-                                  "update_orbit_application",
-                                  { id: app.id, notes: draftNote.trim() },
-                                  `Saved reviewer note for ${app.full_name}`
-                                )
-                              }
-                              className="h-8 cursor-pointer rounded-lg bg-[#F4F3EF] px-3 text-xs font-semibold text-[#08080A]"
-                            >
-                              Save
-                            </button>
-                          )}
-                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </section>
+
+              {/* Orbit + Subscribers */}
+              <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                <section className="space-y-3">
+                  <h3 className="font-display text-[18px] font-bold text-[var(--ink-primary)]">
+                    Orbit applications{" "}
+                    <span className="font-tabular font-normal text-[var(--ink-muted)]">
+                      ({filteredOrbit.length}/{data.orbit.length})
+                    </span>
+                  </h3>
+                  <div className="divide-y divide-[var(--hairline)] overflow-hidden rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)]">
+                    {filteredOrbit.length === 0 ? (
+                      <div className="p-6 text-[14px] text-[var(--ink-muted)]">
+                        No Orbit applications found.
                       </div>
-                    );
-                  })}
+                    ) : (
+                      filteredOrbit.map((app) => {
+                        const delKey = `orbit-${app.id}`;
+                        const draftNote =
+                          orbitNotesDraft[app.id] !== undefined
+                            ? orbitNotesDraft[app.id]
+                            : app.notes || "";
+                        const noteChanged =
+                          draftNote.trim() !== (app.notes || "").trim();
+                        return (
+                          <div key={app.id} className="space-y-3 p-5">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div>
+                                <div className="text-[15px] font-semibold text-[var(--ink-primary)]">
+                                  {app.full_name}
+                                </div>
+                                <div className="text-[13px] text-[var(--ink-muted)]">
+                                  {app.email} · {app.track}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <select
+                                  aria-label={`Orbit status for ${app.full_name}`}
+                                  value={app.status || "NEW"}
+                                  onChange={(e) =>
+                                    void runAction("update_orbit_application", {
+                                      id: app.id,
+                                      status: e.target
+                                        .value as OrbitApplicationStatus,
+                                    })
+                                  }
+                                  className="h-9 rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-2.5 text-[13px] text-[var(--ink-primary)] focus:border-[var(--accent)] focus:outline-none"
+                                >
+                                  <option value="NEW">New</option>
+                                  <option value="REVIEWING">Reviewing</option>
+                                  <option value="ACCEPTED">Accepted</option>
+                                  <option value="WAITLISTED">Waitlisted</option>
+                                  <option value="REJECTED">Rejected</option>
+                                </select>
+                                <button
+                                  type="button"
+                                  aria-label={`Delete application from ${app.full_name}`}
+                                  onClick={() =>
+                                    handleConfirmedDelete(
+                                      delKey,
+                                      "delete_orbit_application",
+                                      { id: app.id },
+                                      `Deleted Orbit application for ${app.full_name}`
+                                    )
+                                  }
+                                  className={`inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border px-2.5 text-[13px] transition-colors duration-150 ${
+                                    confirmDeleteKey === delKey
+                                      ? "border-[var(--accent)] bg-[var(--accent)] font-semibold text-[#07090D]"
+                                      : "border-[var(--accent)]/35 bg-[var(--accent-soft)] text-[#FF8A7A]"
+                                  }`}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  {confirmDeleteKey === delKey && (
+                                    <span>Confirm?</span>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                            <p className="text-[14px] leading-relaxed text-[var(--ink-muted)]">
+                              {app.proof_of_work}
+                            </p>
+                            {app.portfolio_url && (
+                              <a
+                                href={app.portfolio_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#34D399] hover:underline"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                                <span className="truncate">
+                                  {app.portfolio_url}
+                                </span>
+                              </a>
+                            )}
+                            <div className="flex items-center gap-2 pt-1">
+                              <input
+                                type="text"
+                                aria-label={`Reviewer notes for ${app.full_name}`}
+                                value={draftNote}
+                                onChange={(e) =>
+                                  setOrbitNotesDraft((prev) => ({
+                                    ...prev,
+                                    [app.id]: e.target.value,
+                                  }))
+                                }
+                                placeholder="Internal reviewer notes..."
+                                className="h-9 flex-1 rounded-lg border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3 text-[13px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] focus:border-[var(--accent)] focus:outline-none"
+                              />
+                              {noteChanged && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void runAction(
+                                      "update_orbit_application",
+                                      { id: app.id, notes: draftNote.trim() },
+                                      `Saved reviewer note for ${app.full_name}`
+                                    )
+                                  }
+                                  className="h-9 cursor-pointer rounded-full bg-[var(--ink-primary)] px-4 text-[13px] font-semibold text-[#07090D]"
+                                >
+                                  Save
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 </section>
 
                 <section className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="font-display text-lg font-semibold text-[#F4F3EF]">
-                      Newsletter Subscribers ({data.subscribers.length})
+                    <h3 className="font-display text-[18px] font-bold text-[var(--ink-primary)]">
+                      Newsletter subscribers{" "}
+                      <span className="font-tabular font-normal text-[var(--ink-muted)]">
+                        ({data.subscribers.length})
+                      </span>
                     </h3>
                     <button
                       type="button"
                       onClick={handleDownloadSubscribersCsv}
-                      className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.12] bg-[#18181D] px-3 text-xs text-[#D4D4D8]"
+                      className={SECONDARY_BTN}
                     >
                       <Download className="h-3.5 w-3.5" />
                       <span>Export CSV</span>
@@ -2199,36 +2486,40 @@ export function OpsConsoleClient({
                     <input
                       type="email"
                       required
+                      aria-label="Add subscriber email"
                       value={newSubEmail}
                       onChange={(e) => setNewSubEmail(e.target.value)}
                       placeholder="Add subscriber email..."
-                      className="h-9 flex-1 rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                      className="h-10 flex-1 rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-surface)] px-3.5 text-[13px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] focus:border-[var(--accent)] focus:outline-none"
                     />
                     <button
                       type="submit"
-                      className="h-9 cursor-pointer rounded-xl bg-[#F4F3EF] px-4 text-xs font-semibold text-[#08080A]"
+                      className="press-tactile h-10 cursor-pointer rounded-full bg-[var(--ink-primary)] px-5 text-[13px] font-semibold text-[#07090D] hover:bg-white"
                     >
                       Add
                     </button>
                   </form>
 
-                  <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#111114]">
-                    <ul className="divide-y divide-white/[0.06]">
+                  <div className="overflow-hidden rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)]">
+                    <ul className="divide-y divide-[var(--hairline)]">
                       {data.subscribers.map((s) => {
                         const delKey = `sub-${s.id}`;
                         return (
                           <li
                             key={s.id}
-                            className="flex items-center justify-between gap-2 px-4 py-3 text-xs"
+                            className="flex items-center justify-between gap-3 px-4 py-3 text-[13px]"
                           >
-                            <div>
-                              <span className="text-[#F4F3EF]">{s.email}</span>
-                              <span className="ml-2 rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] text-[#A1A1AA]">
-                                {s.source}
+                            <div className="min-w-0 truncate">
+                              <span className="text-[var(--ink-primary)]">
+                                {s.email}
+                              </span>
+                              <span className="ml-2 text-[var(--ink-muted)]">
+                                · {s.source}
                               </span>
                             </div>
                             <button
                               type="button"
+                              aria-label={`Remove ${s.email}`}
                               onClick={() =>
                                 handleConfirmedDelete(
                                   delKey,
@@ -2237,10 +2528,10 @@ export function OpsConsoleClient({
                                   `Removed ${s.email}`
                                 )
                               }
-                              className={`cursor-pointer text-xs ${
+                              className={`shrink-0 cursor-pointer text-[13px] transition-colors duration-150 ${
                                 confirmDeleteKey === delKey
-                                  ? "font-semibold text-[#FF3B1F]"
-                                  : "text-[#8B8B94] hover:text-[#FF8A7A]"
+                                  ? "font-semibold text-[var(--accent)]"
+                                  : "text-[var(--ink-muted)] hover:text-[#FF8A7A]"
                               }`}
                             >
                               {confirmDeleteKey === delKey ? (
@@ -2263,25 +2554,29 @@ export function OpsConsoleClient({
           {activeTab === "MEDIA" && (
             <div className="space-y-6">
               <div>
-                <h2 className="font-display text-xl font-semibold text-[#F4F3EF]">
-                  Media Studio &amp; Library ({data.mediaAssets.length})
+                <h2 className="font-display text-[22px] font-bold tracking-[-0.02em] text-[var(--ink-primary)]">
+                  Media studio and library{" "}
+                  <span className="font-tabular font-normal text-[var(--ink-muted)]">
+                    ({data.mediaAssets.length})
+                  </span>
                 </h2>
-                <p className="text-xs text-[#8B8B94]">
-                  Generate AI images, import remote pictures by URL, upload files, copy URLs for posts, or download assets.
+                <p className="mt-1 text-[14px] text-[var(--ink-muted)]">
+                  Generate AI visuals, import remote images by URL, upload files, or copy hosted URLs.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                <div className="space-y-3 rounded-2xl border border-white/[0.08] bg-[#111114] p-4">
-                  <div className="text-xs font-semibold text-[#FF8A7A]">
-                    1. Generate Visual (Gemini / Studio SVG)
-                  </div>
+              <div className="grid grid-cols-1 divide-y divide-[var(--hairline)] overflow-hidden rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)] lg:grid-cols-3 lg:divide-x lg:divide-y-0">
+                <div className="space-y-3 p-5">
+                  <h3 className="text-[14px] font-semibold text-[var(--ink-primary)]">
+                    Generate visual (Gemini or Studio SVG)
+                  </h3>
                   <input
                     type="text"
+                    aria-label="Image generation prompt"
                     value={mediaPrompt}
                     onChange={(e) => setMediaPrompt(e.target.value)}
                     placeholder="Describe image prompt..."
-                    className="h-9 w-full rounded-xl border border-white/[0.1] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
+                    className="h-10 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3.5 text-[13px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] focus:border-[var(--accent)] focus:outline-none"
                   />
                   <button
                     type="button"
@@ -2304,7 +2599,7 @@ export function OpsConsoleClient({
                         });
                       }
                     }}
-                    className="inline-flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full bg-[#FF3B1F] text-xs font-semibold text-[#08080A] disabled:opacity-50"
+                    className="press-tactile inline-flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full bg-[var(--accent)] text-[13px] font-semibold text-[#07090D] hover:bg-[var(--accent-hover)] disabled:opacity-50"
                   >
                     {busyAction === "generate_post_image" ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -2314,21 +2609,22 @@ export function OpsConsoleClient({
                     <span>
                       {busyAction === "generate_post_image"
                         ? "Generating..."
-                        : "Generate & Store"}
+                        : "Generate and store"}
                     </span>
                   </button>
                 </div>
 
-                <div className="space-y-3 rounded-2xl border border-white/[0.08] bg-[#111114] p-4">
-                  <div className="text-xs font-semibold text-[#34D399]">
-                    2. Import Image From URL
-                  </div>
+                <div className="space-y-3 p-5">
+                  <h3 className="text-[14px] font-semibold text-[var(--ink-primary)]">
+                    Import image from URL
+                  </h3>
                   <input
                     type="url"
+                    aria-label="Remote image URL"
                     value={mediaImportUrl}
                     onChange={(e) => setMediaImportUrl(e.target.value)}
                     placeholder="https://example.com/cover.png"
-                    className="h-9 w-full rounded-xl border border-white/[0.1] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
+                    className="h-10 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3.5 text-[13px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] focus:border-[var(--accent)] focus:outline-none"
                   />
                   <button
                     type="button"
@@ -2342,7 +2638,7 @@ export function OpsConsoleClient({
                         if (res) setMediaImportUrl("");
                       })
                     }
-                    className="inline-flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full bg-[#F4F3EF] text-xs font-semibold text-[#08080A] disabled:opacity-50"
+                    className="press-tactile inline-flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full bg-[var(--ink-primary)] text-[13px] font-semibold text-[#07090D] hover:bg-white disabled:opacity-50"
                   >
                     {busyAction === "import_image_from_url" ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -2352,15 +2648,15 @@ export function OpsConsoleClient({
                     <span>
                       {busyAction === "import_image_from_url"
                         ? "Importing..."
-                        : "Import & Host"}
+                        : "Import and host"}
                     </span>
                   </button>
                 </div>
 
-                <div className="space-y-3 rounded-2xl border border-white/[0.08] bg-[#111114] p-4">
-                  <div className="text-xs font-semibold text-[#D4D4D8]">
-                    3. Upload From Device
-                  </div>
+                <div className="space-y-3 p-5">
+                  <h3 className="text-[14px] font-semibold text-[var(--ink-primary)]">
+                    Upload from device
+                  </h3>
                   <input
                     ref={mediaUploadRef}
                     type="file"
@@ -2372,12 +2668,16 @@ export function OpsConsoleClient({
                       if (!f) return;
                       setMediaUploading(true);
                       try {
-                        const dataUrl: string = await new Promise((resolve, reject) => {
-                          const reader = new FileReader();
-                          reader.onload = () => resolve(String(reader.result || ""));
-                          reader.onerror = () => reject(new Error("Could not read file."));
-                          reader.readAsDataURL(f);
-                        });
+                        const dataUrl: string = await new Promise(
+                          (resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = () =>
+                              resolve(String(reader.result || ""));
+                            reader.onerror = () =>
+                              reject(new Error("Could not read file."));
+                            reader.readAsDataURL(f);
+                          }
+                        );
                         const res = await fetch("/api/ops/media", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
@@ -2417,17 +2717,19 @@ export function OpsConsoleClient({
                     type="button"
                     disabled={mediaUploading}
                     onClick={() => mediaUploadRef.current?.click()}
-                    className="inline-flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-white/[0.15] bg-[#18181D] text-xs font-medium text-[#F4F3EF] disabled:opacity-50"
+                    className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] text-[13px] font-medium text-[var(--ink-primary)] transition-colors duration-150 hover:border-white/35 disabled:opacity-50"
                   >
                     {mediaUploading ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
                       <Upload className="h-3.5 w-3.5" />
                     )}
-                    <span>{mediaUploading ? "Uploading..." : "Upload Image File"}</span>
+                    <span>
+                      {mediaUploading ? "Uploading..." : "Upload image file"}
+                    </span>
                   </button>
-                  <p className="text-[11px] text-[#8B8B94]">
-                    Stored securely and served via /api/media/[id]
+                  <p className="text-[13px] text-[var(--ink-muted)]">
+                    Served via <code className="font-code">/api/media/[id]</code>
                   </p>
                 </div>
               </div>
@@ -2438,42 +2740,45 @@ export function OpsConsoleClient({
                   return (
                     <div
                       key={m.id}
-                      className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#111114]"
+                      className="overflow-hidden rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)]"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={m.url}
                         alt={m.alt_text || m.filename}
-                        className="h-44 w-full object-cover"
+                        className="aspect-[16/10] w-full object-cover"
                       />
-                      <div className="space-y-2 p-4">
-                        <div className="flex items-center justify-between gap-2 text-xs">
-                          <span className="truncate font-semibold text-[#F4F3EF]">
+                      <div className="space-y-3 p-4">
+                        <div className="flex items-center justify-between gap-2 text-[13px]">
+                          <span className="truncate font-semibold text-[var(--ink-primary)]">
                             {m.filename}
                           </span>
-                          <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] uppercase text-[#A1A1AA]">
+                          <span className="shrink-0 text-[var(--ink-muted)]">
                             {m.source_type}
                           </span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <div className="flex flex-wrap items-center gap-2">
                           <button
                             type="button"
                             onClick={() => void handleCopy(m.id, m.url)}
-                            className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-3 text-xs text-[#D4D4D8]"
+                            className={SECONDARY_BTN}
                           >
-                            <Copy className="h-3 w-3" />
-                            <span>{copiedKey === m.id ? "Copied" : "Copy URL"}</span>
+                            <Copy className="h-3.5 w-3.5" />
+                            <span>
+                              {copiedKey === m.id ? "Copied" : "Copy URL"}
+                            </span>
                           </button>
                           <a
                             href={`${m.url}?download=1`}
                             download={m.filename}
-                            className="inline-flex h-8 items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-3 text-xs text-[#34D399]"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3.5 text-[13px] font-medium text-[#34D399] transition-colors duration-150 hover:border-[#34D399]/50"
                           >
-                            <Download className="h-3 w-3" />
+                            <Download className="h-3.5 w-3.5" />
                             <span>Download</span>
                           </a>
                           <button
                             type="button"
+                            aria-label={`Delete ${m.filename}`}
                             onClick={() =>
                               handleConfirmedDelete(
                                 delKey,
@@ -2482,14 +2787,16 @@ export function OpsConsoleClient({
                                 "Deleted media asset"
                               )
                             }
-                            className={`ml-auto inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border px-2.5 text-xs ${
+                            className={`ml-auto inline-flex h-9 cursor-pointer items-center gap-1 rounded-full border px-3 text-[13px] transition-colors duration-150 ${
                               confirmDeleteKey === delKey
-                                ? "border-[#FF3B1F] bg-[#FF3B1F] font-semibold text-[#08080A]"
-                                : "border-[#FF3B1F]/30 bg-[#FF3B1F]/10 text-[#FF8A7A]"
+                                ? "border-[var(--accent)] bg-[var(--accent)] font-semibold text-[#07090D]"
+                                : "border-[var(--accent)]/35 bg-[var(--accent-soft)] text-[#FF8A7A]"
                             }`}
                           >
-                            <Trash2 className="h-3 w-3" />
-                            {confirmDeleteKey === delKey && <span>Confirm?</span>}
+                            <Trash2 className="h-3.5 w-3.5" />
+                            {confirmDeleteKey === delKey && (
+                              <span>Confirm?</span>
+                            )}
                           </button>
                         </div>
                       </div>
@@ -2505,11 +2812,11 @@ export function OpsConsoleClient({
             <div className="space-y-8">
               <div className="space-y-4">
                 <div>
-                  <h2 className="font-display text-xl font-semibold text-[#F4F3EF]">
-                    AI Operator Permissions &amp; Approval Governance
+                  <h2 className="font-display text-[22px] font-bold tracking-[-0.02em] text-[var(--ink-primary)]">
+                    AI Operator permissions and approval governance
                   </h2>
-                  <p className="text-xs text-[#8B8B94]">
-                    Control system-wide AI execution parity, direct publishing vs. admin review queue, and community hackathon gating.
+                  <p className="mt-1 text-[14px] text-[var(--ink-muted)]">
+                    Control system-wide AI execution parity, direct publishing versus review queue, and community hackathon gating.
                   </p>
                 </div>
 
@@ -2518,116 +2825,116 @@ export function OpsConsoleClient({
                     [
                       [
                         "ai_enabled",
-                        "AI Operator Enabled",
-                        "Allow the Admin AI Operator (voice + text) to execute commands.",
+                        "AI Operator enabled",
+                        "Allow the Admin AI Operator (voice and text) to execute commands.",
                         true,
                       ],
                       [
                         "full_admin_parity",
-                        "Full Admin Parity Mode",
-                        "Master preset: enables all operational AI capabilities (create, edit, approve, revoke, delete, labs, CRM, ingestion, research, media).",
+                        "Full Admin Parity mode",
+                        "Master preset enabling all operational AI capabilities across posts, labs, CRM, ingestion, research, and media.",
                         true,
                       ],
                       [
                         "community_hackathons_require_approval",
-                        "Require Approval for Community Hackathons",
+                        "Require approval for community hackathons",
                         "Publicly submitted hackathons stay in Pending Review until Admin or AI approves them.",
                         true,
                       ],
                       [
                         "can_publish_directly_journal",
-                        "Direct-Publish: Journal Dispatches",
-                        "If OFF, AI/inherited drafts go to Pending Review for Admin approval first.",
+                        "Direct-publish: Journal Dispatches",
+                        "If off, AI and inherited drafts go to Pending Review for admin approval first.",
                         false,
                       ],
                       [
                         "can_publish_directly_news",
-                        "Direct-Publish: Orbital Wire News",
-                        "If OFF, AI/inherited news posts go to Pending Review first.",
+                        "Direct-publish: Orbital Wire News",
+                        "If off, AI and inherited news posts go to Pending Review first.",
                         false,
                       ],
                       [
                         "can_publish_directly_hackathons",
-                        "Direct-Publish: Hackathons",
-                        "If OFF, AI/inherited hackathons go to Pending Review first.",
+                        "Direct-publish: Hackathons",
+                        "If off, AI and inherited hackathons go to Pending Review first.",
                         false,
                       ],
                       [
                         "can_create_posts",
-                        "Create Posts (Journal / Wire / Hackathons)",
+                        "Create posts (Journal, Wire, Hackathons)",
                         "Allow AI to draft and design new posts.",
                         true,
                       ],
                       [
                         "can_edit_posts",
-                        "Edit Existing Posts",
+                        "Edit existing posts",
                         "Allow AI to modify copy, colors, images, and metadata.",
                         true,
                       ],
                       [
                         "can_approve_posts",
-                        "Approve Pending Posts",
+                        "Approve pending posts",
                         "Allow AI to review and publish pending items.",
                         true,
                       ],
                       [
                         "can_revoke_approval",
-                        "Revoke Approval / Reject Posts",
+                        "Revoke approval or reject posts",
                         "Allow AI to unpublish approved items back to review.",
                         true,
                       ],
                       [
                         "can_bulk_moderate",
-                        "Bulk Moderate Pending Queue",
-                        "Allow batch approve/revoke/reject of up to 25 items per call.",
+                        "Bulk moderate pending queue",
+                        "Allow batch approve, revoke, or reject of up to 25 items per call.",
                         true,
                       ],
                       [
                         "can_delete_posts",
-                        "Delete & Clean Old Posts",
+                        "Delete and clean old posts",
                         "Allow AI to delete specific or expired posts.",
                         true,
                       ],
                       [
                         "can_manage_labs",
-                        "Manage Labs & Skunkworks",
-                        "Allow AI to create, score, update, or delete Labs/Skunkworks projects.",
+                        "Manage Labs and Skunkworks",
+                        "Allow AI to create, score, update, or delete Labs and Skunkworks projects.",
                         true,
                       ],
                       [
                         "can_manage_inquiries",
-                        "Manage B2B Inquiries",
+                        "Manage B2B inquiries",
                         "Allow AI to triage inquiry pipeline status or delete spam.",
                         true,
                       ],
                       [
                         "can_manage_orbit_and_subscribers",
-                        "Manage Orbit & Subscribers",
+                        "Manage Orbit and subscribers",
                         "Allow AI to review Orbit applicants and manage newsletter subscribers.",
                         true,
                       ],
                       [
                         "can_trigger_ingestion",
-                        "Trigger Live Ingestion Pipelines",
+                        "Trigger live ingestion pipelines",
                         "Allow AI to run hackathon and news sync pipelines.",
                         true,
                       ],
                       [
                         "can_web_research",
-                        "Live Web Research & URL Inspection",
+                        "Live web research and URL inspection",
                         "Allow AI to search HN, arXiv, Devpost, Google, and read URLs.",
                         true,
                       ],
                       [
                         "can_use_ai_drafter",
-                        "AI Structured Drafter Engine",
+                        "AI structured drafter engine",
                         "Allow generating full structured post previews via Gemini.",
                         true,
                       ],
                       [
                         "can_manage_media",
-                        "Generate, Import & Delete Media",
-                        "Allow AI to create cover art and import/manage images.",
+                        "Generate, import, and delete media",
+                        "Allow AI to create cover art and import or manage images.",
                         true,
                       ],
                     ] as [keyof AiPermissionsPolicy, string, string, boolean][]
@@ -2638,25 +2945,28 @@ export function OpsConsoleClient({
                     return (
                       <div
                         key={key}
-                        className="flex items-center justify-between gap-4 rounded-2xl border border-white/[0.08] bg-[#111114] p-4"
+                        className="flex items-center justify-between gap-4 rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)] p-4"
                       >
                         <div className="min-w-0">
-                          <div className="text-sm font-semibold text-[#F4F3EF]">
+                          <div className="text-[14px] font-semibold text-[var(--ink-primary)]">
                             {label}
                           </div>
-                          <div className="mt-0.5 text-xs text-[#8B8B94]">{desc}</div>
+                          <div className="mt-0.5 text-[13px] text-[var(--ink-muted)]">
+                            {desc}
+                          </div>
                         </div>
                         <button
                           type="button"
                           role="switch"
                           aria-checked={enabled}
+                          aria-label={label}
                           onClick={() => void togglePermission(key, !enabled)}
-                          className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+                          className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-150 ${
                             enabled ? "bg-[#10B981]" : "bg-white/[0.15]"
                           }`}
                         >
                           <span
-                            className={`block h-5 w-5 rounded-full bg-[#08080A] transition-transform ${
+                            className={`block h-5 w-5 rounded-full bg-[#07090D] transition-transform duration-150 ${
                               enabled ? "translate-x-5" : "translate-x-0.5"
                             }`}
                           />
@@ -2668,19 +2978,25 @@ export function OpsConsoleClient({
               </div>
 
               {/* External MCP Security Ceilings */}
-              <div className="space-y-4 border-t border-white/[0.08] pt-6">
+              <div className="space-y-4 border-t border-[var(--hairline)] pt-7">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h3 className="font-display text-lg font-semibold text-[#F4F3EF]">
-                      External MCP Server Security Ceilings
+                    <h3 className="font-display text-[19px] font-bold text-[var(--ink-primary)]">
+                      External MCP server security ceilings
                     </h3>
-                    <p className="text-xs text-[#8B8B94]">
+                    <p className="mt-1 text-[14px] text-[var(--ink-muted)]">
                       Global hard guardrails enforced across all external MCP tokens regardless of preset or mode.
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="text-[#8B8B94]">Default Token RPM:</span>
+                  <div className="flex items-center gap-2 text-[13px]">
+                    <label
+                      htmlFor="mcp-default-rpm"
+                      className="text-[var(--ink-muted)]"
+                    >
+                      Default token RPM:
+                    </label>
                     <select
+                      id="mcp-default-rpm"
                       value={data.aiPermissions.mcp_default_rate_limit_rpm ?? 60}
                       onChange={(e) =>
                         void runAction(
@@ -2693,7 +3009,7 @@ export function OpsConsoleClient({
                           "Updated default MCP RPM limit."
                         )
                       }
-                      className="h-8 rounded-xl border border-white/[0.12] bg-[#111114] px-2.5 text-xs text-[#F4F3EF]"
+                      className="font-tabular h-9 rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-surface)] px-3 text-[13px] text-[var(--ink-primary)] focus:border-[var(--accent)] focus:outline-none"
                     >
                       <option value={30}>30 req/min</option>
                       <option value={60}>60 req/min</option>
@@ -2708,49 +3024,49 @@ export function OpsConsoleClient({
                     [
                       [
                         "mcp_enabled",
-                        "External MCP HTTP Server Enabled",
+                        "External MCP HTTP server enabled",
                         "Master kill-switch for external clients connecting to /api/mcp.",
                         true,
                       ],
                       [
                         "mcp_inherit_ai_permissions",
-                        "Inherit-Mode Tokens Follow AI Policy",
+                        "Inherit-mode tokens follow AI policy",
                         "Apply the AI Operator toggles above to tokens in inherit mode.",
                         true,
                       ],
                       [
                         "mcp_allow_pii_over_mcp",
-                        "Global PII Ceiling: Allow Inquiries, Orbit & Subscribers over MCP",
-                        "Hard lock: keep OFF to block all external tokens (even Full Ops) from reading emails/briefs.",
+                        "Global PII ceiling: Allow inquiries, Orbit, and subscribers",
+                        "Hard lock: keep off to block all external tokens from reading emails and briefs.",
                         false,
                       ],
                       [
                         "mcp_allow_full_parity_tokens",
-                        "Allow Full-Parity MCP Tokens",
-                        "If OFF, any legacy Full Ops token is automatically downgraded to Inherit mode.",
+                        "Allow full-parity MCP tokens",
+                        "If off, any legacy Full Ops token is automatically downgraded to inherit mode.",
                         true,
                       ],
                       [
                         "mcp_require_dry_run_for_bulk_delete",
-                        "Require Dry-Run Confirm Token for Bulk Purge",
-                        "Forces external MCP agents to preview remove_old_posts via dry_run: true before deleting.",
+                        "Require dry-run confirm token for bulk purge",
+                        "Forces external MCP agents to preview remove_old_posts via dry_run before deleting.",
                         true,
                       ],
                       [
                         "mcp_expose_resources",
-                        "Expose MCP Resources & URI Templates",
+                        "Expose MCP resources and URI templates",
                         "Enable resources/list, resources/templates/list, and resources/read.",
                         true,
                       ],
                       [
                         "mcp_expose_prompts",
-                        "Expose MCP Workflow Prompts",
+                        "Expose MCP workflow prompts",
                         "Enable prompts/list and prompts/get workflow playbooks.",
                         true,
                       ],
                       [
                         "mcp_read_audit_logs",
-                        "Allow Inherit Tokens to Read Audit Logs",
+                        "Allow inherit tokens to read audit logs",
                         "Expose get_audit_logs and ggravitator://audit/{actor} to inherit tokens.",
                         false,
                       ],
@@ -2762,25 +3078,28 @@ export function OpsConsoleClient({
                     return (
                       <div
                         key={key}
-                        className="flex items-center justify-between gap-4 rounded-2xl border border-white/[0.08] bg-[#111114] p-4"
+                        className="flex items-center justify-between gap-4 rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)] p-4"
                       >
                         <div className="min-w-0">
-                          <div className="text-sm font-semibold text-[#F4F3EF]">
+                          <div className="text-[14px] font-semibold text-[var(--ink-primary)]">
                             {label}
                           </div>
-                          <div className="mt-0.5 text-xs text-[#8B8B94]">{desc}</div>
+                          <div className="mt-0.5 text-[13px] text-[var(--ink-muted)]">
+                            {desc}
+                          </div>
                         </div>
                         <button
                           type="button"
                           role="switch"
                           aria-checked={enabled}
+                          aria-label={label}
                           onClick={() => void togglePermission(key, !enabled)}
-                          className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+                          className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-150 ${
                             enabled ? "bg-[#10B981]" : "bg-white/[0.15]"
                           }`}
                         >
                           <span
-                            className={`block h-5 w-5 rounded-full bg-[#08080A] transition-transform ${
+                            className={`block h-5 w-5 rounded-full bg-[#07090D] transition-transform duration-150 ${
                               enabled ? "translate-x-5" : "translate-x-0.5"
                             }`}
                           />
@@ -2795,7 +3114,7 @@ export function OpsConsoleClient({
 
           {/* TAB 9: MCP, TEAM & AUDIT LOG */}
           {activeTab === "MCP_TEAM" && (
-            <div className="space-y-8">
+            <div className="space-y-10">
               <McpGovernanceSection
                 endpointUrl={data.mcpEndpointUrl}
                 aiPermissions={data.aiPermissions}
@@ -2807,14 +3126,14 @@ export function OpsConsoleClient({
               />
 
               {/* Admin Team & Invites */}
-              <section className="space-y-4 rounded-2xl border border-white/[0.08] bg-[#111114] p-6">
+              <section className="space-y-4 border-t border-[var(--hairline)] pt-8">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h2 className="font-display text-lg font-semibold text-[#F4F3EF]">
-                      Admin Operators &amp; Signup Invites
+                    <h2 className="font-display text-[20px] font-bold tracking-[-0.02em] text-[var(--ink-primary)]">
+                      Admin operators and signup invites
                     </h2>
-                    <p className="text-xs text-[#8B8B94]">
-                      Issue single-use invite codes for additional admin operators to sign up.
+                    <p className="mt-1 text-[14px] text-[var(--ink-muted)]">
+                      Issue single-use invite codes for additional admin operators.
                     </p>
                   </div>
                   <button
@@ -2829,22 +3148,22 @@ export function OpsConsoleClient({
                         setNewInviteCode(res.invite.code);
                       }
                     }}
-                    className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full bg-[#F4F3EF] px-4 text-xs font-semibold text-[#08080A]"
+                    className="press-tactile inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-[var(--ink-primary)] px-5 text-[13px] font-semibold text-[#07090D] hover:bg-white"
                   >
                     <Layers className="h-3.5 w-3.5" />
-                    <span>Generate Invite Code</span>
+                    <span>Generate invite code</span>
                   </button>
                 </div>
 
                 {newInviteCode && (
-                  <div className="flex items-center justify-between gap-2 rounded-xl border border-[#10B981]/35 bg-[#10B981]/12 px-4 py-3 text-xs">
-                    <span className="font-mono font-semibold text-[#34D399]">
-                      Invite Code: {newInviteCode}
+                  <div className="flex items-center justify-between gap-2 rounded-xl border border-[#10B981]/35 bg-[#10B981]/10 px-4 py-3 text-[13px]">
+                    <span className="font-code font-semibold text-[#34D399]">
+                      Invite code: {newInviteCode}
                     </span>
                     <button
                       type="button"
                       onClick={() => void handleCopy("inv", newInviteCode)}
-                      className="rounded-full bg-[#10B981] px-3 py-1 font-semibold text-[#08080A]"
+                      className="cursor-pointer rounded-full bg-[#10B981] px-3.5 py-1 text-[13px] font-semibold text-[#07090D]"
                     >
                       {copiedKey === "inv" ? "Copied" : "Copy"}
                     </button>
@@ -2852,22 +3171,25 @@ export function OpsConsoleClient({
                 )}
 
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  <div className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.08] bg-[#0B0B0E]">
+                  <div className="divide-y divide-[var(--hairline)] rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)]">
                     {data.adminUsers.map((u) => {
                       const delKey = `admin-${u.id}`;
                       const canRemove =
                         u.id !== user.id &&
-                        (u.role !== "SUPER_ADMIN" || user.role === "SUPER_ADMIN");
+                        (u.role !== "SUPER_ADMIN" ||
+                          user.role === "SUPER_ADMIN");
                       return (
                         <div
                           key={u.id}
-                          className="flex items-center justify-between gap-2 px-4 py-3 text-xs"
+                          className="flex items-center justify-between gap-3 px-4 py-3.5 text-[13px]"
                         >
                           <div>
-                            <div className="font-semibold text-[#F4F3EF]">
+                            <div className="font-semibold text-[var(--ink-primary)]">
                               {u.name} ({u.role})
                             </div>
-                            <div className="text-[#8B8B94]">{u.email}</div>
+                            <div className="text-[var(--ink-muted)]">
+                              {u.email}
+                            </div>
                           </div>
                           {canRemove && (
                             <button
@@ -2882,11 +3204,13 @@ export function OpsConsoleClient({
                               }
                               className={`cursor-pointer hover:underline ${
                                 confirmDeleteKey === delKey
-                                  ? "font-semibold text-[#FF3B1F]"
+                                  ? "font-semibold text-[var(--accent)]"
                                   : "text-[#FF8A7A]"
                               }`}
                             >
-                              {confirmDeleteKey === delKey ? "Confirm?" : "Remove"}
+                              {confirmDeleteKey === delKey
+                                ? "Confirm?"
+                                : "Remove"}
                             </button>
                           )}
                         </div>
@@ -2894,22 +3218,22 @@ export function OpsConsoleClient({
                     })}
                   </div>
 
-                  <div className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.08] bg-[#0B0B0E]">
+                  <div className="divide-y divide-[var(--hairline)] rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)]">
                     {data.adminInvites.length === 0 ? (
-                      <div className="p-4 text-xs text-[#8B8B94]">
+                      <div className="p-4 text-[13px] text-[var(--ink-muted)]">
                         No active invite codes.
                       </div>
                     ) : (
                       data.adminInvites.map((inv) => (
                         <div
                           key={inv.id}
-                          className="flex items-center justify-between gap-2 px-4 py-3 text-xs"
+                          className="flex items-center justify-between gap-3 px-4 py-3.5 text-[13px]"
                         >
                           <div>
-                            <code className="font-mono text-[#F4F3EF]">
+                            <code className="font-code text-[var(--ink-primary)]">
                               {inv.code}
                             </code>
-                            <div className="text-[11px] text-[#8B8B94]">
+                            <div className="text-[var(--ink-muted)]">
                               {inv.used_by
                                 ? `Used by ${inv.used_by}`
                                 : "Unused single-use code"}
@@ -2934,54 +3258,64 @@ export function OpsConsoleClient({
               </section>
 
               {/* Live Audit Log */}
-              <section className="space-y-3 rounded-2xl border border-white/[0.08] bg-[#111114] p-6">
+              <section className="space-y-4 border-t border-[var(--hairline)] pt-8">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="font-display text-lg font-semibold text-[#F4F3EF]">
-                    Live Audit Log ({filteredAudit.length})
+                  <h2 className="font-display text-[20px] font-bold tracking-[-0.02em] text-[var(--ink-primary)]">
+                    Live audit log{" "}
+                    <span className="font-tabular font-normal text-[var(--ink-muted)]">
+                      ({filteredAudit.length})
+                    </span>
                   </h2>
-                  <div className="flex gap-1.5">
+                  <div
+                    role="tablist"
+                    aria-label="Filter audit actor"
+                    className="inline-flex rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-surface)] p-0.5"
+                  >
                     {(["ALL", "admin", "ai_assistant", "mcp"] as const).map(
                       (f) => (
                         <button
                           key={f}
                           type="button"
+                          role="tab"
+                          aria-selected={auditFilter === f}
                           onClick={() => setAuditFilter(f)}
-                          className={`cursor-pointer rounded-full px-3 py-1 text-xs font-medium ${
+                          className={`h-8 cursor-pointer rounded-full px-3.5 text-[13px] font-medium transition-colors duration-150 ${
                             auditFilter === f
-                              ? "bg-[#F4F3EF] text-[#08080A]"
-                              : "bg-[#18181D] text-[#A1A1AA]"
+                              ? "bg-[var(--ink-primary)] text-[#07090D]"
+                              : "text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
                           }`}
                         >
-                          {f}
+                          {auditFilterLabels[f]}
                         </button>
                       )
                     )}
                   </div>
                 </div>
 
-                <div className="max-h-96 divide-y divide-white/[0.06] overflow-y-auto rounded-xl border border-white/[0.08] bg-[#0B0B0E]">
+                <div className="max-h-96 divide-y divide-[var(--hairline)] overflow-y-auto rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)]">
                   {filteredAudit.length === 0 ? (
-                    <div className="p-4 text-xs text-[#8B8B94]">
+                    <div className="p-5 text-[14px] text-[var(--ink-muted)]">
                       No audit entries recorded yet.
                     </div>
                   ) : (
                     filteredAudit.map((entry) => (
                       <div
                         key={entry.id}
-                        className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-xs"
+                        className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-[13px]"
                       >
                         <div className="min-w-0">
-                          <span className="rounded-full bg-white/[0.07] px-2 py-0.5 font-mono text-[10px] text-[#D4D4D8]">
+                          <span className="font-semibold text-[var(--accent)]">
                             {entry.actor_type}
                           </span>
-                          <span className="ml-2 font-medium text-[#F4F3EF]">
+                          <span className="mx-2 text-[var(--ink-muted)]">·</span>
+                          <span className="font-medium text-[var(--ink-primary)]">
                             {entry.action}
                           </span>
-                          <span className="ml-2 text-[#A1A1AA]">
+                          <span className="ml-2 text-[var(--ink-muted)]">
                             {entry.summary}
                           </span>
                         </div>
-                        <span className="font-mono text-[10px] text-[#8B8B94]">
+                        <span className="font-tabular text-[13px] text-[var(--ink-muted)]">
                           {entry.status} · {formatUtc(entry.created_at)}
                         </span>
                       </div>

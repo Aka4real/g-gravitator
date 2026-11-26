@@ -47,7 +47,7 @@ const ACCENT_PRESETS = [
   { name: "Amber", hex: "#F59E0B" },
   { name: "Violet", hex: "#A855F7" },
   { name: "Rose", hex: "#F43F5E" },
-  { name: "Alabaster", hex: "#F4F3EF" },
+  { name: "Alabaster", hex: "#F2F4F8" },
 ];
 
 function parseUtcDatetimeLocal(value: string): string {
@@ -55,12 +55,22 @@ function parseUtcDatetimeLocal(value: string): string {
   if (!trimmed) {
     return new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString();
   }
-  const withZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(trimmed) ? trimmed : `${trimmed}Z`;
+  const withZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(trimmed)
+    ? trimmed
+    : `${trimmed}Z`;
   const parsed = new Date(withZone);
   return Number.isNaN(parsed.getTime())
     ? new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString()
     : parsed.toISOString();
 }
+
+const INPUT_CLASS =
+  "mt-1.5 h-10 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3.5 text-[14px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none";
+
+const SELECT_CLASS =
+  "mt-1.5 h-10 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3 text-[13px] text-[var(--ink-primary)] transition-colors duration-150 focus:border-[var(--accent)] focus:outline-none";
+
+const LABEL_CLASS = "block text-[13px] font-medium text-[var(--ink-primary)]";
 
 export function PostDesignerModal({
   entity,
@@ -140,7 +150,9 @@ export function PostDesignerModal({
   const news = existing as NewsItem | null;
   const [sourceName, setSourceName] = useState(news?.source_name || "");
   const [sourceUrl, setSourceUrl] = useState(news?.source_url || "");
-  const [newsCat, setNewsCat] = useState<NewsCategory>(news?.category || "AGENTS");
+  const [newsCat, setNewsCat] = useState<NewsCategory>(
+    news?.category || "AGENTS"
+  );
   const [gravityTake, setGravityTake] = useState(news?.gravity_take || "");
   const [impactScore, setImpactScore] = useState(news?.impact_score ?? 88);
   const [isPinned, setIsPinned] = useState(news?.is_pinned ?? false);
@@ -160,7 +172,9 @@ export function PostDesignerModal({
       ? new Date(hack.deadline_at).toISOString().slice(0, 16)
       : new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().slice(0, 16)
   );
-  const [format, setFormat] = useState<HackathonFormat>(hack?.format || "ONLINE");
+  const [format, setFormat] = useState<HackathonFormat>(
+    hack?.format || "ONLINE"
+  );
   const [location, setLocation] = useState(hack?.location || "Global / Remote");
   const [themesText, setThemesText] = useState(
     hack?.themes?.join(", ") || "AI, Agents"
@@ -216,8 +230,7 @@ export function PostDesignerModal({
     }
     const start = el.selectionStart;
     const end = el.selectionEnd;
-    const next =
-      mdxContent.slice(0, start) + snippet + mdxContent.slice(end);
+    const next = mdxContent.slice(0, start) + snippet + mdxContent.slice(end);
     setMdxContent(next);
   };
 
@@ -256,8 +269,8 @@ export function PostDesignerModal({
       setImageUrl(data.asset.url);
       setImgStatus(
         data.generator === "gemini"
-          ? "Generated with Gemini Image AI"
-          : "Generated with Studio Editorial SVG (Gemini image fallback)"
+          ? "Generated with Gemini Image AI."
+          : "Generated with Studio Editorial SVG fallback."
       );
       await onMediaUpdated();
     } catch {
@@ -401,7 +414,12 @@ export function PostDesignerModal({
           setDispatchCat(d.category as DispatchCategory);
         }
         if (Array.isArray(d.tags) && d.tags.length > 0) {
-          setTagsText(d.tags.map((t) => String(t).trim()).filter(Boolean).join(", "));
+          setTagsText(
+            d.tags
+              .map((t) => String(t).trim())
+              .filter(Boolean)
+              .join(", ")
+          );
         }
         if (typeof d.mdx_content === "string" && d.mdx_content.trim()) {
           setMdxContent(d.mdx_content);
@@ -435,7 +453,10 @@ export function PostDesignerModal({
           setNewsCat(d.category as NewsCategory);
         }
         if (typeof d.gravity_take === "string") setGravityTake(d.gravity_take);
-        if (typeof d.impact_score === "number" && Number.isFinite(d.impact_score)) {
+        if (
+          typeof d.impact_score === "number" &&
+          Number.isFinite(d.impact_score)
+        ) {
           setImpactScore(Math.min(100, Math.max(1, Math.round(d.impact_score))));
         }
         if (Array.isArray(d.related_links)) {
@@ -454,7 +475,10 @@ export function PostDesignerModal({
         if (typeof d.organizer === "string") setOrganizer(d.organizer);
         if (typeof d.summary === "string") setSummary(d.summary);
         if (typeof d.prize_display === "string") setPrizeDisplay(d.prize_display);
-        if (typeof d.prize_pool_usd === "number" && Number.isFinite(d.prize_pool_usd)) {
+        if (
+          typeof d.prize_pool_usd === "number" &&
+          Number.isFinite(d.prize_pool_usd)
+        ) {
           setPrizeUsd(String(d.prize_pool_usd));
         }
         if (typeof d.deadline_at === "string") {
@@ -471,7 +495,12 @@ export function PostDesignerModal({
         }
         if (typeof d.location === "string") setLocation(d.location);
         if (Array.isArray(d.themes) && d.themes.length > 0) {
-          setThemesText(d.themes.map((t) => String(t).trim()).filter(Boolean).join(", "));
+          setThemesText(
+            d.themes
+              .map((t) => String(t).trim())
+              .filter(Boolean)
+              .join(", ")
+          );
         }
         if (typeof d.primary_url === "string") setPrimaryUrl(d.primary_url);
         if (Array.isArray(d.related_links)) {
@@ -502,7 +531,9 @@ export function PostDesignerModal({
           ? " · Gemini AI cover ready"
           : " · Studio SVG cover ready"
         : "";
-      setAiStatus(`Draft populated into editor (${sourceNote}${coverNote}). Review preview and click Publish / Save.`);
+      setAiStatus(
+        `Draft populated into editor (${sourceNote}${coverNote}). Review preview and save.`
+      );
     } catch {
       setSaveError("Network error invoking AI draft.");
     } finally {
@@ -515,7 +546,6 @@ export function PostDesignerModal({
     setSaveError(null);
     setSaving(true);
 
-    // Preserve a pending unsaved link row if the user filled both label and URL
     const effectiveLinks: PostLinkRef[] =
       newLinkLabel.trim() && newLinkUrl.trim()
         ? [
@@ -628,6 +658,13 @@ export function PostDesignerModal({
     return imageUrl;
   }, [imageUrl]);
 
+  const entityLabel =
+    entity === "dispatch"
+      ? "Journal Dispatch"
+      : entity === "news"
+      ? "Orbital Wire Post"
+      : "Hackathon Listing";
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 backdrop-blur-sm sm:p-6"
@@ -640,52 +677,58 @@ export function PostDesignerModal({
         aria-modal="true"
         aria-label={`${isEdit ? "Edit" : "Create"} ${entity}`}
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/[0.12] bg-[#0B0B0E] text-[#F4F3EF] shadow-2xl"
+        className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-[var(--hairline-strong)] bg-[var(--bg-surface)] text-[var(--ink-primary)] shadow-2xl"
       >
         {/* Modal Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--hairline)] px-6 py-4">
           <div className="flex items-center gap-3">
             <div
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.12]"
-              style={{ backgroundColor: `${accentColor}22`, color: accentColor }}
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--hairline-strong)]"
+              style={{
+                backgroundColor: `${accentColor}1F`,
+                color: accentColor,
+              }}
             >
               <Palette className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="font-display text-lg font-semibold text-[#F4F3EF]">
-                {isEdit ? "Edit & Design" : "Create & Design"}{" "}
-                {entity === "dispatch"
-                  ? "Journal Dispatch"
-                  : entity === "news"
-                  ? "Orbital Wire Post"
-                  : "Hackathon Listing"}
+              <h2 className="font-display text-[18px] font-bold tracking-[-0.025em] text-[var(--ink-primary)]">
+                {isEdit ? "Edit and design" : "Create and design"} {entityLabel}
               </h2>
-              <p className="text-xs text-[#8B8B94]">
-                Customize colors, AI-generated/imported images, callouts, and links
+              <p className="text-[13px] text-[var(--ink-muted)]">
+                Configure copy, accent color, cover art, callouts, and attached links.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="inline-flex rounded-full border border-white/[0.1] bg-[#141418] p-1 lg:hidden">
+            <div
+              role="tablist"
+              aria-label="Mobile designer view"
+              className="inline-flex rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] p-0.5 lg:hidden"
+            >
               <button
                 type="button"
+                role="tab"
+                aria-selected={mobileView === "edit"}
                 onClick={() => setMobileView("edit")}
-                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                className={`h-8 cursor-pointer rounded-full px-3.5 text-[13px] font-medium transition-colors duration-150 ${
                   mobileView === "edit"
-                    ? "bg-[#F4F3EF] text-[#08080A]"
-                    : "text-[#A1A1AA]"
+                    ? "bg-[var(--ink-primary)] text-[#07090D]"
+                    : "text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
                 }`}
               >
                 Editor
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={mobileView === "preview"}
                 onClick={() => setMobileView("preview")}
-                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                className={`h-8 cursor-pointer rounded-full px-3.5 text-[13px] font-medium transition-colors duration-150 ${
                   mobileView === "preview"
-                    ? "bg-[#F4F3EF] text-[#08080A]"
-                    : "text-[#A1A1AA]"
+                    ? "bg-[var(--ink-primary)] text-[#07090D]"
+                    : "text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
                 }`}
               >
                 Preview
@@ -695,21 +738,22 @@ export function PostDesignerModal({
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close Designer"
-              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/[0.1] bg-[#18181D] text-[#A1A1AA] hover:text-[#F4F3EF]"
+              aria-label="Close designer"
+              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[var(--hairline)] bg-[var(--bg-canvas)] text-[var(--ink-muted)] transition-colors duration-150 hover:border-[var(--hairline-strong)] hover:text-[var(--ink-primary)]"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        {/* AI Research & Draft Bar (populates live editor for review) */}
+        {/* AI Research & Draft Bar */}
         {!isEdit && (
-          <div className="space-y-2 border-b border-white/[0.06] bg-[#111114] px-5 py-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Sparkles className="h-4 w-4 shrink-0 text-[#FF6B54]" />
+          <div className="space-y-2 border-b border-[var(--hairline)] bg-[var(--bg-canvas)] px-6 py-3.5">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Sparkles className="h-4 w-4 shrink-0 text-[var(--accent)]" />
               <input
                 type="text"
+                aria-label="AI research and draft topic"
                 value={aiTopic}
                 onChange={(e) => setAiTopic(e.target.value)}
                 onKeyDown={(e) => {
@@ -720,26 +764,28 @@ export function PostDesignerModal({
                     }
                   }
                 }}
-                placeholder={`Enter a topic to research live web sources, generate a cover visual & draft this ${entity} into the editor...`}
-                className="h-9 min-w-[220px] flex-1 rounded-full border border-white/[0.1] bg-[#0B0B0E] px-4 text-xs text-[#F4F3EF] placeholder:text-[#71717A] focus:border-[#FF3B1F] focus:outline-none"
+                placeholder={`Enter a topic to research web sources, generate a cover, and draft this ${entity}...`}
+                className="h-10 min-w-[220px] flex-1 rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-surface)] px-4 text-[13px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:outline-none"
               />
               <button
                 type="button"
                 disabled={aiBusy || !(aiTopic || title).trim()}
                 onClick={() => void handleAiAssistDraft()}
-                className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full bg-[#FF3B1F]/15 px-4 text-xs font-semibold text-[#FF8A7A] hover:bg-[#FF3B1F] hover:text-[#08080A] disabled:opacity-50"
+                className="press-tactile inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-[var(--accent-soft)] px-4 text-[13px] font-semibold text-[#FF8A7A] transition-colors duration-150 hover:bg-[var(--accent)] hover:text-[#07090D] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {aiBusy ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <Wand2 className="h-3.5 w-3.5" />
                 )}
-                <span>{aiBusy ? "Researching & drafting..." : "AI Research & Draft"}</span>
+                <span>
+                  {aiBusy ? "Researching and drafting..." : "AI Research & Draft"}
+                </span>
               </button>
             </div>
             {aiStatus && (
-              <div className="flex items-center gap-1.5 text-xs text-[#34D399]">
-                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              <div className="flex items-center gap-2 text-[13px] text-[#34D399]">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
                 <span>{aiStatus}</span>
               </div>
             )}
@@ -753,97 +799,111 @@ export function PostDesignerModal({
         >
           {/* Left Editor Column */}
           <div
-            className={`space-y-5 overflow-y-auto border-r border-white/[0.08] p-5 lg:col-span-7 ${
+            className={`space-y-6 overflow-y-auto border-r border-[var(--hairline)] px-6 py-6 lg:col-span-7 ${
               mobileView === "preview" ? "hidden lg:block" : "block"
             }`}
           >
             {saveError && (
-              <div className="rounded-xl border border-[#FF3B1F]/40 bg-[#FF3B1F]/12 px-4 py-3 text-sm text-[#FF8A7A]">
+              <div
+                role="alert"
+                className="rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-4 py-3 text-[14px] text-[#FF8A7A]"
+              >
                 {saveError}
               </div>
             )}
 
-            {/* Title + Publish state */}
+            {/* Primary Content Fields */}
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-[#D4D4D8]">
+                <label htmlFor="designer-title" className={LABEL_CLASS}>
                   Title *
                 </label>
                 <input
+                  id="designer-title"
                   type="text"
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3.5 text-sm text-[#F4F3EF] focus:border-[#FF3B1F] focus:outline-none"
+                  className={INPUT_CLASS}
                 />
               </div>
 
               {entity === "dispatch" && (
                 <>
                   <div>
-                    <label className="block text-xs font-medium text-[#D4D4D8]">
+                    <label htmlFor="designer-subtitle" className={LABEL_CLASS}>
                       Subtitle *
                     </label>
                     <input
+                      id="designer-subtitle"
                       type="text"
                       required
                       value={subtitle}
                       onChange={(e) => setSubtitle(e.target.value)}
-                      className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3.5 text-sm text-[#F4F3EF] focus:border-[#FF3B1F] focus:outline-none"
+                      className={INPUT_CLASS}
                     />
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="block text-xs font-medium text-[#D4D4D8]">
+                      <label htmlFor="designer-disp-cat" className={LABEL_CLASS}>
                         Category
                       </label>
                       <select
+                        id="designer-disp-cat"
                         value={dispatchCat}
                         onChange={(e) =>
                           setDispatchCat(e.target.value as DispatchCategory)
                         }
-                        className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                        className={SELECT_CLASS}
                       >
                         <option value="AI SYSTEMS">AI Systems</option>
                         <option value="HACKATHON LOG">Hackathon Log</option>
-                        <option value="DESIGN ENGINEERING">Design Engineering</option>
+                        <option value="DESIGN ENGINEERING">
+                          Design Engineering
+                        </option>
                         <option value="ARCHITECTURE">Architecture</option>
                         <option value="POST-MORTEM">Post-Mortem</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-[#D4D4D8]">
+                      <label htmlFor="designer-tags" className={LABEL_CLASS}>
                         Tags (comma-separated)
                       </label>
                       <input
+                        id="designer-tags"
                         type="text"
                         value={tagsText}
                         onChange={(e) => setTagsText(e.target.value)}
-                        className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                        className={INPUT_CLASS}
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="block text-xs font-medium text-[#D4D4D8]">
-                        Author Name
+                      <label htmlFor="designer-author" className={LABEL_CLASS}>
+                        Author name
                       </label>
                       <input
+                        id="designer-author"
                         type="text"
                         value={authorName}
                         onChange={(e) => setAuthorName(e.target.value)}
-                        className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                        className={INPUT_CLASS}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-[#D4D4D8]">
-                        Author Role / Byline
+                      <label
+                        htmlFor="designer-author-role"
+                        className={LABEL_CLASS}
+                      >
+                        Author role or byline
                       </label>
                       <input
+                        id="designer-author-role"
                         type="text"
                         value={authorRole}
                         onChange={(e) => setAuthorRole(e.target.value)}
-                        className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                        className={INPUT_CLASS}
                       />
                     </div>
                   </div>
@@ -854,26 +914,33 @@ export function PostDesignerModal({
                 <>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div>
-                      <label className="block text-xs font-medium text-[#D4D4D8]">
-                        Source Name *
+                      <label
+                        htmlFor="designer-source-name"
+                        className={LABEL_CLASS}
+                      >
+                        Source name *
                       </label>
                       <input
+                        id="designer-source-name"
                         type="text"
                         required
                         value={sourceName}
                         onChange={(e) => setSourceName(e.target.value)}
                         placeholder="e.g. Google DeepMind"
-                        className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                        className={INPUT_CLASS}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-[#D4D4D8]">
+                      <label htmlFor="designer-news-cat" className={LABEL_CLASS}>
                         Category
                       </label>
                       <select
+                        id="designer-news-cat"
                         value={newsCat}
-                        onChange={(e) => setNewsCat(e.target.value as NewsCategory)}
-                        className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                        onChange={(e) =>
+                          setNewsCat(e.target.value as NewsCategory)
+                        }
+                        className={SELECT_CLASS}
                       >
                         <option value="MODELS">Models</option>
                         <option value="AGENTS">Agents</option>
@@ -884,42 +951,48 @@ export function PostDesignerModal({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-[#D4D4D8]">
-                        Impact (1-100)
+                      <label htmlFor="designer-impact" className={LABEL_CLASS}>
+                        Impact (1 to 100)
                       </label>
                       <input
+                        id="designer-impact"
                         type="number"
                         min={1}
                         max={100}
                         value={impactScore}
                         onChange={(e) => setImpactScore(Number(e.target.value))}
-                        className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                        className={`${INPUT_CLASS} font-tabular`}
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-[#D4D4D8]">
+                    <label htmlFor="designer-source-url" className={LABEL_CLASS}>
                       Source URL *
                     </label>
                     <input
+                      id="designer-source-url"
                       type="url"
                       required
                       value={sourceUrl}
                       onChange={(e) => setSourceUrl(e.target.value)}
                       placeholder="https://..."
-                      className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                      className={INPUT_CLASS}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-[#D4D4D8]">
+                    <label
+                      htmlFor="designer-gravity-take"
+                      className={LABEL_CLASS}
+                    >
                       Gravity Take (2-sentence builder takeaway) *
                     </label>
                     <textarea
+                      id="designer-gravity-take"
                       rows={3}
                       required
                       value={gravityTake}
                       onChange={(e) => setGravityTake(e.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-white/[0.12] bg-[#141418] p-3 text-sm text-[#F4F3EF]"
+                      className="mt-1.5 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] p-3.5 text-[14px] text-[var(--ink-primary)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
                     />
                   </div>
                 </>
@@ -929,96 +1002,115 @@ export function PostDesignerModal({
                 <>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="block text-xs font-medium text-[#D4D4D8]">
+                      <label
+                        htmlFor="designer-organizer"
+                        className={LABEL_CLASS}
+                      >
                         Organizer *
                       </label>
                       <input
+                        id="designer-organizer"
                         type="text"
                         required
                         value={organizer}
                         onChange={(e) => setOrganizer(e.target.value)}
-                        className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                        className={INPUT_CLASS}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-[#D4D4D8]">
-                        Primary Registration URL *
+                      <label
+                        htmlFor="designer-primary-url"
+                        className={LABEL_CLASS}
+                      >
+                        Primary registration URL *
                       </label>
                       <input
+                        id="designer-primary-url"
                         type="url"
                         required
                         value={primaryUrl}
                         onChange={(e) => setPrimaryUrl(e.target.value)}
-                        className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                        className={INPUT_CLASS}
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-[#D4D4D8]">
+                    <label htmlFor="designer-summary" className={LABEL_CLASS}>
                       Summary *
                     </label>
                     <textarea
+                      id="designer-summary"
                       rows={3}
                       required
                       value={summary}
                       onChange={(e) => setSummary(e.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-white/[0.12] bg-[#141418] p-3 text-sm text-[#F4F3EF]"
+                      className="mt-1.5 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] p-3.5 text-[14px] text-[var(--ink-primary)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <div>
-                      <label className="block text-xs font-medium text-[#D4D4D8]">
-                        Prize Display
+                      <label
+                        htmlFor="designer-prize-display"
+                        className={LABEL_CLASS}
+                      >
+                        Prize display
                       </label>
                       <input
+                        id="designer-prize-display"
                         type="text"
                         value={prizeDisplay}
                         onChange={(e) => setPrizeDisplay(e.target.value)}
-                        className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                        className={INPUT_CLASS}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-[#D4D4D8]">
+                      <label
+                        htmlFor="designer-prize-usd"
+                        className={LABEL_CLASS}
+                      >
                         Prize USD
                       </label>
                       <input
+                        id="designer-prize-usd"
                         type="number"
                         value={prizeUsd}
                         onChange={(e) => setPrizeUsd(e.target.value)}
                         placeholder="50000"
-                        className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                        className={`${INPUT_CLASS} font-tabular`}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-[#D4D4D8]">
+                      <label htmlFor="designer-format" className={LABEL_CLASS}>
                         Format
                       </label>
                       <select
+                        id="designer-format"
                         value={format}
                         onChange={(e) =>
                           setFormat(e.target.value as HackathonFormat)
                         }
-                        className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                        className={SELECT_CLASS}
                       >
                         <option value="ONLINE">Online</option>
-                        <option value="IN_PERSON">In-Person</option>
+                        <option value="IN_PERSON">In-person</option>
                         <option value="HYBRID">Hybrid</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-[#D4D4D8]">
-                        OXA Status
+                      <label htmlFor="designer-oxa" className={LABEL_CLASS}>
+                        OXA status
                       </label>
                       <select
+                        id="designer-oxa"
                         value={oxaStatus}
                         onChange={(e) =>
                           setOxaStatus(e.target.value as OxakalabsStatus)
                         }
-                        className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                        className={SELECT_CLASS}
                       >
                         <option value="NONE">None</option>
                         <option value="SCOUTING">Scouting</option>
-                        <option value="SQUAD_DEPLOYED">Squad Deployed</option>
+                        <option value="SQUAD_DEPLOYED">Squad deployed</option>
                         <option value="SUBMITTED">Submitted</option>
                         <option value="WON">Won</option>
                       </select>
@@ -1026,73 +1118,80 @@ export function PostDesignerModal({
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div>
-                      <label className="block text-xs font-medium text-[#D4D4D8]">
+                      <label htmlFor="designer-deadline" className={LABEL_CLASS}>
                         Deadline (UTC)
                       </label>
                       <input
+                        id="designer-deadline"
                         type="datetime-local"
                         required
                         value={deadlineAt}
                         onChange={(e) => setDeadlineAt(e.target.value)}
-                        className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                        className={`${INPUT_CLASS} font-tabular`}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-[#D4D4D8]">
+                      <label htmlFor="designer-location" className={LABEL_CLASS}>
                         Location
                       </label>
                       <input
+                        id="designer-location"
                         type="text"
                         value={location}
                         onChange={(e) => setLocation(e.target.value)}
-                        className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                        className={INPUT_CLASS}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-[#D4D4D8]">
+                      <label htmlFor="designer-themes" className={LABEL_CLASS}>
                         Themes (comma-separated)
                       </label>
                       <input
+                        id="designer-themes"
                         type="text"
                         value={themesText}
                         onChange={(e) => setThemesText(e.target.value)}
-                        className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                        className={INPUT_CLASS}
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-[#D4D4D8]">
-                      Announcement / X Post URL (optional)
+                    <label htmlFor="designer-tweet" className={LABEL_CLASS}>
+                      Announcement or X post URL (optional)
                     </label>
                     <input
+                      id="designer-tweet"
                       type="url"
                       value={tweetUrl}
                       onChange={(e) => setTweetUrl(e.target.value)}
                       placeholder="https://x.com/..."
-                      className="mt-1.5 h-10 w-full rounded-xl border border-white/[0.12] bg-[#141418] px-3 text-xs text-[#F4F3EF]"
+                      className={INPUT_CLASS}
                     />
                   </div>
                 </>
               )}
             </div>
 
-            {/* Color & Layout Design Controls */}
-            <div className="rounded-2xl border border-white/[0.09] bg-[#111114] p-4 space-y-4">
+            {/* Color & Layout Design Controls (Hairline section, no nested box) */}
+            <div className="space-y-4 border-t border-[var(--hairline)] pt-5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-[#D4D4D8]">
-                  Color &amp; Layout Formatting
-                </span>
-                <span className="font-mono text-xs text-[#8B8B94]">{accentColor}</span>
+                <h3 className="font-display text-[15px] font-semibold text-[var(--ink-primary)]">
+                  Color and layout formatting
+                </h3>
+                <code className="font-code text-[13px] text-[var(--ink-muted)]">
+                  {accentColor}
+                </code>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2.5">
                 {ACCENT_PRESETS.map((c) => (
                   <button
                     key={c.hex}
                     type="button"
                     onClick={() => setAccentColor(c.hex)}
                     title={c.name}
-                    className={`h-7 w-7 cursor-pointer rounded-full border-2 transition-transform ${
+                    aria-label={`Select ${c.name} accent`}
+                    className={`h-7 w-7 cursor-pointer rounded-full border-2 transition-transform duration-150 ${
                       accentColor.toLowerCase() === c.hex.toLowerCase()
                         ? "scale-110 border-white"
                         : "border-white/20"
@@ -1100,7 +1199,7 @@ export function PostDesignerModal({
                     style={{ backgroundColor: c.hex }}
                   />
                 ))}
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/[0.12] bg-[#18181D] px-3 py-1 text-xs text-[#D4D4D8]">
+                <label className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3 text-[13px] text-[var(--ink-primary)]">
                   <input
                     type="color"
                     value={accentColor}
@@ -1114,73 +1213,91 @@ export function PostDesignerModal({
               {entity === "dispatch" && (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div>
-                    <label className="block text-[11px] font-medium text-[#A1A1AA]">
-                      Hero Layout
+                    <label
+                      htmlFor="designer-hero-layout"
+                      className={LABEL_CLASS}
+                    >
+                      Hero layout
                     </label>
                     <select
+                      id="designer-hero-layout"
                       value={heroLayout}
                       onChange={(e) =>
                         setHeroLayout(e.target.value as typeof heroLayout)
                       }
-                      className="mt-1 h-9 w-full rounded-xl border border-white/[0.1] bg-[#18181D] px-3 text-xs text-[#F4F3EF]"
+                      className={SELECT_CLASS}
                     >
-                      <option value="editorial">Editorial Banner</option>
-                      <option value="split">Split Header + Visual</option>
-                      <option value="fullbleed">Full-Bleed Visual</option>
-                      <option value="minimal">Minimal (No Cover)</option>
+                      <option value="editorial">Editorial banner</option>
+                      <option value="split">Split header and visual</option>
+                      <option value="fullbleed">Full-bleed visual</option>
+                      <option value="minimal">Minimal (no cover)</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-medium text-[#A1A1AA]">
-                      Callout Style
+                    <label
+                      htmlFor="designer-callout-style"
+                      className={LABEL_CLASS}
+                    >
+                      Callout style
                     </label>
                     <select
+                      id="designer-callout-style"
                       value={calloutStyle}
                       onChange={(e) =>
                         setCalloutStyle(e.target.value as typeof calloutStyle)
                       }
-                      className="mt-1 h-9 w-full rounded-xl border border-white/[0.1] bg-[#18181D] px-3 text-xs text-[#F4F3EF]"
+                      className={SELECT_CLASS}
                     >
-                      <option value="left-bar">Left Accent Bar</option>
-                      <option value="tinted-banner">Color-Tinted Banner</option>
-                      <option value="glass-card">Outlined Card</option>
+                      <option value="left-bar">Left accent bar</option>
+                      <option value="tinted-banner">Color-tinted banner</option>
+                      <option value="glass-card">Outlined card</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-medium text-[#A1A1AA]">
-                      Backdrop Glow Tint
+                    <label
+                      htmlFor="designer-surface-tint"
+                      className={LABEL_CLASS}
+                    >
+                      Backdrop glow tint
                     </label>
                     <input
+                      id="designer-surface-tint"
                       type="text"
                       value={surfaceTint}
                       onChange={(e) => setSurfaceTint(e.target.value)}
                       placeholder="#FF3B1F (optional)"
-                      className="mt-1 h-9 w-full rounded-xl border border-white/[0.1] bg-[#18181D] px-3 text-xs text-[#F4F3EF]"
+                      className={INPUT_CLASS}
                     />
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Embedded Image Studio */}
-            <div className="rounded-2xl border border-white/[0.09] bg-[#111114] p-4 space-y-3">
+            {/* Embedded Image Studio (Hairline section) */}
+            <div className="space-y-3.5 border-t border-[var(--hairline)] pt-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#D4D4D8]">
-                  <ImageIcon className="h-3.5 w-3.5 text-[#FF6B54]" />
-                  <span>Post Cover &amp; Visual Studio</span>
-                </div>
+                <h3 className="font-display flex items-center gap-2 text-[15px] font-semibold text-[var(--ink-primary)]">
+                  <ImageIcon className="h-4 w-4 text-[var(--accent)]" />
+                  <span>Cover and visual studio</span>
+                </h3>
 
-                <div className="flex flex-wrap gap-1">
+                <div
+                  role="tablist"
+                  aria-label="Image source mode"
+                  className="inline-flex rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] p-0.5"
+                >
                   {(["generate", "import", "upload", "library"] as const).map(
                     (tab) => (
                       <button
                         key={tab}
                         type="button"
+                        role="tab"
+                        aria-selected={imageTab === tab}
                         onClick={() => setImageTab(tab)}
-                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[11px] font-medium capitalize ${
+                        className={`h-8 cursor-pointer rounded-full px-3 text-[13px] font-medium capitalize transition-colors duration-150 ${
                           imageTab === tab
-                            ? "bg-[#F4F3EF] text-[#08080A]"
-                            : "bg-[#18181D] text-[#A1A1AA] hover:text-[#F4F3EF]"
+                            ? "bg-[var(--ink-primary)] text-[#07090D]"
+                            : "text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
                         }`}
                       >
                         {tab}
@@ -1191,69 +1308,71 @@ export function PostDesignerModal({
               </div>
 
               {imgError && (
-                <div className="rounded-lg border border-[#FF3B1F]/35 bg-[#FF3B1F]/12 px-3 py-2 text-xs text-[#FF8A7A]">
+                <div className="rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-3.5 py-2.5 text-[13px] text-[#FF8A7A]">
                   {imgError}
                 </div>
               )}
               {imgStatus && !imgError && (
-                <div className="flex items-center gap-1.5 rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 px-3 py-2 text-xs text-[#34D399]">
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                <div className="flex items-center gap-2 rounded-xl border border-[#10B981]/30 bg-[#10B981]/10 px-3.5 py-2.5 text-[13px] text-[#34D399]">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
                   <span>{imgStatus}</span>
                 </div>
               )}
 
               {imageTab === "generate" && (
-                <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="flex flex-col gap-2.5 sm:flex-row">
                   <input
                     type="text"
+                    aria-label="Cover image generation prompt"
                     value={imgPrompt}
                     onChange={(e) => setImgPrompt(e.target.value)}
                     placeholder="Describe the cover image or leave blank to use post title..."
-                    className="h-9 flex-1 rounded-xl border border-white/[0.1] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
+                    className="h-10 flex-1 rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3.5 text-[13px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] focus:border-[var(--accent)] focus:outline-none"
                   />
                   <button
                     type="button"
                     disabled={imgBusy}
                     onClick={() => void handleGenerateImage()}
-                    className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-[#FF3B1F] px-4 text-xs font-semibold text-[#08080A] hover:bg-[#FF5238] disabled:opacity-60"
+                    className="press-tactile inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-full bg-[var(--accent)] px-4 text-[13px] font-semibold text-[#07090D] hover:bg-[var(--accent-hover)] disabled:opacity-60"
                   >
                     {imgBusy ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
                       <Sparkles className="h-3.5 w-3.5" />
                     )}
-                    <span>Generate Image</span>
+                    <span>Generate image</span>
                   </button>
                 </div>
               )}
 
               {imageTab === "import" && (
-                <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="flex flex-col gap-2.5 sm:flex-row">
                   <input
                     type="url"
+                    aria-label="Remote image URL to import"
                     value={imgImportUrl}
                     onChange={(e) => setImgImportUrl(e.target.value)}
-                    placeholder="Paste public image URL (https://...) to download & host"
-                    className="h-9 flex-1 rounded-xl border border-white/[0.1] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
+                    placeholder="Paste public image URL (https://...) to download and host"
+                    className="h-10 flex-1 rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3.5 text-[13px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] focus:border-[var(--accent)] focus:outline-none"
                   />
                   <button
                     type="button"
                     disabled={imgBusy || !imgImportUrl.trim()}
                     onClick={() => void handleImportImageUrl()}
-                    className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-[#F4F3EF] px-4 text-xs font-semibold text-[#08080A] disabled:opacity-50"
+                    className="press-tactile inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-full bg-[var(--ink-primary)] px-4 text-[13px] font-semibold text-[#07090D] hover:bg-white disabled:opacity-50"
                   >
                     {imgBusy ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
                       <Download className="h-3.5 w-3.5" />
                     )}
-                    <span>Import &amp; Store</span>
+                    <span>Import and store</span>
                   </button>
                 </div>
               )}
 
               {imageTab === "upload" && (
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -1269,21 +1388,21 @@ export function PostDesignerModal({
                     type="button"
                     disabled={imgBusy}
                     onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-white/[0.14] bg-[#18181D] px-4 text-xs font-medium text-[#F4F3EF] hover:border-white/[0.28]"
+                    className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-4 text-[13px] font-medium text-[var(--ink-primary)] transition-colors duration-150 hover:border-white/35"
                   >
-                    <Upload className="h-3.5 w-3.5 text-[#FF6B54]" />
-                    <span>{imgBusy ? "Uploading..." : "Choose Image File"}</span>
+                    <Upload className="h-3.5 w-3.5 text-[var(--accent)]" />
+                    <span>{imgBusy ? "Uploading..." : "Choose image file"}</span>
                   </button>
-                  <span className="text-[11px] text-[#8B8B94]">
+                  <span className="text-[13px] text-[var(--ink-muted)]">
                     Max 5 MB (PNG, JPEG, WEBP, SVG)
                   </span>
                 </div>
               )}
 
               {imageTab === "library" && (
-                <div className="grid max-h-40 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4">
+                <div className="grid max-h-44 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4">
                   {mediaAssets.length === 0 ? (
-                    <p className="col-span-full py-3 text-xs text-[#8B8B94]">
+                    <p className="col-span-full py-3 text-[13px] text-[var(--ink-muted)]">
                       No images stored yet. Generate, import, or upload one.
                     </p>
                   ) : (
@@ -1292,10 +1411,10 @@ export function PostDesignerModal({
                         key={m.id}
                         type="button"
                         onClick={() => setImageUrl(m.url)}
-                        className={`group relative overflow-hidden rounded-lg border ${
+                        className={`group relative cursor-pointer overflow-hidden rounded-lg border transition-colors duration-150 ${
                           imageUrl === m.url
-                            ? "border-[#FF3B1F]"
-                            : "border-white/[0.1]"
+                            ? "border-[var(--accent)]"
+                            : "border-[var(--hairline)] hover:border-[var(--hairline-strong)]"
                         }`}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1313,16 +1432,17 @@ export function PostDesignerModal({
               <div className="flex flex-wrap items-center gap-2">
                 <input
                   type="text"
+                  aria-label="Active cover image URL"
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
                   placeholder="Active cover image URL (/api/media/... or https://...)"
-                  className="h-9 min-w-[200px] flex-1 rounded-xl border border-white/[0.1] bg-[#0B0B0E] px-3 font-mono text-xs text-[#D4D4D8]"
+                  className="font-code h-10 min-w-[200px] flex-1 rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3.5 text-[13px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] focus:border-[var(--accent)] focus:outline-none"
                 />
                 {previewDownloadHref && (
                   <a
                     href={previewDownloadHref}
                     download
-                    className="inline-flex h-9 items-center gap-1 rounded-xl border border-white/[0.1] bg-[#18181D] px-3 text-xs font-medium text-[#D4D4D8] hover:text-[#F4F3EF]"
+                    className="inline-flex h-10 items-center gap-1.5 rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3.5 text-[13px] font-medium text-[var(--ink-primary)] transition-colors duration-150 hover:border-white/35"
                   >
                     <Download className="h-3.5 w-3.5" />
                     <span>Download</span>
@@ -1336,7 +1456,7 @@ export function PostDesignerModal({
                         `\n\n![${title || "Visual illustration"}](${imageUrl})`
                       )
                     }
-                    className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-xl border border-white/[0.1] bg-[#18181D] px-3 text-xs font-medium text-[#34D399]"
+                    className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3.5 text-[13px] font-medium text-[#34D399] transition-colors duration-150 hover:border-[#34D399]/50"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     <span>Insert in body</span>
@@ -1347,17 +1467,20 @@ export function PostDesignerModal({
 
             {/* Dispatch Rich Content Editor */}
             {entity === "dispatch" && (
-              <div className="space-y-2">
+              <div className="space-y-2.5 border-t border-[var(--hairline)] pt-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <label className="text-xs font-medium text-[#D4D4D8]">
-                    Article Body (Markdown + Callouts + Images + Links) *
+                  <label htmlFor="designer-mdx" className={LABEL_CLASS}>
+                    Article body (Markdown, callouts, images, links) *
                   </label>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="inline-flex flex-wrap divide-x divide-[var(--hairline)] overflow-hidden rounded-lg border border-[var(--hairline-strong)] bg-[var(--bg-canvas)]">
                     {[
                       { label: "H2", snip: "\n\n## Section Title\n\n" },
                       { label: "H3", snip: "\n\n### Subsection\n\n" },
                       { label: "Bold", snip: "**bold text**" },
-                      { label: "Code", snip: "\n\n```typescript\n// code\n```\n\n" },
+                      {
+                        label: "Code",
+                        snip: "\n\n```typescript\n// code\n```\n\n",
+                      },
                       {
                         label: "Callout",
                         snip: "\n\n> [!ACCENT] Key insight for builders.\n\n",
@@ -1371,7 +1494,7 @@ export function PostDesignerModal({
                         key={btn.label}
                         type="button"
                         onClick={() => insertSnippet(btn.snip)}
-                        className="cursor-pointer rounded-lg border border-white/[0.1] bg-[#18181D] px-2 py-1 text-[11px] font-medium text-[#D4D4D8] hover:border-white/[0.25]"
+                        className="h-8 cursor-pointer px-2.5 text-[13px] font-medium text-[var(--ink-muted)] transition-colors duration-150 hover:bg-[var(--bg-recessed)] hover:text-[var(--ink-primary)]"
                       >
                         {btn.label}
                       </button>
@@ -1379,44 +1502,46 @@ export function PostDesignerModal({
                   </div>
                 </div>
                 <textarea
+                  id="designer-mdx"
                   ref={mdxRef}
                   rows={12}
                   required
                   value={mdxContent}
                   onChange={(e) => setMdxContent(e.target.value)}
-                  className="w-full rounded-xl border border-white/[0.12] bg-[#141418] p-4 font-mono text-xs leading-relaxed text-[#F4F3EF] focus:border-[#FF3B1F] focus:outline-none"
+                  className="font-code w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] p-4 text-[13px] leading-relaxed text-[var(--ink-primary)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
                 />
               </div>
             )}
 
             {/* Featured / Related Links Builder */}
-            <div className="rounded-2xl border border-white/[0.09] bg-[#111114] p-4 space-y-3">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#D4D4D8]">
-                <Link2 className="h-3.5 w-3.5 text-[#34D399]" />
-                <span>Attached Links &amp; References</span>
-              </div>
+            <div className="space-y-3 border-t border-[var(--hairline)] pt-5">
+              <h3 className="font-display flex items-center gap-2 text-[15px] font-semibold text-[var(--ink-primary)]">
+                <Link2 className="h-4 w-4 text-[#34D399]" />
+                <span>Attached links and references</span>
+              </h3>
 
               {links.length > 0 && (
-                <div className="space-y-1.5">
+                <div className="divide-y divide-[var(--hairline)] rounded-xl border border-[var(--hairline)] bg-[var(--bg-canvas)]">
                   {links.map((lnk, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-[#18181D] px-3 py-2 text-xs"
+                      className="flex items-center justify-between gap-2 px-3.5 py-2.5 text-[13px]"
                     >
-                      <div className="min-w-0">
-                        <span className="font-semibold text-[#F4F3EF]">
+                      <div className="min-w-0 truncate">
+                        <span className="font-semibold text-[var(--ink-primary)]">
                           {lnk.label}
                         </span>
-                        <span className="ml-2 truncate text-[#8B8B94]">
+                        <span className="ml-2 text-[var(--ink-muted)]">
                           {lnk.url}
                         </span>
                       </div>
                       <button
                         type="button"
+                        aria-label={`Remove ${lnk.label}`}
                         onClick={() =>
                           setLinks((prev) => prev.filter((_, idx) => idx !== i))
                         }
-                        className="text-[#8B8B94] hover:text-[#FF8A7A]"
+                        className="cursor-pointer text-[var(--ink-muted)] transition-colors duration-150 hover:text-[#FF8A7A]"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -1428,22 +1553,24 @@ export function PostDesignerModal({
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-12">
                 <input
                   type="text"
+                  aria-label="New link label"
                   value={newLinkLabel}
                   onChange={(e) => setNewLinkLabel(e.target.value)}
                   placeholder="Link label"
-                  className="h-9 rounded-xl border border-white/[0.1] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF] sm:col-span-4"
+                  className="h-10 rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3 text-[13px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] focus:border-[var(--accent)] focus:outline-none sm:col-span-4"
                 />
                 <input
                   type="url"
+                  aria-label="New link URL"
                   value={newLinkUrl}
                   onChange={(e) => setNewLinkUrl(e.target.value)}
                   placeholder="https://..."
-                  className="h-9 rounded-xl border border-white/[0.1] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF] sm:col-span-5"
+                  className="h-10 rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3 text-[13px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] focus:border-[var(--accent)] focus:outline-none sm:col-span-5"
                 />
                 <button
                   type="button"
                   onClick={handleAddLink}
-                  className="inline-flex h-9 cursor-pointer items-center justify-center gap-1 rounded-xl border border-white/[0.12] bg-[#18181D] px-3 text-xs font-medium text-[#F4F3EF] hover:border-white/[0.25] sm:col-span-3"
+                  className="inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3 text-[13px] font-medium text-[var(--ink-primary)] transition-colors duration-150 hover:border-white/35 sm:col-span-3"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span>Add link</span>
@@ -1451,42 +1578,43 @@ export function PostDesignerModal({
               </div>
               <input
                 type="text"
+                aria-label="Optional link description"
                 value={newLinkDesc}
                 onChange={(e) => setNewLinkDesc(e.target.value)}
                 placeholder="Optional link description"
-                className="h-9 w-full rounded-xl border border-white/[0.1] bg-[#0B0B0E] px-3 text-xs text-[#F4F3EF]"
+                className="h-10 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3.5 text-[13px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] focus:border-[var(--accent)] focus:outline-none"
               />
             </div>
 
-            {/* Flags */}
-            <div className="flex flex-wrap items-center gap-5 pt-1">
-              <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-[#D4D4D8]">
+            {/* Publish Flags */}
+            <div className="flex flex-wrap items-center gap-6 border-t border-[var(--hairline)] pt-5">
+              <label className="inline-flex cursor-pointer items-center gap-2 text-[13px] text-[var(--ink-primary)]">
                 <input
                   type="checkbox"
                   checked={isPublished}
                   onChange={(e) => setIsPublished(e.target.checked)}
                   className="h-4 w-4 accent-[#10B981]"
                 />
-                <span>Approved &amp; Published Live</span>
+                <span>Approved and published live</span>
               </label>
               {(entity === "dispatch" || entity === "hackathon") && (
-                <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-[#D4D4D8]">
+                <label className="inline-flex cursor-pointer items-center gap-2 text-[13px] text-[var(--ink-primary)]">
                   <input
                     type="checkbox"
                     checked={isFeatured}
                     onChange={(e) => setIsFeatured(e.target.checked)}
-                    className="h-4 w-4 accent-[#FF3B1F]"
+                    className="h-4 w-4 accent-[var(--accent)]"
                   />
                   <span>Featured</span>
                 </label>
               )}
               {entity === "news" && (
-                <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-[#D4D4D8]">
+                <label className="inline-flex cursor-pointer items-center gap-2 text-[13px] text-[var(--ink-primary)]">
                   <input
                     type="checkbox"
                     checked={isPinned}
                     onChange={(e) => setIsPinned(e.target.checked)}
-                    className="h-4 w-4 accent-[#FF3B1F]"
+                    className="h-4 w-4 accent-[var(--accent)]"
                   />
                   <span>Pinned to top</span>
                 </label>
@@ -1496,34 +1624,34 @@ export function PostDesignerModal({
 
           {/* Right Live Visual Preview Column */}
           <div
-            className={`overflow-y-auto bg-[#08080A] p-5 lg:col-span-5 ${
+            className={`overflow-y-auto bg-[var(--bg-canvas)] p-6 lg:col-span-5 ${
               mobileView === "edit" ? "hidden lg:block" : "block"
             }`}
           >
-            <div className="mb-3 flex items-center justify-between">
-              <span className="font-mono text-[11px] uppercase tracking-wider text-[#8B8B94]">
-                Live Design Preview
+            <div className="mb-4 flex items-center justify-between text-[13px]">
+              <span className="font-medium text-[var(--ink-muted)]">
+                Live design preview
               </span>
               <span
-                className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-[#08080A]"
-                style={{ backgroundColor: accentColor }}
+                className="font-semibold"
+                style={{ color: isPublished ? "#34D399" : accentColor }}
               >
-                {isPublished ? "Published" : "Pending Review"}
+                {isPublished ? "Published" : "Pending review"}
               </span>
             </div>
 
             <div
-              className="rounded-2xl border border-white/[0.1] bg-[#111114] p-5"
+              className="rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)] p-5"
               style={
                 surfaceTint
                   ? {
-                      backgroundImage: `radial-gradient(circle at 85% 10%, ${surfaceTint}25, transparent 55%)`,
+                      backgroundImage: `radial-gradient(circle at 85% 10%, ${surfaceTint}22, transparent 55%)`,
                     }
                   : undefined
               }
             >
               {imageUrl && (
-                <div className="mb-4 overflow-hidden rounded-xl border border-white/[0.1]">
+                <div className="mb-4 overflow-hidden rounded-lg border border-[var(--hairline)]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={imageUrl}
@@ -1533,18 +1661,20 @@ export function PostDesignerModal({
                 </div>
               )}
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 text-[13px]">
                 <span
-                  className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-[#08080A]"
+                  className="inline-block h-2 w-2 rounded-full"
                   style={{ backgroundColor: accentColor }}
-                >
+                />
+                <span className="font-semibold" style={{ color: accentColor }}>
                   {entity === "dispatch"
                     ? dispatchCat
                     : entity === "news"
                     ? newsCat
                     : prizeDisplay}
                 </span>
-                <span className="text-xs text-[#8B8B94]">
+                <span className="text-[var(--ink-muted)]">·</span>
+                <span className="text-[var(--ink-muted)]">
                   {entity === "dispatch"
                     ? authorName
                     : entity === "news"
@@ -1553,11 +1683,11 @@ export function PostDesignerModal({
                 </span>
               </div>
 
-              <h3 className="font-display mt-3 text-xl font-bold leading-snug text-[#F4F3EF]">
-                {title || "Post Title Preview"}
+              <h3 className="font-display mt-3 text-[21px] font-bold leading-snug tracking-[-0.02em] text-[var(--ink-primary)]">
+                {title || "Post title preview"}
               </h3>
 
-              <p className="mt-2 text-sm leading-relaxed text-[#A1A1AA]">
+              <p className="mt-2 text-[14px] leading-relaxed text-[var(--ink-muted)]">
                 {entity === "dispatch"
                   ? subtitle || "Subtitle preview..."
                   : entity === "news"
@@ -1566,7 +1696,7 @@ export function PostDesignerModal({
               </p>
 
               {entity === "dispatch" && (
-                <div className="mt-4 space-y-2 border-t border-white/[0.08] pt-4 text-xs leading-relaxed text-[#D4D4D8]">
+                <div className="mt-5 space-y-3 border-t border-[var(--hairline)] pt-4 text-[13px] leading-relaxed text-[var(--ink-primary)]/90">
                   {mdxContent
                     .split(/\n\n+/)
                     .slice(0, 4)
@@ -1576,7 +1706,7 @@ export function PostDesignerModal({
                         return (
                           <div
                             key={i}
-                            className="font-display pt-1 text-sm font-semibold text-[#F4F3EF]"
+                            className="font-display pt-1 text-[16px] font-semibold text-[var(--ink-primary)]"
                           >
                             {t.replace(/^##\s+/, "")}
                           </div>
@@ -1591,11 +1721,11 @@ export function PostDesignerModal({
                               backgroundColor:
                                 calloutStyle === "tinted-banner"
                                   ? `${accentColor}1A`
-                                  : "#18181D",
+                                  : "var(--bg-canvas)",
                             }}
-                            className={`rounded-lg p-3 ${
+                            className={`rounded-lg p-3.5 ${
                               calloutStyle === "left-bar"
-                                ? "border-l-4"
+                                ? "border-l-2"
                                 : "border"
                             }`}
                           >
@@ -1609,15 +1739,15 @@ export function PostDesignerModal({
               )}
 
               {links.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2 border-t border-white/[0.08] pt-3">
+                <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 border-t border-[var(--hairline)] pt-3.5 text-[13px]">
                   {links.map((lnk, i) => (
                     <span
                       key={i}
-                      className="inline-flex items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-2.5 py-1 text-[11px] font-medium"
+                      className="inline-flex items-center gap-1 font-medium"
                       style={{ color: accentColor }}
                     >
                       <span>{lnk.label}</span>
-                      <ExternalLink className="h-3 w-3" />
+                      <ExternalLink className="h-3.5 w-3.5" />
                     </span>
                   ))}
                 </div>
@@ -1626,21 +1756,21 @@ export function PostDesignerModal({
           </div>
 
           {/* Modal Footer */}
-          <div className="col-span-full flex items-center justify-end gap-3 border-t border-white/[0.08] bg-[#0B0B0E] px-5 py-4">
+          <div className="col-span-full flex items-center justify-end gap-3 border-t border-[var(--hairline)] bg-[var(--bg-surface)] px-6 py-4">
             <button
               type="button"
               onClick={onClose}
-              className="h-10 cursor-pointer rounded-full border border-white/[0.1] px-5 text-xs font-medium text-[#A1A1AA] hover:text-[#F4F3EF]"
+              className="h-10 cursor-pointer rounded-full border border-[var(--hairline-strong)] px-5 text-[13px] font-medium text-[var(--ink-muted)] transition-colors duration-150 hover:border-white/35 hover:text-[var(--ink-primary)]"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-[#FF3B1F] px-6 text-xs font-semibold text-[#08080A] hover:bg-[#FF5238] disabled:opacity-60"
+              className="press-tactile inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-[var(--accent)] px-6 text-[13px] font-semibold text-[#07090D] hover:bg-[var(--accent-hover)] disabled:opacity-60"
             >
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              <span>{isEdit ? "Save Changes" : "Publish / Save Post"}</span>
+              <span>{isEdit ? "Save changes" : "Publish or save post"}</span>
             </button>
           </div>
         </form>

@@ -25,9 +25,9 @@ const CURRICULUM_PHASES = [
   },
   {
     weeks: "Weeks 3 to 4",
-    title: "Kinetic product craft and velocity shipping",
+    title: "Product craft and velocity shipping",
     items: [
-      "Kinetic Obsidian interface design and critically damped spring physics",
+      "Editorial interface design, disciplined typography, and tactile spring physics",
       "Multi-provider data ingestion, background workers, and edge caching",
       "Mid-cycle architecture teardown with G-Gravitator Systems principals",
     ],
@@ -83,10 +83,10 @@ const TRACKS: {
     title: "Kinetic Design Engineering",
     icon: Sparkles,
     summary:
-      "Sculptural editorial typography, translucent floating surfaces, Framer Motion spring physics, HTML5 Canvas interactions, and tactile micro-interaction craft.",
+      "Editorial typography, tactile motion systems, HTML5 Canvas interactions, and frontend architecture that turns utilities into memorable products.",
     outcomes: [
-      "Master G-Gravitator's Kinetic Obsidian design system and fluid interaction craft",
-      "Build 60fps pointer-reactive canvases and interruptible spring primitives",
+      "Master disciplined typographic hierarchy and responsive layout engineering",
+      "Build 60fps pointer-reactive canvases and interruptible motion primitives",
       "Transform raw engineering utilities into unmistakable commercial products",
     ],
   },
@@ -120,249 +120,263 @@ export default function OrbitPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Please verify your application details and try again.");
+        setError(
+          data.error || "Please verify your application details and try again."
+        );
       } else {
         setSubmittedId(data.application?.id || "ORB-LOCKED");
       }
     } catch {
-      setError("Network error submitting your Orbit application. Please try again.");
+      setError(
+        "Network error submitting your Orbit application. Please try again."
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="mx-auto max-w-[1360px] px-5 pt-12 pb-24 sm:px-8 lg:px-12 lg:pt-16 lg:pb-32">
-      {/* Editorial Cohort Hero + Studio Photography */}
-      <header className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-12">
-        <div className="lg:col-span-6">
-          <h1 className="font-display text-[clamp(2.35rem,4.7vw,4.35rem)] font-bold leading-[1.04] tracking-[-0.03em] text-[#F4F3EF]">
+    <div className="bg-[var(--bg-canvas)] text-[var(--ink-primary)]">
+      {/* Centered Editorial Opening + Panoramic Studio Atelier Visual */}
+      <section className="mx-auto max-w-[1360px] px-5 pt-24 pb-16 sm:px-8 lg:px-12 lg:pt-28 lg:pb-20">
+        <header className="mx-auto max-w-4xl text-center">
+          <h1 className="font-display text-[clamp(2.5rem,5.2vw,4.5rem)] font-bold leading-[1.0] tracking-[-0.035em] text-[var(--ink-primary)]">
             Gravity Cycles. Train with builders who ship.
           </h1>
 
-          <p className="mt-6 max-w-[56ch] text-base leading-relaxed text-[#A1A1AA] sm:text-lg">
-            Bootcamps teach passive tutorials. G-Gravitator Orbit is a selective, 6-week
-            technical residency where emerging engineers and design technologists build
-            real production software alongside our{" "}
-            <span className="font-medium text-[#F4F3EF]">Systems</span> principals and{" "}
-            <span className="font-medium text-[#F4F3EF]">OXAKALABS</span> strike squads.
+          <p className="mx-auto mt-6 max-w-[58ch] text-[16px] leading-[1.65] text-[var(--ink-muted)]">
+            A selective 6-week residency where emerging engineers build real
+            production software alongside{" "}
+            <strong className="font-semibold text-[var(--ink-primary)]">
+              Systems
+            </strong>{" "}
+            principals and{" "}
+            <strong className="font-semibold text-[var(--ink-primary)]">
+              OXAKALABS
+            </strong>{" "}
+            strike squads. Cycle 01 applications are open.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center gap-3">
+          <div className="mt-8">
             <a
               href="#apply"
-              className="press-tactile inline-flex h-11 items-center gap-2 rounded-full bg-[#FF3B1F] px-6 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238]"
+              className="press-tactile inline-flex h-12 items-center gap-2 rounded-full bg-[var(--accent)] px-7 text-[14px] font-semibold whitespace-nowrap text-[#07090D] hover:bg-[var(--accent-hover)]"
             >
               <span>Apply for Cycle 01</span>
               <ArrowRight className="h-4 w-4" strokeWidth={2} />
             </a>
-            <span className="inline-flex h-11 items-center rounded-full border border-[#10B981]/30 bg-[#10B981]/10 px-4 text-xs font-medium text-[#34D399]">
-              Cycle 01 applications open
-            </span>
           </div>
-        </div>
+        </header>
 
-        <div className="lg:col-span-6">
-          <div className="aspect-video overflow-hidden rounded-2xl bg-[#111114] ring-1 ring-inset ring-white/[0.08]">
-            <Image
-              src="/images/orbit-atelier.jpg"
-              alt="Monolithic dark board-formed concrete and smoked glass studio interior at twilight with warm overhead light over a basalt worktable"
-              width={1376}
-              height={768}
-              preload
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="h-full w-full object-cover"
-            />
+        <div className="mt-14 aspect-[21/9] w-full overflow-hidden rounded-2xl bg-[var(--bg-surface)] ring-1 ring-inset ring-white/[0.08]">
+          <Image
+            src="/images/orbit-atelier.jpg"
+            alt="Monolithic dark concrete and smoked glass studio interior at twilight with warm overhead light over a basalt worktable"
+            width={1376}
+            height={768}
+            preload
+            sizes="100vw"
+            className="h-full w-full object-cover"
+          />
+        </div>
+      </section>
+
+      {/* Cool Architectural Stone Band: 6-Week Curriculum Arc */}
+      <Reveal as="section" className="surface-stone py-24 lg:py-32">
+        <div className="mx-auto max-w-[1360px] px-5 sm:px-8 lg:px-12">
+          <h2 className="type-heading text-[var(--ink-stone-primary)]">
+            Six weeks from architecture to Demo Day
+          </h2>
+          <p className="mt-3 max-w-[60ch] text-[16px] leading-[1.65] text-[var(--ink-stone-muted)]">
+            Three compressed two-week sprints built around shipping live
+            production work instead of classroom exercises.
+          </p>
+
+          <div className="mt-12 grid grid-cols-1 gap-10 lg:grid-cols-3">
+            {CURRICULUM_PHASES.map((phase) => (
+              <div
+                key={phase.weeks}
+                className="border-t border-[var(--hairline-stone)] pt-6"
+              >
+                <p className="font-tabular text-[14px] font-semibold text-[var(--accent-on-stone)]">
+                  {phase.weeks}
+                </p>
+                <h3 className="type-subhead mt-3 text-[var(--ink-stone-primary)]">
+                  {phase.title}
+                </h3>
+                <ul className="mt-4 space-y-3 text-[16px] leading-[1.6] text-[#2D3440]">
+                  {phase.items.map((item) => (
+                    <li key={item} className="flex items-start gap-2.5">
+                      <Check
+                        className="mt-1.5 h-4 w-4 shrink-0 text-[var(--accent-on-stone)]"
+                        strokeWidth={2}
+                      />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
-        </div>
-      </header>
-
-      {/* Section 1: 6-Week Curriculum Arc (Open Horizontal Cadence) */}
-      <Reveal
-        as="section"
-        className="mt-20 border-t border-white/[0.07] pt-16 lg:mt-28 lg:pt-20"
-      >
-        <h2 className="font-display text-[clamp(1.75rem,3vw,2.75rem)] font-semibold leading-[1.08] tracking-[-0.025em] text-[#F4F3EF]">
-          Six weeks from architecture to Demo Day
-        </h2>
-        <p className="mt-3 max-w-[60ch] text-base text-[#A1A1AA]">
-          Three compressed two-week sprints built around shipping live production work
-          instead of classroom exercises.
-        </p>
-
-        <div className="mt-12 grid grid-cols-1 gap-8 lg:grid-cols-3">
-          {CURRICULUM_PHASES.map((phase) => (
-            <div key={phase.weeks} className="border-t border-white/[0.1] pt-6">
-              <span className="font-mono-telemetry inline-flex rounded-full border border-white/[0.1] bg-[#111114] px-3 py-1 text-xs font-semibold text-[#F4F3EF]">
-                {phase.weeks}
-              </span>
-              <h3 className="font-display mt-4 text-xl font-semibold tracking-[-0.02em] text-[#F4F3EF]">
-                {phase.title}
-              </h3>
-              <ul className="mt-4 space-y-3 text-sm leading-relaxed text-[#A1A1AA]">
-                {phase.items.map((item) => (
-                  <li key={item} className="flex items-start gap-2.5">
-                    <Check
-                      className="mt-1 h-4 w-4 shrink-0 text-[#FF3B1F]"
-                      strokeWidth={2}
-                    />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
         </div>
       </Reveal>
 
-      {/* Section 2: Interactive Residency Tracks */}
-      <section className="mt-20 border-t border-white/[0.07] pt-16 lg:mt-28 lg:pt-20">
-        <Reveal>
-          <h2 className="font-display text-[clamp(1.75rem,3vw,2.75rem)] font-semibold leading-[1.08] tracking-[-0.025em] text-[#F4F3EF]">
-            Choose your primary track
-          </h2>
-          <p className="mt-3 max-w-[60ch] text-base text-[#A1A1AA]">
-            Select the engineering discipline you want to lead in Cycle 01. Selecting a
-            track pre-fills your cohort application below.
-          </p>
-        </Reveal>
+      {/* Interactive Residency Tracks */}
+      <section className="border-t border-[var(--hairline)] py-24 lg:py-32">
+        <div className="mx-auto max-w-[1360px] px-5 sm:px-8 lg:px-12">
+          <Reveal>
+            <h2 className="type-heading text-[var(--ink-primary)]">
+              Choose your primary track
+            </h2>
+            <p className="mt-3 max-w-[60ch] text-[16px] leading-[1.65] text-[var(--ink-muted)]">
+              Select the engineering discipline you want to lead in Cycle 01.
+              Selecting a track pre-fills your cohort application below.
+            </p>
+          </Reveal>
 
-        <StaggerGroup className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {TRACKS.map((t) => {
-            const active = track === t.key;
-            const Icon = t.icon;
+          <StaggerGroup className="mt-12 grid grid-cols-1 gap-8 lg:grid-cols-3">
+            {TRACKS.map((t) => {
+              const active = track === t.key;
+              const Icon = t.icon;
 
-            return (
-              <StaggerItem key={t.key} className="flex">
-                <article
-                  className={`flex w-full flex-col justify-between rounded-2xl p-7 transition-[background-color,border-color,transform] duration-200 lg:p-8 ${
-                    active
-                      ? "border border-[#FF3B1F]/40 bg-[#15151A] shadow-[inset_0_1px_0_rgba(255,59,31,0.2)]"
-                      : "surface-card"
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.09] bg-[#0B0B0E] text-[#FF3B1F]">
-                        <Icon className="h-5 w-5" strokeWidth={1.6} />
-                      </div>
-                      <span
-                        className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                          active
-                            ? "border-[#FF3B1F]/30 bg-[#FF3B1F]/14 text-[#FF8A7A]"
-                            : "border-white/[0.08] bg-white/[0.04] text-[#A1A1AA]"
-                        }`}
-                      >
-                        {active ? "Selected" : t.label}
-                      </span>
-                    </div>
-
-                    <h3 className="font-display mt-5 text-2xl font-semibold tracking-[-0.02em] text-[#F4F3EF]">
-                      {t.title}
-                    </h3>
-
-                    <p className="mt-3 text-sm leading-relaxed text-[#A1A1AA]">
-                      {t.summary}
-                    </p>
-
-                    <ul className="mt-6 space-y-3 text-sm leading-relaxed text-[#D4D4D8]">
-                      {t.outcomes.map((outcome) => (
-                        <li key={outcome} className="flex items-start gap-2.5">
-                          <Check
-                            className="mt-1 h-4 w-4 shrink-0 text-[#34D399]"
-                            strokeWidth={2}
-                          />
-                          <span>{outcome}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTrack(t.key);
-                      document
-                        .getElementById("apply")
-                        ?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                    className={`press-tactile mt-8 inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold whitespace-nowrap ${
+              return (
+                <StaggerItem key={t.key} className="flex">
+                  <article
+                    className={`flex w-full flex-col justify-between rounded-xl border p-7 lg:p-8 ${
                       active
-                        ? "bg-[#FF3B1F] text-[#08080A] hover:bg-[#FF5238]"
-                        : "border border-white/[0.12] bg-[#18181D] text-[#F4F3EF] hover:border-white/[0.22] hover:bg-white/[0.08]"
+                        ? "border-t-2 border-[var(--hairline-strong)] border-t-[var(--accent)] bg-[var(--bg-surface)]"
+                        : "border-[var(--hairline)] bg-[var(--bg-surface)]"
                     }`}
                   >
-                    <span>Select {t.label}</span>
-                    <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2} />
-                  </button>
-                </article>
-              </StaggerItem>
-            );
-          })}
-        </StaggerGroup>
+                    <div>
+                      <div className="flex items-center justify-between gap-3">
+                        <Icon
+                          className="h-5 w-5 text-[var(--accent)]"
+                          strokeWidth={1.8}
+                        />
+                        <span
+                          className={`text-[14px] font-medium ${
+                            active
+                              ? "text-[#FF7A63]"
+                              : "text-[var(--ink-muted)]"
+                          }`}
+                        >
+                          {active ? "Selected track" : t.label}
+                        </span>
+                      </div>
+
+                      <h3 className="type-heading mt-4 text-[var(--ink-primary)]">
+                        {t.title}
+                      </h3>
+
+                      <p className="mt-3 text-[16px] leading-[1.65] text-[var(--ink-muted)]">
+                        {t.summary}
+                      </p>
+
+                      <ul className="mt-6 space-y-3 text-[16px] leading-[1.6] text-[var(--ink-primary)]">
+                        {t.outcomes.map((outcome) => (
+                          <li key={outcome} className="flex items-start gap-2.5">
+                            <Check
+                              className="mt-1.5 h-4 w-4 shrink-0 text-[#34D399]"
+                              strokeWidth={2}
+                            />
+                            <span>{outcome}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTrack(t.key);
+                        document
+                          .getElementById("apply")
+                          ?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className={`press-tactile mt-8 inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-[14px] font-semibold whitespace-nowrap ${
+                        active
+                          ? "bg-[var(--accent)] text-[#07090D] hover:bg-[var(--accent-hover)]"
+                          : "border border-[var(--hairline-strong)] bg-[var(--bg-recessed)] text-[var(--ink-primary)] hover:border-white/30"
+                      }`}
+                    >
+                      <span>Select {t.label}</span>
+                      <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2} />
+                    </button>
+                  </article>
+                </StaggerItem>
+              );
+            })}
+          </StaggerGroup>
+        </div>
       </section>
 
-      {/* Section 3: Proof-of-Work Cohort Application (#apply) */}
+      {/* Proof-of-Work Cohort Application (#apply) */}
       <Reveal
         as="section"
-        className="mt-20 border-t border-white/[0.07] pt-16 lg:mt-28 lg:pt-20"
+        className="border-t border-[var(--hairline)] bg-[var(--bg-surface)] py-24 lg:py-32"
       >
         <div
           id="apply"
-          className="scroll-mt-24 grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-12"
+          className="mx-auto grid max-w-[1360px] scroll-mt-24 grid-cols-1 gap-12 px-5 sm:px-8 lg:grid-cols-12 lg:px-12"
         >
-          {/* Left Editorial Prompt */}
           <div className="lg:col-span-4">
-            <h2 className="font-display text-[clamp(1.75rem,3vw,2.75rem)] font-semibold leading-[1.08] tracking-[-0.025em] text-[#F4F3EF]">
+            <h2 className="type-heading text-[var(--ink-primary)]">
               Apply for Cycle 01
             </h2>
-            <p className="mt-4 max-w-[40ch] text-base leading-relaxed text-[#A1A1AA]">
-              We do not filter by credentials or GPA. Show us the hardest system you have
-              built and the technical trade-offs you solved.
+            <p className="mt-4 max-w-[40ch] text-[16px] leading-[1.65] text-[var(--ink-muted)]">
+              We do not filter by credentials or GPA. Show us the hardest system
+              you have built and the technical trade-offs you solved.
             </p>
 
-            <ul className="mt-8 space-y-3 text-sm text-[#D4D4D8]">
+            <ul className="mt-8 space-y-4 text-[16px] text-[var(--ink-primary)]">
               <li className="flex items-start gap-2.5">
                 <Check
-                  className="mt-1 h-4 w-4 shrink-0 text-[#34D399]"
+                  className="mt-1.5 h-4 w-4 shrink-0 text-[#34D399]"
                   strokeWidth={2}
                 />
-                <span>Every proof-of-work repository is reviewed by technical leads.</span>
+                <span>
+                  Every proof-of-work repository is reviewed by technical leads.
+                </span>
               </li>
               <li className="flex items-start gap-2.5">
                 <Check
-                  className="mt-1 h-4 w-4 shrink-0 text-[#34D399]"
+                  className="mt-1.5 h-4 w-4 shrink-0 text-[#34D399]"
                   strokeWidth={2}
                 />
-                <span>Direct pairing with Systems architects and OXAKALABS squads.</span>
+                <span>
+                  Direct pairing with Systems architects and OXAKALABS squads.
+                </span>
               </li>
               <li className="flex items-start gap-2.5">
                 <Check
-                  className="mt-1 h-4 w-4 shrink-0 text-[#34D399]"
+                  className="mt-1.5 h-4 w-4 shrink-0 text-[#34D399]"
                   strokeWidth={2}
                 />
-                <span>Cohort invitations go out ahead of Cycle 01 kickoff.</span>
+                <span>
+                  Cohort invitations go out ahead of Cycle 01 kickoff.
+                </span>
               </li>
             </ul>
           </div>
 
-          {/* Right Spacious Application Card */}
           <div className="lg:col-span-8">
-            <div className="surface-card rounded-2xl p-7 sm:p-10">
+            <div className="rounded-xl border border-[var(--hairline)] bg-[var(--bg-canvas)] p-7 sm:p-10">
               {submittedId ? (
-                <div className="rounded-2xl border border-[#10B981]/30 bg-[#10B981]/[0.07] p-6 sm:p-8">
-                  <div className="flex items-center gap-2 text-[#34D399]">
-                    <CheckCircle2 className="h-5 w-5 shrink-0" strokeWidth={1.7} />
-                    <span className="font-mono-telemetry text-xs font-semibold">
+                <div className="space-y-4 border-l-2 border-[#10B981] pl-6">
+                  <div className="flex items-center gap-2 text-[14px] font-medium text-[#34D399]">
+                    <CheckCircle2 className="h-5 w-5 shrink-0" strokeWidth={1.8} />
+                    <span className="font-tabular">
                       Reference: {submittedId.toUpperCase()}
                     </span>
                   </div>
-                  <h3 className="font-display mt-3 text-2xl font-semibold text-[#F4F3EF]">
+                  <h3 className="type-heading text-[var(--ink-primary)]">
                     You are on the Gravity Cycle 01 review queue
                   </h3>
-                  <p className="mt-2.5 max-w-[58ch] text-sm leading-relaxed text-[#A1A1AA]">
-                    Our technical leads inspect every submitted proof-of-work repository.
-                    Cohort invitations dispatch ahead of Cycle 01 kickoff.
+                  <p className="max-w-[58ch] text-[16px] leading-[1.65] text-[var(--ink-muted)]">
+                    Our technical leads inspect every submitted proof-of-work
+                    repository. Cohort invitations dispatch ahead of Cycle 01
+                    kickoff.
                   </p>
                   <button
                     type="button"
@@ -370,7 +384,7 @@ export default function OrbitPage() {
                       setSubmittedId(null);
                       setProofOfWork("");
                     }}
-                    className="press-tactile mt-6 inline-flex h-10 cursor-pointer items-center justify-center rounded-full bg-[#FF3B1F] px-5 text-sm font-semibold text-[#08080A] hover:bg-[#FF5238]"
+                    className="press-tactile mt-2 inline-flex h-11 cursor-pointer items-center justify-center rounded-full bg-[var(--accent)] px-6 text-[14px] font-semibold text-[#07090D] hover:bg-[var(--accent-hover)]"
                   >
                     Submit another application
                   </button>
@@ -380,7 +394,7 @@ export default function OrbitPage() {
                   {error && (
                     <div
                       role="alert"
-                      className="rounded-xl border border-[#FF3B1F]/40 bg-[#FF3B1F]/12 px-4 py-3 text-sm text-[#FF8A7A]"
+                      className="rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-4 py-3 text-[14px] text-[#FF8A7A]"
                     >
                       {error}
                     </div>
@@ -390,7 +404,7 @@ export default function OrbitPage() {
                     <div className="space-y-2">
                       <label
                         htmlFor="orbit-form-name"
-                        className="block text-sm font-medium text-[#D4D4D8]"
+                        className="block text-[14px] font-medium text-[var(--ink-primary)]"
                       >
                         Full name *
                       </label>
@@ -402,14 +416,14 @@ export default function OrbitPage() {
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         placeholder="Chidera Okafor"
-                        className="w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-4 py-3 text-sm text-[#F4F3EF] placeholder:text-[#8B8B94] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/30 focus:outline-none"
+                        className="h-11 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-surface)] px-4 text-[14px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
                       />
                     </div>
 
                     <div className="space-y-2">
                       <label
                         htmlFor="orbit-form-email"
-                        className="block text-sm font-medium text-[#D4D4D8]"
+                        className="block text-[14px] font-medium text-[var(--ink-primary)]"
                       >
                         Email address *
                       </label>
@@ -421,7 +435,7 @@ export default function OrbitPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="builder@domain.com"
-                        className="w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-4 py-3 text-sm text-[#F4F3EF] placeholder:text-[#8B8B94] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/30 focus:outline-none"
+                        className="h-11 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-surface)] px-4 text-[14px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -430,7 +444,7 @@ export default function OrbitPage() {
                     <div className="space-y-2">
                       <label
                         htmlFor="orbit-form-track"
-                        className="block text-sm font-medium text-[#D4D4D8]"
+                        className="block text-[14px] font-medium text-[var(--ink-primary)]"
                       >
                         Primary track *
                       </label>
@@ -438,18 +452,24 @@ export default function OrbitPage() {
                         id="orbit-form-track"
                         value={track}
                         onChange={(e) => setTrack(e.target.value as OrbitTrack)}
-                        className="w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-4 py-3 text-sm text-[#F4F3EF] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/30 focus:outline-none"
+                        className="h-11 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-surface)] px-4 text-[14px] text-[var(--ink-primary)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
                       >
-                        <option value="AI_ENGINEERING">Applied AI Engineering</option>
-                        <option value="FULLSTACK_SYSTEMS">Full-Stack Product Systems</option>
-                        <option value="KINETIC_DESIGN">Kinetic Design Engineering</option>
+                        <option value="AI_ENGINEERING">
+                          Applied AI Engineering
+                        </option>
+                        <option value="FULLSTACK_SYSTEMS">
+                          Full-Stack Product Systems
+                        </option>
+                        <option value="KINETIC_DESIGN">
+                          Kinetic Design Engineering
+                        </option>
                       </select>
                     </div>
 
                     <div className="space-y-2">
                       <label
                         htmlFor="orbit-form-portfolio"
-                        className="block text-sm font-medium text-[#D4D4D8]"
+                        className="block text-[14px] font-medium text-[var(--ink-primary)]"
                       >
                         GitHub or portfolio URL
                       </label>
@@ -460,7 +480,7 @@ export default function OrbitPage() {
                         value={portfolioUrl}
                         onChange={(e) => setPortfolioUrl(e.target.value)}
                         placeholder="https://github.com/username"
-                        className="w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-4 py-3 text-sm text-[#F4F3EF] placeholder:text-[#8B8B94] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/30 focus:outline-none"
+                        className="h-11 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-surface)] px-4 text-[14px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -468,7 +488,7 @@ export default function OrbitPage() {
                   <div className="space-y-2">
                     <label
                       htmlFor="orbit-form-proof"
-                      className="block text-sm font-medium text-[#D4D4D8]"
+                      className="block text-[14px] font-medium text-[var(--ink-primary)]"
                     >
                       Link and describe the hardest thing you have built *
                     </label>
@@ -479,7 +499,7 @@ export default function OrbitPage() {
                       value={proofOfWork}
                       onChange={(e) => setProofOfWork(e.target.value)}
                       placeholder="Share a repository link, deployment URL, and the hardest technical trade-off you solved..."
-                      className="w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] p-4 text-sm text-[#F4F3EF] placeholder:text-[#8B8B94] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/30 focus:outline-none"
+                      className="w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-surface)] p-4 text-[14px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
                     />
                   </div>
 
@@ -487,7 +507,7 @@ export default function OrbitPage() {
                     type="submit"
                     id="orbit-form-submit"
                     disabled={submitting}
-                    className="press-tactile inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-[#FF3B1F] px-6 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="press-tactile inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-6 text-[14px] font-semibold whitespace-nowrap text-[#07090D] hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <span>
                       {submitting

@@ -66,7 +66,6 @@ export function CommandPalette({
     };
   }, [query, open]);
 
-  // Intentional zero open/close animation for keyboard-initiated command palette (Raycast rule)
   if (!open) return null;
 
   const executeSelection = (item: GlobalSearchResult | undefined) => {
@@ -82,7 +81,9 @@ export function CommandPalette({
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setSelectedIndex((prev) => (results.length ? (prev + 1) % results.length : 0));
+      setSelectedIndex((prev) =>
+        results.length ? (prev + 1) % results.length : 0
+      );
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setSelectedIndex((prev) =>
@@ -99,16 +100,18 @@ export function CommandPalette({
       role="dialog"
       aria-modal="true"
       aria-label="Global Command Palette"
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/65 px-4 pt-[12vh] backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 px-4 pt-[12vh] backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="glass-chrome w-full max-w-2xl overflow-hidden rounded-2xl text-[#F4F3EF]"
+        className="glass-bar w-full max-w-2xl overflow-hidden rounded-2xl text-[var(--ink-primary)] shadow-[0_24px_80px_rgba(0,0,0,0.65)]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Search Input Header */}
-        <div className="flex items-center gap-3 border-b border-white/[0.08] px-5 py-4">
-          <Search className="h-4 w-4 shrink-0 text-[#FF3B1F]" strokeWidth={1.7} />
+        <div className="flex items-center gap-3 border-b border-[var(--hairline)] px-5 py-4">
+          <Search
+            className="h-4 w-4 shrink-0 text-[var(--accent)]"
+            strokeWidth={1.8}
+          />
           <input
             ref={inputRef}
             id="cmd-palette-input"
@@ -118,35 +121,37 @@ export function CommandPalette({
             onKeyDown={handleInputKeyDown}
             placeholder="Search divisions, Labs drops, hackathons, dispatches, or actions..."
             aria-label="Search G-Gravitator"
-            className="w-full bg-transparent text-[15px] text-[#F4F3EF] placeholder:text-[#8B8B94] focus:outline-none"
+            className="w-full bg-transparent text-[16px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] focus:outline-none"
           />
           {loading && (
-            <span className="shrink-0 text-xs text-[#8B8B94]">Searching...</span>
+            <span className="shrink-0 text-[13px] text-[var(--ink-muted)]">
+              Searching...
+            </span>
           )}
           <button
             type="button"
             onClick={onClose}
             id="cmd-palette-close"
             aria-label="Close command palette"
-            className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-white/[0.1] bg-white/[0.05] px-2 py-1 font-mono-telemetry text-[11px] text-[#A1A1AA] transition-colors hover:bg-white/[0.1] hover:text-[#F4F3EF] active:scale-[0.97]"
+            className="press-tactile inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-full border border-[var(--hairline-strong)] bg-white/[0.04] px-2.5 py-1 text-[13px] text-[var(--ink-muted)] hover:bg-white/[0.08] hover:text-[var(--ink-primary)]"
           >
             <span>Esc</span>
-            <X className="h-3 w-3" strokeWidth={1.6} />
+            <X className="h-3.5 w-3.5" strokeWidth={1.7} />
           </button>
         </div>
 
-        {/* Results List */}
-        <div className="max-h-[380px] space-y-0.5 overflow-y-auto p-2.5">
+        <div className="max-h-[400px] divide-y divide-[var(--hairline)] overflow-y-auto px-2 py-1">
           {results.length === 0 ? (
             <div className="px-6 py-12 text-center">
-              <p className="text-sm text-[#A1A1AA]">
+              <p className="text-[16px] text-[var(--ink-muted)]">
                 {loading
                   ? "Loading index..."
                   : `No matches found for \u201C${query}\u201D.`}
               </p>
               {!loading && (
-                <p className="mt-1 text-xs text-[#8B8B94]">
-                  Try searching for Systems, Labs, Skunkworks, Hackathons, or Orbit.
+                <p className="mt-1.5 text-[14px] text-[var(--ink-muted)]">
+                  Try searching for Systems, Labs, Skunkworks, Hackathons, or
+                  Orbit.
                 </p>
               )}
             </div>
@@ -159,42 +164,44 @@ export function CommandPalette({
                   type="button"
                   onMouseEnter={() => setSelectedIndex(idx)}
                   onClick={() => executeSelection(item)}
-                  className={`flex w-full cursor-pointer items-center justify-between gap-4 rounded-xl px-3.5 py-3 text-left transition-colors duration-100 ${
-                    active ? "bg-white/[0.09]" : "bg-transparent hover:bg-white/[0.04]"
+                  className={`flex w-full cursor-pointer items-center justify-between gap-4 rounded-xl px-4 py-3.5 text-left transition-colors duration-100 ${
+                    active ? "bg-white/[0.08]" : "bg-transparent hover:bg-white/[0.04]"
                   }`}
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-baseline gap-2.5">
                       {item.code && (
                         <span
-                          className={`font-mono-telemetry rounded-md px-2 py-0.5 text-[11px] font-medium ${
+                          className={`font-tabular shrink-0 text-[13px] font-semibold ${
                             active
-                              ? "bg-[#FF3B1F] font-semibold text-[#08080A]"
-                              : "bg-white/[0.07] text-[#D4D4D8]"
+                              ? "text-[var(--accent)]"
+                              : "text-[var(--ink-muted)]"
                           }`}
                         >
                           {item.code}
                         </span>
                       )}
-                      <span className="truncate text-sm font-medium text-[#F4F3EF]">
+                      <span className="truncate text-[15px] font-medium text-[var(--ink-primary)]">
                         {item.title}
                       </span>
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-[#A1A1AA]">
+                    <p className="mt-0.5 truncate text-[14px] text-[var(--ink-muted)]">
                       {item.subtitle}
                     </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2.5">
+                  <div className="flex shrink-0 items-center gap-3">
                     {item.badge && (
-                      <span className="rounded-full bg-white/[0.06] px-2.5 py-0.5 text-[11px] text-[#A1A1AA]">
+                      <span className="text-[13px] text-[var(--ink-muted)]">
                         {item.badge}
                       </span>
                     )}
                     <ArrowUpRight
-                      className={`h-4 w-4 transition-colors ${
-                        active ? "text-[#FF3B1F]" : "text-[#8B8B94]"
+                      className={`h-4 w-4 transition-colors duration-150 ${
+                        active
+                          ? "text-[var(--accent)]"
+                          : "text-[var(--ink-muted)]"
                       }`}
-                      strokeWidth={1.6}
+                      strokeWidth={1.7}
                     />
                   </div>
                 </button>
@@ -203,23 +210,20 @@ export function CommandPalette({
           )}
         </div>
 
-        {/* Keyboard Footer Hints */}
-        <div className="flex items-center justify-between border-t border-white/[0.07] bg-white/[0.02] px-5 py-2.5 text-xs text-[#8B8B94]">
+        <div className="flex items-center justify-between border-t border-[var(--hairline)] px-5 py-3 text-[13px] text-[var(--ink-muted)]">
           <div className="flex items-center gap-4">
             <span className="inline-flex items-center gap-1.5">
-              <kbd className="font-mono-telemetry rounded-md border border-white/[0.1] bg-white/[0.05] px-1.5 py-0.5 text-[10px] text-[#D4D4D8]">
+              <span className="font-tabular font-medium text-[var(--ink-primary)]">
                 ↑↓
-              </kbd>
+              </span>
               <span>Navigate</span>
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <kbd className="font-mono-telemetry inline-flex items-center rounded-md border border-white/[0.1] bg-white/[0.05] px-1.5 py-0.5 text-[10px] text-[#D4D4D8]">
-                <CornerDownLeft className="h-2.5 w-2.5" />
-              </kbd>
+              <CornerDownLeft className="h-3.5 w-3.5 text-[var(--ink-primary)]" />
               <span>Open</span>
             </span>
           </div>
-          <span className="text-[#8B8B94]">G-Gravitator Index</span>
+          <span>G-Gravitator index</span>
         </div>
       </div>
     </div>

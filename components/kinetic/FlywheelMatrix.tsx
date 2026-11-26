@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { PreloadLink } from "@/components/layout/PreloadLink";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { EASE_OUT_EXPO, SPRING_UI } from "@/lib/motion";
 
 type UnitId = "systems" | "labs" | "skunkworks" | "orbit";
@@ -26,9 +26,9 @@ const FLYWHEEL_UNITS: UnitNode[] = [
   {
     id: "systems",
     shortLabel: "Systems",
-    role: "Enterprise AI Foundry",
+    role: "Enterprise AI foundry",
     displayName: "G-Gravitator Systems",
-    audience: "Enterprise & B2B teams",
+    audience: "Enterprise and B2B teams",
     purpose:
       "Bespoke AI engineering, 5-day Gravity Audits, 4-week Velocity MVPs, custom workflow automation, and fractional R&D retainers.",
     href: "/systems",
@@ -40,11 +40,11 @@ const FLYWHEEL_UNITS: UnitNode[] = [
   {
     id: "labs",
     shortLabel: "Labs",
-    role: "Proprietary Product Drops",
+    role: "Proprietary software drops",
     displayName: "G-Gravitator Labs",
-    audience: "Builders & prosumers",
+    audience: "Builders and operators",
     purpose:
-      "Ships proprietary commercial software and AI tools as numbered drops including G-01 Gravity Deck, G-02 OpsPilot, G-03 Kinetic Studio, and G-04 OrbitBench.",
+      "Ships proprietary commercial software and AI tools as numbered drops including Gravity Deck, OpsPilot, Kinetic Studio, and OrbitBench.",
     href: "/labs",
     ctaLabel: "Explore Labs",
     flywheelFlow:
@@ -54,14 +54,14 @@ const FLYWHEEL_UNITS: UnitNode[] = [
   {
     id: "skunkworks",
     shortLabel: "Skunkworks",
-    role: "48-Hour Experimental R&D",
+    role: "48-hour experimental R&D",
     displayName: "OXAKALABS Skunkworks",
-    audience: "Hackathon squads & open-source devs",
+    audience: "Hackathon squads and engineers",
     purpose:
-      "Our fast-moving experimental R&D foundry and hackathon strike arm. Runs 48-hour builds, operates the Live Hackathon Radar, and graduates prototypes into Labs.",
+      "Our fast-moving experimental R&D foundry and hackathon strike arm. Runs 48-hour builds, operates the Hackathon Radar, and graduates prototypes into Labs.",
     href: "/skunkworks",
     ctaLabel: "Explore Skunkworks",
-    secondaryHref: { label: "Live Hackathon Radar", href: "/hackathons" },
+    secondaryHref: { label: "Open Hackathon Radar", href: "/hackathons" },
     flywheelFlow:
       "Stress-tests frontier models under 48-hour competition pressure. Top builds graduate into Labs or become Systems capability proofs.",
     connectedTo: ["labs", "systems"],
@@ -69,11 +69,11 @@ const FLYWHEEL_UNITS: UnitNode[] = [
   {
     id: "orbit",
     shortLabel: "Orbit",
-    role: "Builder Accelerator",
+    role: "Builder residency",
     displayName: "G-Gravitator Orbit",
-    audience: "Engineers, designers & technical students",
+    audience: "Engineers and design technologists",
     purpose:
-      "Selective 6-week Gravity Cycles, technical residencies, and Demo Days across AI Engineering, Full-Stack Systems, and Kinetic Design.",
+      "Selective 6-week Gravity Cycles, technical residencies, and Demo Days across Applied AI Engineering, Full-Stack Systems, and Kinetic Design.",
     href: "/orbit",
     ctaLabel: "Explore Orbit",
     flywheelFlow:
@@ -95,12 +95,12 @@ export function FlywheelMatrix() {
   const activeUnit = UNIT_BY_ID[activeId];
 
   return (
-    <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-12 lg:gap-8">
-      {/* Left: Open 4-Unit Architectural Selector */}
+    <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-12 lg:gap-14">
+      {/* Left: Hairline Architectural Tablist */}
       <div
         role="tablist"
         aria-label="G-Gravitator Operating Divisions"
-        className="flex flex-col gap-2 lg:col-span-5"
+        className="divide-y divide-[var(--hairline-stone)] border-y border-[var(--hairline-stone)] lg:col-span-5"
       >
         {FLYWHEEL_UNITS.map((unit) => {
           const isActive = activeId === unit.id;
@@ -115,111 +115,83 @@ export function FlywheelMatrix() {
               aria-selected={isActive}
               aria-controls="flywheel-stage-panel"
               onClick={() => setActiveId(unit.id)}
-              className={`group relative flex w-full cursor-pointer items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left transition-colors duration-150 active:scale-[0.99] sm:px-6 sm:py-5 ${
-                isActive ? "text-[#F4F3EF]" : "text-[#A1A1AA] hover:text-[#F4F3EF]"
+              className={`group relative flex w-full cursor-pointer items-baseline justify-between gap-4 py-5 pl-5 text-left transition-colors duration-150 ${
+                isActive
+                  ? "text-[var(--ink-stone-primary)]"
+                  : "text-[var(--ink-stone-muted)] hover:text-[var(--ink-stone-primary)]"
               }`}
             >
               {isActive && (
                 <motion.span
-                  layoutId="flywheel-active-unit"
+                  layoutId="flywheel-active-bar"
                   transition={SPRING_UI}
-                  className="absolute inset-0 -z-10 rounded-2xl border border-white/[0.12] bg-[#141418]"
-                />
-              )}
-
-              {!isActive && (
-                <span
-                  aria-hidden="true"
-                  className="absolute inset-0 -z-10 rounded-2xl border border-transparent bg-transparent transition-colors duration-150 group-hover:border-white/[0.06] group-hover:bg-white/[0.02]"
+                  className="absolute top-3 bottom-3 left-0 w-[3px] rounded-full bg-[var(--accent)]"
                 />
               )}
 
               <div className="min-w-0">
-                <div className="flex items-center gap-2.5">
-                  <span
-                    className={`h-2 w-2 shrink-0 rounded-full transition-colors ${
-                      isActive
-                        ? "bg-[#FF3B1F]"
-                        : isCoupled
-                        ? "bg-[#F4F3EF]/60"
-                        : "bg-white/[0.16]"
-                    }`}
-                  />
-                  <span className="font-display text-lg font-bold tracking-[-0.025em] text-current sm:text-xl">
-                    {unit.displayName}
-                  </span>
-                </div>
-                <p className="mt-1 pl-[18px] text-sm text-[#8B8B94] group-hover:text-[#A1A1AA]">
+                <span className="font-display block text-[16px] font-semibold tracking-[-0.02em] text-current">
+                  {unit.displayName}
+                </span>
+                <span className="mt-1 block text-[14px] text-[var(--ink-stone-muted)]">
                   {unit.role}
-                </p>
+                </span>
               </div>
 
-              <div className="shrink-0">
-                {isActive ? (
-                  <span className="rounded-full bg-[#FF3B1F]/15 px-2.5 py-1 text-xs font-medium text-[#FF6B57]">
-                    Active
-                  </span>
-                ) : isCoupled ? (
-                  <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-2.5 py-1 text-xs font-medium text-[#D4D4D8]">
-                    Coupled
-                  </span>
-                ) : null}
-              </div>
+              <span
+                className={`shrink-0 text-[14px] font-medium transition-colors duration-150 ${
+                  isActive
+                    ? "text-[var(--accent-on-stone)]"
+                    : isCoupled
+                    ? "text-[var(--ink-stone-primary)]"
+                    : "text-transparent"
+                }`}
+              >
+                {isActive ? "Selected" : isCoupled ? "Coupled" : ""}
+              </span>
             </button>
           );
         })}
       </div>
 
-      {/* Right: Sculptural Detail Stage */}
+      {/* Right: Clean Architectural Detail Stage */}
       <div
         id="flywheel-stage-panel"
         role="tabpanel"
         aria-labelledby={`flywheel-tab-${activeUnit.id}`}
-        className="surface-card relative flex flex-col justify-between overflow-hidden rounded-2xl p-7 sm:p-10 lg:col-span-7 lg:p-11"
+        className="rounded-2xl border border-[var(--hairline-stone)] bg-white p-7 sm:p-10 lg:col-span-7 lg:p-12"
       >
-        {/* Soft ambient depth highlight */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-28 -right-24 h-72 w-72 rounded-full bg-[#FF3B1F]/[0.07] blur-3xl"
-        />
-
         <AnimatePresence mode="wait">
           <motion.div
             key={activeUnit.id}
             initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
             animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
             exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
-            transition={{ duration: 0.22, ease: EASE_OUT_EXPO }}
-            className="relative z-10 flex h-full flex-col justify-between"
+            transition={{ duration: 0.2, ease: EASE_OUT_EXPO }}
+            className="flex flex-col justify-between"
           >
             <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-white/[0.07] px-3 py-1 text-xs font-medium text-[#D4D4D8]">
-                  {activeUnit.audience}
-                </span>
-                <span className="rounded-full border border-white/[0.08] px-3 py-1 text-xs text-[#A1A1AA]">
-                  {activeUnit.role}
-                </span>
-              </div>
+              <p className="text-[14px] font-medium text-[var(--ink-stone-muted)]">
+                {activeUnit.audience} · {activeUnit.role}
+              </p>
 
-              <h3 className="font-display mt-6 text-3xl font-bold tracking-[-0.03em] text-[#F4F3EF] sm:text-4xl">
+              <h3 className="type-heading mt-3 text-[var(--ink-stone-primary)]">
                 {activeUnit.displayName}
               </h3>
 
-              <p className="mt-4 max-w-[54ch] text-base leading-relaxed text-[#A1A1AA]">
+              <p className="mt-5 max-w-[56ch] text-[16px] leading-[1.65] text-[#2D3440]">
                 {activeUnit.purpose}
               </p>
 
-              {/* Flywheel Contribution & Interactive Coupling Pills */}
-              <div className="mt-8 border-t border-white/[0.07] pt-6">
-                <p className="text-xs font-medium text-[#8B8B94]">
+              <div className="mt-8 border-t border-[var(--hairline-stone)] pt-6">
+                <p className="text-[14px] font-semibold text-[var(--ink-stone-primary)]">
                   How it powers the flywheel
                 </p>
-                <p className="mt-2 max-w-[54ch] text-sm leading-relaxed text-[#D4D4D8]">
+                <p className="mt-2 max-w-[56ch] text-[16px] leading-[1.65] text-[var(--ink-stone-muted)]">
                   {activeUnit.flywheelFlow}
                 </p>
 
-                <div className="mt-4 flex flex-wrap items-center gap-2">
+                <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2">
                   {activeUnit.connectedTo.map((targetId) => {
                     const target = UNIT_BY_ID[targetId];
                     return (
@@ -227,10 +199,10 @@ export function FlywheelMatrix() {
                         key={targetId}
                         type="button"
                         onClick={() => setActiveId(targetId)}
-                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.1] bg-white/[0.04] px-3.5 py-1.5 text-xs font-medium text-[#F4F3EF] transition-[background-color,border-color,transform] duration-150 hover:border-[#FF3B1F]/50 hover:bg-[#FF3B1F]/10 active:scale-[0.97]"
+                        className="inline-flex cursor-pointer items-center gap-1.5 text-[14px] font-medium text-[var(--accent-on-stone)] underline decoration-[var(--accent-on-stone)]/35 underline-offset-4 transition-colors duration-150 hover:text-[var(--ink-stone-primary)] hover:decoration-[var(--ink-stone-primary)]"
                       >
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#FF3B1F]" />
-                        <span>Feeds into {target.shortLabel}</span>
+                        <span>Trace into {target.shortLabel}</span>
+                        <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.9} />
                       </button>
                     );
                   })}
@@ -238,11 +210,10 @@ export function FlywheelMatrix() {
               </div>
             </div>
 
-            {/* Direct Division CTAs */}
-            <div className="mt-9 flex flex-wrap items-center gap-3">
+            <div className="mt-9 flex flex-wrap items-center gap-5">
               <PreloadLink
                 href={activeUnit.href}
-                className="inline-flex h-11 items-center gap-2 rounded-full bg-[#FF3B1F] px-5 text-sm font-semibold whitespace-nowrap text-[#08080A] transition-[background-color,transform] duration-150 hover:bg-[#FF5238] active:scale-[0.97]"
+                className="press-tactile inline-flex h-11 items-center gap-2 rounded-full bg-[var(--ink-stone-primary)] px-6 text-[14px] font-semibold whitespace-nowrap text-[#F2F4F8] hover:bg-[var(--accent)] hover:text-[#07090D]"
               >
                 <span>{activeUnit.ctaLabel}</span>
                 <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
@@ -251,10 +222,10 @@ export function FlywheelMatrix() {
               {activeUnit.secondaryHref && (
                 <PreloadLink
                   href={activeUnit.secondaryHref.href}
-                  className="inline-flex h-11 items-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.04] px-5 text-sm font-medium whitespace-nowrap text-[#F4F3EF] transition-[background-color,border-color,transform] duration-150 hover:border-white/[0.22] hover:bg-white/[0.09] active:scale-[0.97]"
+                  className="inline-flex items-center gap-1.5 text-[14px] font-medium text-[var(--ink-stone-primary)] underline decoration-[var(--ink-stone-primary)]/30 underline-offset-4 transition-colors duration-150 hover:text-[var(--accent-on-stone)] hover:decoration-[var(--accent-on-stone)]"
                 >
                   <span>{activeUnit.secondaryHref.label}</span>
-                  <ArrowUpRight className="h-4 w-4 text-[#A1A1AA]" strokeWidth={1.8} />
+                  <ArrowUpRight className="h-4 w-4" strokeWidth={1.8} />
                 </PreloadLink>
               )}
             </div>

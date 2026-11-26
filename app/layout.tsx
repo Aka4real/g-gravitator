@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { ArchitecturalShell } from "@/components/layout/ArchitecturalShell";
@@ -11,27 +11,22 @@ import {
 } from "@/lib/seo/site";
 import { getSiteOrigin } from "@/lib/seo/server";
 
-const bricolageGrotesque = Bricolage_Grotesque({
+const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
+  weight: ["500", "600", "700"],
   display: "swap",
 });
 
-const geist = Geist({
+const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
-  display: "swap",
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
 export const viewport: Viewport = {
-  themeColor: BRAND.obsidian,
+  themeColor: "#07090D",
   colorScheme: "dark",
 };
 
@@ -104,9 +99,9 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${bricolageGrotesque.variable} ${geist.variable} ${geistMono.variable} dark`}
+      className={`${spaceGrotesk.variable} ${inter.variable} dark`}
     >
-      <body className="min-h-screen bg-[#08080A] text-[#F4F3EF] antialiased">
+      <body className="min-h-screen bg-[var(--bg-canvas)] text-[var(--ink-primary)] antialiased">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

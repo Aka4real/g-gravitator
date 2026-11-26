@@ -7,7 +7,9 @@ import { StretchedWordmark } from "@/components/layout/StretchedWordmark";
 
 export function Footer() {
   const [email, setEmail] = useState("");
-  const [subStatus, setSubStatus] = useState<"IDLE" | "LOADING" | "DONE" | "ERROR">("IDLE");
+  const [subStatus, setSubStatus] = useState<
+    "IDLE" | "LOADING" | "DONE" | "ERROR"
+  >("IDLE");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubscribe = async (e: React.FormEvent) => {
@@ -28,7 +30,8 @@ export function Footer() {
         const data = await res.json().catch(() => null);
         setSubStatus("ERROR");
         setErrorMessage(
-          data?.error || "Could not complete your subscription. Please check your email and try again."
+          data?.error ||
+            "Could not complete your subscription. Please check your email and try again."
         );
       }
     } catch {
@@ -38,29 +41,29 @@ export function Footer() {
   };
 
   return (
-    <footer className="border-t border-white/[0.07] bg-[#08080A] text-[#F4F3EF]">
-      <div className="mx-auto max-w-[1360px] px-6 pt-20 pb-12 sm:px-10 lg:px-12">
+    <footer className="border-t border-[var(--hairline)] bg-[var(--bg-canvas)] text-[var(--ink-primary)]">
+      <div className="mx-auto max-w-[1360px] px-5 pt-20 pb-12 sm:px-8 lg:px-12">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-10">
-          {/* Brand Statement */}
+          {/* Brand */}
           <div className="lg:col-span-4">
             <StretchedWordmark compact />
-            <p className="mt-5 max-w-[34ch] text-sm leading-relaxed text-[#A1A1AA]">
-              Software and AI creativity lab where raw ideas gain enough engineering
-              weight to pull markets toward them.
+            <p className="mt-5 max-w-[36ch] text-[14px] leading-relaxed text-[var(--ink-muted)]">
+              Software and AI creativity lab where raw ideas gain enough
+              engineering weight to pull markets toward them.
             </p>
           </div>
 
-          {/* Open Link Columns */}
+          {/* Directory Columns */}
           <div className="grid grid-cols-2 gap-8 lg:col-span-4">
             <div>
-              <h3 className="text-xs font-semibold tracking-wide text-[#F4F3EF]">
+              <h3 className="text-[14px] font-semibold text-[var(--ink-primary)]">
                 Divisions
               </h3>
-              <ul className="mt-4 space-y-3 text-sm">
+              <ul className="mt-4 space-y-3 text-[14px]">
                 <li>
                   <PreloadLink
                     href="/systems"
-                    className="text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
+                    className="text-[var(--ink-muted)] transition-colors duration-150 hover:text-[var(--ink-primary)]"
                   >
                     Systems
                   </PreloadLink>
@@ -68,7 +71,7 @@ export function Footer() {
                 <li>
                   <PreloadLink
                     href="/labs"
-                    className="text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
+                    className="text-[var(--ink-muted)] transition-colors duration-150 hover:text-[var(--ink-primary)]"
                   >
                     Labs
                   </PreloadLink>
@@ -76,7 +79,7 @@ export function Footer() {
                 <li>
                   <PreloadLink
                     href="/skunkworks"
-                    className="text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
+                    className="text-[var(--ink-muted)] transition-colors duration-150 hover:text-[var(--ink-primary)]"
                   >
                     Skunkworks
                   </PreloadLink>
@@ -84,7 +87,7 @@ export function Footer() {
                 <li>
                   <PreloadLink
                     href="/orbit"
-                    className="text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
+                    className="text-[var(--ink-muted)] transition-colors duration-150 hover:text-[var(--ink-primary)]"
                   >
                     Orbit
                   </PreloadLink>
@@ -93,28 +96,24 @@ export function Footer() {
             </div>
 
             <div>
-              <h3 className="text-xs font-semibold tracking-wide text-[#F4F3EF]">
+              <h3 className="text-[14px] font-semibold text-[var(--ink-primary)]">
                 Intelligence
               </h3>
-              <ul className="mt-4 space-y-3 text-sm">
+              <ul className="mt-4 space-y-3 text-[14px]">
                 <li>
                   <PreloadLink
                     href="/hackathons"
-                    className="inline-flex items-center gap-2 text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
+                    className="text-[var(--ink-muted)] transition-colors duration-150 hover:text-[var(--ink-primary)]"
                   >
-                    <span>Hackathon Radar</span>
-                    <span
-                      aria-label="Live"
-                      className="h-1.5 w-1.5 rounded-full bg-[#10B981]"
-                    />
+                    Hackathon Radar
                   </PreloadLink>
                 </li>
                 <li>
                   <PreloadLink
                     href="/journal"
-                    className="text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
+                    className="text-[var(--ink-muted)] transition-colors duration-150 hover:text-[var(--ink-primary)]"
                   >
-                    Journal &amp; Wire
+                    Journal and Wire
                   </PreloadLink>
                 </li>
                 <li>
@@ -122,30 +121,30 @@ export function Footer() {
                     href="https://github.com/Aka4real"
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
+                    className="inline-flex items-center gap-1 text-[var(--ink-muted)] transition-colors duration-150 hover:text-[var(--ink-primary)]"
                   >
                     <span>GitHub</span>
-                    <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.6} />
+                    <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.7} />
                   </a>
                 </li>
               </ul>
             </div>
           </div>
 
-          {/* Weekly Orbital Brief Capture */}
+          {/* Weekly Orbital Brief */}
           <div className="lg:col-span-4">
-            <h3 className="text-sm font-semibold text-[#F4F3EF]">
+            <h3 className="text-[14px] font-semibold text-[var(--ink-primary)]">
               Weekly Orbital Brief
             </h3>
-            <p className="mt-2 max-w-[38ch] text-sm leading-relaxed text-[#A1A1AA]">
-              One sharp weekly digest covering AI breakthroughs, winning hackathon
-              builds, and lab dispatches.
+            <p className="mt-2 max-w-[38ch] text-[14px] leading-relaxed text-[var(--ink-muted)]">
+              One weekly digest covering AI breakthroughs, winning hackathon
+              builds, and engineering dispatches.
             </p>
 
             {subStatus === "DONE" ? (
               <div
                 role="status"
-                className="mt-5 flex items-center gap-2.5 rounded-xl border border-[#10B981]/30 bg-[#10B981]/10 px-4 py-3 text-sm text-[#34D399]"
+                className="mt-5 flex items-center gap-2.5 rounded-xl border border-[#10B981]/30 bg-[#10B981]/10 px-4 py-3 text-[14px] text-[#34D399]"
               >
                 <CheckCircle2 className="h-4 w-4 shrink-0" strokeWidth={1.8} />
                 <span>You are subscribed to the Weekly Orbital Brief.</span>
@@ -154,7 +153,7 @@ export function Footer() {
               <form onSubmit={handleSubscribe} className="mt-5" noValidate>
                 <label
                   htmlFor="footer-newsletter-email"
-                  className="block text-xs font-medium text-[#D4D4D8]"
+                  className="block text-[14px] font-medium text-[var(--ink-primary)]"
                 >
                   Email address
                 </label>
@@ -173,19 +172,19 @@ export function Footer() {
                       }
                     }}
                     placeholder="engineer@company.com"
-                    className="h-11 flex-1 rounded-xl border border-white/[0.12] bg-[#111114] px-4 text-sm text-[#F4F3EF] placeholder:text-[#8B8B94] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/30 focus:outline-none"
+                    className="h-11 flex-1 rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-surface)] px-4 text-[14px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
                   />
                   <button
                     type="submit"
                     disabled={subStatus === "LOADING"}
                     id="footer-newsletter-submit"
-                    className="inline-flex h-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#FF3B1F] px-5 text-sm font-semibold whitespace-nowrap text-[#08080A] transition-[background-color,transform] duration-150 hover:bg-[#FF5238] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="press-tactile inline-flex h-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[var(--accent)] px-5 text-[14px] font-semibold whitespace-nowrap text-[#07090D] hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {subStatus === "LOADING" ? "Subscribing..." : "Subscribe"}
                   </button>
                 </div>
                 {subStatus === "ERROR" && errorMessage && (
-                  <p role="alert" className="mt-2 text-xs text-[#FF8A7A]">
+                  <p role="alert" className="mt-2 text-[14px] text-[#FF8A7A]">
                     {errorMessage}
                   </p>
                 )}
@@ -194,12 +193,12 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Clean Bottom Legal Line */}
-        <div className="mt-16 flex flex-col items-start justify-between gap-3 border-t border-white/[0.07] pt-8 text-xs text-[#8B8B94] sm:flex-row sm:items-center">
+        <div className="mt-16 flex flex-col items-start justify-between gap-3 border-t border-[var(--hairline)] pt-8 text-[14px] text-[var(--ink-muted)] sm:flex-row sm:items-center">
           <p>
-            &copy; {new Date().getFullYear()} G-Gravitator Labs Ltd. Operating OXAKALABS.
+            &copy; {new Date().getFullYear()} G-Gravitator Labs Ltd. Operating
+            OXAKALABS.
           </p>
-          <p className="text-[#A1A1AA]">Build with weight.</p>
+          <p className="text-[var(--ink-primary)]">Build with weight.</p>
         </div>
       </div>
     </footer>

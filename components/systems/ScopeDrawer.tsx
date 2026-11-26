@@ -132,12 +132,16 @@ export function ScopeDrawer({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Please verify all required fields and try again.");
+        setError(
+          data.error || "Please verify all required fields and try again."
+        );
       } else {
         setReceiptId(data.inquiry?.id || "INQ-VERIFIED");
       }
     } catch {
-      setError("Network error while sending your project brief. Please try again.");
+      setError(
+        "Network error while sending your project brief. Please try again."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -152,23 +156,23 @@ export function ScopeDrawer({
           aria-labelledby="scope-drawer-title"
           className="fixed inset-0 z-50 flex justify-end sm:p-3"
         >
-          {/* Dimming Backdrop Scrim */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/65 backdrop-blur-xs"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm"
             aria-hidden="true"
           />
 
-          {/* Right-Anchored Floating Sheet */}
           <motion.div
             initial={
               prefersReducedMotion ? { opacity: 0 } : { x: "100%", opacity: 0.9 }
             }
-            animate={prefersReducedMotion ? { opacity: 1 } : { x: 0, opacity: 1 }}
+            animate={
+              prefersReducedMotion ? { opacity: 1 } : { x: 0, opacity: 1 }
+            }
             exit={
               prefersReducedMotion ? { opacity: 0 } : { x: "100%", opacity: 0.9 }
             }
@@ -176,19 +180,19 @@ export function ScopeDrawer({
               prefersReducedMotion ? { duration: 0.16 } : SPRING_SHEET
             }
             onClick={(e) => e.stopPropagation()}
-            className="glass-chrome relative z-10 flex h-full w-full max-w-xl flex-col overflow-hidden text-[#F4F3EF] sm:rounded-2xl"
+            className="glass-bar relative z-10 flex h-full w-full max-w-xl flex-col overflow-hidden text-[var(--ink-primary)] shadow-[0_24px_80px_rgba(0,0,0,0.7)] sm:rounded-2xl"
           >
-            {/* Header */}
-            <div className="flex items-start justify-between gap-4 border-b border-white/[0.08] px-6 py-5 sm:px-7">
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--hairline)] px-6 py-5 sm:px-7">
               <div>
                 <h2
                   id="scope-drawer-title"
-                  className="font-display text-xl font-bold tracking-[-0.03em] text-[#F4F3EF] sm:text-2xl"
+                  className="font-display text-[22px] font-semibold tracking-[-0.03em] text-[var(--ink-primary)]"
                 >
                   Initiate a build
                 </h2>
-                <p className="mt-1 text-sm text-[#A1A1AA]">
-                  Scope an enterprise system, technical audit, or custom lab engagement.
+                <p className="mt-1 text-[14px] text-[var(--ink-muted)]">
+                  Scope an enterprise system, technical audit, or custom lab
+                  engagement.
                 </p>
               </div>
               <button
@@ -196,30 +200,30 @@ export function ScopeDrawer({
                 id="scope-drawer-close"
                 onClick={onClose}
                 aria-label="Close build scope drawer"
-                className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.05] text-[#A1A1AA] transition-[background-color,color,transform] duration-150 hover:bg-white/[0.12] hover:text-[#F4F3EF] active:scale-[0.95]"
+                className="press-tactile inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[var(--hairline-strong)] bg-white/[0.04] text-[var(--ink-muted)] hover:bg-white/[0.1] hover:text-[var(--ink-primary)]"
               >
-                <X className="h-4 w-4" strokeWidth={1.6} />
+                <X className="h-4 w-4" strokeWidth={1.7} />
               </button>
             </div>
 
-            {/* Body */}
             <div className="flex-1 overflow-y-auto px-6 py-6 sm:px-7">
               {receiptId ? (
-                <div className="rounded-2xl border border-[#10B981]/30 bg-[#10B981]/[0.07] p-6">
-                  <div className="flex items-center gap-2 text-[#34D399]">
-                    <CheckCircle2 className="h-5 w-5 shrink-0" strokeWidth={1.7} />
-                    <span className="font-mono-telemetry text-xs font-semibold">
+                <div className="space-y-4 border-l-2 border-[#10B981] pl-5">
+                  <div className="flex items-center gap-2 text-[14px] font-medium text-[#34D399]">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" strokeWidth={1.8} />
+                    <span className="font-tabular">
                       Reference: {receiptId.toUpperCase()}
                     </span>
                   </div>
-                  <h3 className="font-display mt-3 text-xl font-bold text-[#F4F3EF]">
+                  <h3 className="font-display text-[22px] font-semibold text-[var(--ink-primary)]">
                     Scope brief received
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-[#A1A1AA]">
-                    Our principal architect reviews every specification directly. Expect a
-                    structured technical response and scheduling link within 12 hours.
+                  <p className="text-[16px] leading-relaxed text-[var(--ink-muted)]">
+                    Our principal architect reviews every specification
+                    directly. Expect a structured technical response and
+                    scheduling link within 12 hours.
                   </p>
-                  <div className="mt-6 border-t border-white/[0.08] pt-5">
+                  <div className="pt-3">
                     <button
                       type="button"
                       onClick={() => {
@@ -227,7 +231,7 @@ export function ScopeDrawer({
                         setProjectBrief("");
                         onClose();
                       }}
-                      className="inline-flex cursor-pointer items-center justify-center rounded-full bg-[#FF3B1F] px-5 py-2.5 text-sm font-semibold text-[#08080A] transition-[background-color,transform] duration-150 hover:bg-[#FF5238] active:scale-[0.97]"
+                      className="press-tactile inline-flex h-11 cursor-pointer items-center justify-center rounded-full bg-[var(--accent)] px-6 text-[14px] font-semibold text-[#07090D] hover:bg-[var(--accent-hover)]"
                     >
                       Done
                     </button>
@@ -235,31 +239,31 @@ export function ScopeDrawer({
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-5">
-                  <div className="flex items-start gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 text-xs leading-relaxed text-[#D4D4D8]">
+                  <div className="flex items-start gap-3 border-b border-[var(--hairline)] pb-5 text-[14px] leading-relaxed text-[var(--ink-muted)]">
                     <ShieldCheck
-                      className="mt-0.5 h-4 w-4 shrink-0 text-[#FF3B1F]"
-                      strokeWidth={1.7}
+                      className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]"
+                      strokeWidth={1.8}
                     />
                     <span>
-                      Full foreground IP transfer on milestone completion. Direct principal
-                      engineering with zero junior handoffs.
+                      Full foreground IP transfer on milestone completion.
+                      Direct principal engineering with zero junior handoffs.
                     </span>
                   </div>
 
                   {error && (
                     <div
                       role="alert"
-                      className="rounded-xl border border-[#FF3B1F]/40 bg-[#FF3B1F]/12 px-4 py-3 text-sm text-[#FF8A7A]"
+                      className="rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-4 py-3 text-[14px] text-[#FF8A7A]"
                     >
                       {error}
                     </div>
                   )}
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <label
                         htmlFor="scope-name"
-                        className="block text-xs font-medium text-[#D4D4D8]"
+                        className="block text-[14px] font-medium text-[var(--ink-primary)]"
                       >
                         Your name *
                       </label>
@@ -271,13 +275,13 @@ export function ScopeDrawer({
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Marcus Vance"
-                        className="w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3.5 py-2.5 text-sm text-[#F4F3EF] placeholder:text-[#8B8B94] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/30 focus:outline-none"
+                        className="h-11 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-4 text-[14px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
                       />
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <label
                         htmlFor="scope-email"
-                        className="block text-xs font-medium text-[#D4D4D8]"
+                        className="block text-[14px] font-medium text-[var(--ink-primary)]"
                       >
                         Work email *
                       </label>
@@ -289,16 +293,16 @@ export function ScopeDrawer({
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="founder@company.com"
-                        className="w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3.5 py-2.5 text-sm text-[#F4F3EF] placeholder:text-[#8B8B94] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/30 focus:outline-none"
+                        className="h-11 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-4 text-[14px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <label
                         htmlFor="scope-company"
-                        className="block text-xs font-medium text-[#D4D4D8]"
+                        className="block text-[14px] font-medium text-[var(--ink-primary)]"
                       >
                         Company or organization
                       </label>
@@ -309,13 +313,13 @@ export function ScopeDrawer({
                         value={company}
                         onChange={(e) => setCompany(e.target.value)}
                         placeholder="Acme Systems Ltd"
-                        className="w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3.5 py-2.5 text-sm text-[#F4F3EF] placeholder:text-[#8B8B94] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/30 focus:outline-none"
+                        className="h-11 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-4 text-[14px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
                       />
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <label
                         htmlFor="scope-tier"
-                        className="block text-xs font-medium text-[#D4D4D8]"
+                        className="block text-[14px] font-medium text-[var(--ink-primary)]"
                       >
                         Engagement tier *
                       </label>
@@ -325,21 +329,29 @@ export function ScopeDrawer({
                         onChange={(e) =>
                           handleTierChange(e.target.value as ServiceTierKey)
                         }
-                        className="w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3.5 py-2.5 text-sm text-[#F4F3EF] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/30 focus:outline-none"
+                        className="h-11 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-4 text-[14px] text-[var(--ink-primary)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
                       >
-                        <option value="GRAVITY_AUDIT">Gravity Audit (5 days)</option>
-                        <option value="VELOCITY_MVP">Velocity MVP (3 to 4 weeks)</option>
-                        <option value="LAB_RETAINER">Fractional Lab Retainer</option>
-                        <option value="CUSTOM">Custom Enterprise Architecture</option>
+                        <option value="GRAVITY_AUDIT">
+                          Gravity Audit (5 days)
+                        </option>
+                        <option value="VELOCITY_MVP">
+                          Velocity MVP (3 to 4 weeks)
+                        </option>
+                        <option value="LAB_RETAINER">
+                          Fractional Lab Retainer
+                        </option>
+                        <option value="CUSTOM">
+                          Custom Enterprise Architecture
+                        </option>
                       </select>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <label
                         htmlFor="scope-budget"
-                        className="block text-xs font-medium text-[#D4D4D8]"
+                        className="block text-[14px] font-medium text-[var(--ink-primary)]"
                       >
                         Budget range (USD / NGN)
                       </label>
@@ -349,13 +361,13 @@ export function ScopeDrawer({
                         value={budgetRange}
                         onChange={(e) => handleBudgetChange(e.target.value)}
                         placeholder="$2,500 to $6,000"
-                        className="w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3.5 py-2.5 text-sm text-[#F4F3EF] placeholder:text-[#8B8B94] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/30 focus:outline-none"
+                        className="font-tabular h-11 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-4 text-[14px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
                       />
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <label
                         htmlFor="scope-timeline"
-                        className="block text-xs font-medium text-[#D4D4D8]"
+                        className="block text-[14px] font-medium text-[var(--ink-primary)]"
                       >
                         Target timeline
                       </label>
@@ -365,15 +377,15 @@ export function ScopeDrawer({
                         value={timeline}
                         onChange={(e) => handleTimelineChange(e.target.value)}
                         placeholder="3 to 4 weeks"
-                        className="w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-3.5 py-2.5 text-sm text-[#F4F3EF] placeholder:text-[#8B8B94] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/30 focus:outline-none"
+                        className="h-11 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-4 text-[14px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <label
                       htmlFor="scope-brief"
-                      className="block text-xs font-medium text-[#D4D4D8]"
+                      className="block text-[14px] font-medium text-[var(--ink-primary)]"
                     >
                       Project brief *
                     </label>
@@ -384,7 +396,7 @@ export function ScopeDrawer({
                       value={projectBrief}
                       onChange={(e) => setProjectBrief(e.target.value)}
                       placeholder="Describe the workflow bottleneck, AI agent architecture, or product MVP you need engineered..."
-                      className="w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] p-3.5 text-sm text-[#F4F3EF] placeholder:text-[#8B8B94] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/30 focus:outline-none"
+                      className="w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] p-4 text-[14px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
                     />
                   </div>
 
@@ -392,10 +404,12 @@ export function ScopeDrawer({
                     type="submit"
                     disabled={submitting}
                     id="scope-drawer-submit"
-                    className="inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-[#FF3B1F] px-6 text-sm font-semibold text-[#08080A] transition-[background-color,transform] duration-150 hover:bg-[#FF5238] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="press-tactile inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-6 text-[14px] font-semibold text-[#07090D] hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <span>
-                      {submitting ? "Sending brief..." : "Send scope specification"}
+                      {submitting
+                        ? "Sending brief..."
+                        : "Send scope specification"}
                     </span>
                     <ArrowRight className="h-4 w-4" strokeWidth={2} />
                   </button>

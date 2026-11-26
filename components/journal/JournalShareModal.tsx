@@ -62,7 +62,8 @@ function JournalShareDialogBody({
 
   const canNativeShare = useSyncExternalStore(
     noopSubscribe,
-    () => typeof navigator !== "undefined" && typeof navigator.share === "function",
+    () =>
+      typeof navigator !== "undefined" && typeof navigator.share === "function",
     () => false
   );
 
@@ -163,7 +164,10 @@ function JournalShareDialogBody({
   };
 
   const handleNativeShare = async () => {
-    if (typeof navigator === "undefined" || typeof navigator.share !== "function") {
+    if (
+      typeof navigator === "undefined" ||
+      typeof navigator.share !== "function"
+    ) {
       return;
     }
     try {
@@ -187,30 +191,31 @@ function JournalShareDialogBody({
       role="dialog"
       aria-modal="true"
       aria-labelledby="journal-share-dialog-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm sm:p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm sm:p-6"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`w-full max-w-xl overflow-hidden rounded-2xl border shadow-2xl ${
+        className={`w-full max-w-xl overflow-hidden rounded-2xl border shadow-[0_24px_80px_rgba(0,0,0,0.7)] ${
           isLight
-            ? "border-black/[0.12] bg-[#F4F3EF] text-[#111114]"
-            : "border-white/[0.1] bg-[#111114] text-[#F4F3EF]"
+            ? "border-[var(--hairline-stone)] bg-[var(--bg-stone)] text-[var(--ink-stone-primary)]"
+            : "border-[var(--hairline-strong)] bg-[var(--bg-surface)] text-[var(--ink-primary)]"
         }`}
       >
-        {/* Modal Header */}
         <div
-          className={`flex items-center justify-between gap-3 border-b px-5 py-4 sm:px-6 ${
-            isLight ? "border-black/[0.08]" : "border-white/[0.08]"
+          className={`flex items-center justify-between gap-3 border-b px-6 py-4 ${
+            isLight
+              ? "border-[var(--hairline-stone)]"
+              : "border-[var(--hairline)]"
           }`}
         >
-          <div className="flex items-center gap-2.5">
-            <span className="font-mono-telemetry inline-flex items-center rounded-full bg-[#FF3B1F] px-2.5 py-0.5 text-[11px] font-semibold text-[#08080A]">
+          <div>
+            <p className="font-tabular text-[13px] font-medium text-[var(--accent)]">
               Issue {dispatch.issue_number}
-            </span>
+            </p>
             <h2
               id="journal-share-dialog-title"
-              className="font-display text-lg font-semibold tracking-[-0.02em]"
+              className="font-display text-[20px] font-semibold tracking-[-0.02em]"
             >
               Share dispatch
             </h2>
@@ -220,40 +225,48 @@ function JournalShareDialogBody({
             type="button"
             onClick={onClose}
             aria-label="Close share dialog"
-            className={`press-tactile inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border transition-colors ${
+            className={`press-tactile inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border transition-colors duration-150 ${
               isLight
-                ? "border-black/[0.1] bg-[#E8E6DF] text-[#27272A] hover:text-[#08080A]"
-                : "border-white/[0.1] bg-[#18181D] text-[#A1A1AA] hover:text-[#F4F3EF]"
+                ? "border-[var(--hairline-stone)] bg-white text-[var(--ink-stone-muted)] hover:text-[var(--ink-stone-primary)]"
+                : "border-[var(--hairline-strong)] bg-[var(--bg-recessed)] text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
             }`}
           >
             <X className="h-4 w-4" strokeWidth={1.8} />
           </button>
         </div>
 
-        <div className="max-h-[82vh] space-y-5 overflow-y-auto p-5 sm:p-6">
-          {/* Open Graph Social Preview Card */}
+        <div className="max-h-[82vh] space-y-5 overflow-y-auto p-6">
           <div>
-            <div className="mb-2 flex items-center justify-between gap-2 text-xs">
-              <span className={isLight ? "text-[#52525B]" : "text-[#8B8B94]"}>
-                Social media link preview
+            <div className="mb-2 flex items-center justify-between gap-2 text-[14px]">
+              <span
+                className={
+                  isLight
+                    ? "text-[var(--ink-stone-muted)]"
+                    : "text-[var(--ink-muted)]"
+                }
+              >
+                Social link preview
               </span>
               <span
-                className={`inline-flex items-center gap-1 font-medium ${
+                className={`inline-flex items-center gap-1.5 text-[13px] font-medium ${
                   urls.isPrivatePreview
                     ? "text-[#F59E0B]"
                     : isLight
-                    ? "text-[#27272A]"
-                    : "text-[#A1A1AA]"
+                    ? "text-[var(--ink-stone-muted)]"
+                    : "text-[var(--ink-muted)]"
                 }`}
               >
                 {urls.isPrivatePreview ? (
                   <>
-                    <Lock className="h-3 w-3" strokeWidth={1.8} />
+                    <Lock className="h-3.5 w-3.5" strokeWidth={1.8} />
                     <span>Private preview</span>
                   </>
                 ) : (
                   <>
-                    <Globe className="h-3 w-3 text-[#10B981]" strokeWidth={1.8} />
+                    <Globe
+                      className="h-3.5 w-3.5 text-[#10B981]"
+                      strokeWidth={1.8}
+                    />
                     <span>Open Graph ready</span>
                   </>
                 )}
@@ -263,11 +276,11 @@ function JournalShareDialogBody({
             <div
               className={`overflow-hidden rounded-xl border ${
                 isLight
-                  ? "border-black/[0.12] bg-[#E8E6DF]"
-                  : "border-white/[0.1] bg-[#08080A]"
+                  ? "border-[var(--hairline-stone)] bg-white"
+                  : "border-[var(--hairline)] bg-[var(--bg-canvas)]"
               }`}
             >
-              <div className="relative aspect-[1200/630] w-full overflow-hidden bg-[#08080A]">
+              <div className="relative aspect-[1200/630] w-full overflow-hidden bg-[#07090D]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={previewImgSrc}
@@ -277,25 +290,30 @@ function JournalShareDialogBody({
                 />
               </div>
               <div
-                className={`border-t p-3.5 sm:p-4 ${
+                className={`border-t p-4 ${
                   isLight
-                    ? "border-black/[0.08] bg-[#F4F3EF]"
-                    : "border-white/[0.08] bg-[#16161A]"
+                    ? "border-[var(--hairline-stone)]"
+                    : "border-[var(--hairline)]"
                 }`}
               >
                 <div
-                  className={`font-mono-telemetry truncate text-[11px] ${
-                    isLight ? "text-[#52525B]" : "text-[#8B8B94]"
+                  className={`font-tabular truncate text-[13px] ${
+                    isLight
+                      ? "text-[var(--ink-stone-muted)]"
+                      : "text-[var(--ink-muted)]"
                   }`}
                 >
-                  {hostLabel} · Issue {dispatch.issue_number} · {dispatch.reading_time_mins} min read
+                  {hostLabel} · Issue {dispatch.issue_number} ·{" "}
+                  {dispatch.reading_time_mins} min read
                 </div>
-                <div className="font-display mt-1 line-clamp-1 text-sm font-semibold">
+                <div className="type-subhead mt-1 line-clamp-1">
                   {cleanTitle}
                 </div>
                 <p
-                  className={`mt-1 line-clamp-2 text-xs leading-relaxed ${
-                    isLight ? "text-[#3F3F46]" : "text-[#A1A1AA]"
+                  className={`mt-1 line-clamp-2 text-[14px] ${
+                    isLight
+                      ? "text-[var(--ink-stone-muted)]"
+                      : "text-[var(--ink-muted)]"
                   }`}
                 >
                   {cleanSubtitle}
@@ -305,18 +323,15 @@ function JournalShareDialogBody({
           </div>
 
           {mintError && (
-            <p className="rounded-xl border border-[#FF3B1F]/35 bg-[#FF3B1F]/12 px-3.5 py-2.5 text-xs text-[#FF8A7A]">
+            <p className="rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-4 py-3 text-[14px] text-[#FF8A7A]">
               {mintError}
             </p>
           )}
 
-          {/* Generated Share Link Field + Copy Button */}
           <div>
             <label
               htmlFor="journal-share-url-input"
-              className={`block text-xs font-medium ${
-                isLight ? "text-[#27272A]" : "text-[#D4D4D8]"
-              }`}
+              className="block text-[14px] font-medium"
             >
               Shareable link
             </label>
@@ -329,20 +344,20 @@ function JournalShareDialogBody({
                 onFocus={(e) => e.currentTarget.select()}
                 onClick={(e) => e.currentTarget.select()}
                 aria-label="Shareable journal link"
-                className={`font-mono-telemetry h-11 flex-1 rounded-xl border px-3.5 text-xs focus:border-[#FF3B1F] focus:outline-none ${
+                className={`h-11 flex-1 rounded-xl border px-3.5 text-[13px] focus:border-[var(--accent)] focus:outline-none ${
                   isLight
-                    ? "border-black/[0.12] bg-white text-[#111114]"
-                    : "border-white/[0.12] bg-[#08080A] text-[#F4F3EF]"
+                    ? "border-[var(--hairline-stone)] bg-white text-[var(--ink-stone-primary)]"
+                    : "border-[var(--hairline-strong)] bg-[var(--bg-canvas)] text-[var(--ink-primary)]"
                 }`}
               />
               <button
                 type="button"
                 id="journal-share-copy-btn"
                 onClick={handleCopyLink}
-                className={`press-tactile inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold whitespace-nowrap ${
+                className={`press-tactile inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-[14px] font-semibold whitespace-nowrap ${
                   copied
-                    ? "bg-[#10B981] text-[#08080A]"
-                    : "bg-[#FF3B1F] text-[#08080A] hover:bg-[#FF5238]"
+                    ? "bg-[#10B981] text-[#07090D]"
+                    : "bg-[var(--accent)] text-[#07090D] hover:bg-[var(--accent-hover)]"
                 }`}
               >
                 {copied ? (
@@ -360,108 +375,91 @@ function JournalShareDialogBody({
             </div>
             {urls.isPrivatePreview && (
               <p
-                className={`mt-2 text-xs ${
-                  isLight ? "text-[#52525B]" : "text-[#8B8B94]"
+                className={`mt-2 text-[13px] ${
+                  isLight
+                    ? "text-[var(--ink-stone-muted)]"
+                    : "text-[var(--ink-muted)]"
                 }`}
               >
-                Draft preview link active for 30 days. Hidden from public index and search engines.
+                Draft preview link active for 30 days. Hidden from public index
+                and search engines.
               </p>
             )}
           </div>
 
-          {/* Direct Social & Messaging Channels */}
           <div
             className={`border-t pt-4 ${
-              isLight ? "border-black/[0.08]" : "border-white/[0.08]"
+              isLight
+                ? "border-[var(--hairline-stone)]"
+                : "border-[var(--hairline)]"
             }`}
           >
             <div
-              className={`mb-2.5 text-xs font-medium ${
-                isLight ? "text-[#52525B]" : "text-[#8B8B94]"
+              className={`mb-3 text-[14px] font-medium ${
+                isLight
+                  ? "text-[var(--ink-stone-muted)]"
+                  : "text-[var(--ink-muted)]"
               }`}
             >
               Share directly
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2.5 text-[14px] font-medium">
               <a
                 href={socialTargets.x}
                 target="_blank"
                 rel="noreferrer noopener"
-                className={`press-tactile inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs font-medium transition-colors ${
-                  isLight
-                    ? "border-black/[0.12] bg-[#E8E6DF] text-[#111114] hover:border-black/[0.25]"
-                    : "border-white/[0.1] bg-[#18181D] text-[#F4F3EF] hover:border-white/[0.22]"
-                }`}
+                className="inline-flex items-center gap-1.5 underline underline-offset-4 transition-opacity duration-150 hover:opacity-80"
               >
                 <span>Post on X</span>
-                <ExternalLink className="h-3 w-3 opacity-70" strokeWidth={1.7} />
+                <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.7} />
               </a>
-
               <a
                 href={socialTargets.linkedin}
                 target="_blank"
                 rel="noreferrer noopener"
-                className={`press-tactile inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs font-medium transition-colors ${
-                  isLight
-                    ? "border-black/[0.12] bg-[#E8E6DF] text-[#111114] hover:border-black/[0.25]"
-                    : "border-white/[0.1] bg-[#18181D] text-[#F4F3EF] hover:border-white/[0.22]"
-                }`}
+                className="inline-flex items-center gap-1.5 underline underline-offset-4 transition-opacity duration-150 hover:opacity-80"
               >
                 <span>LinkedIn</span>
-                <ExternalLink className="h-3 w-3 opacity-70" strokeWidth={1.7} />
+                <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.7} />
               </a>
-
               <a
                 href={socialTargets.whatsapp}
                 target="_blank"
                 rel="noreferrer noopener"
-                className={`press-tactile inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs font-medium transition-colors ${
-                  isLight
-                    ? "border-black/[0.12] bg-[#E8E6DF] text-[#111114] hover:border-black/[0.25]"
-                    : "border-white/[0.1] bg-[#18181D] text-[#F4F3EF] hover:border-white/[0.22]"
-                }`}
+                className="inline-flex items-center gap-1.5 underline underline-offset-4 transition-opacity duration-150 hover:opacity-80"
               >
-                <MessageCircle className="h-3.5 w-3.5 text-[#10B981]" strokeWidth={1.8} />
+                <MessageCircle
+                  className="h-3.5 w-3.5 text-[#10B981]"
+                  strokeWidth={1.8}
+                />
                 <span>WhatsApp</span>
               </a>
-
               <a
                 href={socialTargets.telegram}
                 target="_blank"
                 rel="noreferrer noopener"
-                className={`press-tactile inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs font-medium transition-colors ${
-                  isLight
-                    ? "border-black/[0.12] bg-[#E8E6DF] text-[#111114] hover:border-black/[0.25]"
-                    : "border-white/[0.1] bg-[#18181D] text-[#F4F3EF] hover:border-white/[0.22]"
-                }`}
+                className="inline-flex items-center gap-1.5 underline underline-offset-4 transition-opacity duration-150 hover:opacity-80"
               >
                 <Send className="h-3.5 w-3.5 text-[#3B82F6]" strokeWidth={1.8} />
                 <span>Telegram</span>
               </a>
-
               <a
                 href={socialTargets.email}
-                className={`press-tactile inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs font-medium transition-colors ${
-                  isLight
-                    ? "border-black/[0.12] bg-[#E8E6DF] text-[#111114] hover:border-black/[0.25]"
-                    : "border-white/[0.1] bg-[#18181D] text-[#F4F3EF] hover:border-white/[0.22]"
-                }`}
+                className="inline-flex items-center gap-1.5 underline underline-offset-4 transition-opacity duration-150 hover:opacity-80"
               >
-                <Mail className="h-3.5 w-3.5 opacity-80" strokeWidth={1.8} />
+                <Mail className="h-3.5 w-3.5" strokeWidth={1.8} />
                 <span>Email</span>
               </a>
-
               {canNativeShare && (
                 <button
                   type="button"
                   onClick={() => void handleNativeShare()}
-                  className={`press-tactile inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 text-xs font-medium transition-colors ${
-                    isLight
-                      ? "border-black/[0.12] bg-[#E8E6DF] text-[#111114] hover:border-black/[0.25]"
-                      : "border-white/[0.1] bg-[#18181D] text-[#F4F3EF] hover:border-white/[0.22]"
-                  }`}
+                  className="inline-flex cursor-pointer items-center gap-1.5 underline underline-offset-4 transition-opacity duration-150 hover:opacity-80"
                 >
-                  <Share2 className="h-3.5 w-3.5 text-[#FF3B1F]" strokeWidth={1.8} />
+                  <Share2
+                    className="h-3.5 w-3.5 text-[var(--accent)]"
+                    strokeWidth={1.8}
+                  />
                   <span>More options</span>
                 </button>
               )}

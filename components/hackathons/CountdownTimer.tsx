@@ -30,8 +30,10 @@ function formatStableUtcDeadline(iso: string): string {
   return `${month} ${day} UTC`;
 }
 
-export function CountdownTimer({ deadlineAt, compact = false }: CountdownTimerProps) {
-  // Always start null so SSR and initial client hydration produce identical markup.
+export function CountdownTimer({
+  deadlineAt,
+  compact = false,
+}: CountdownTimerProps) {
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
 
   useEffect(() => {
@@ -53,11 +55,7 @@ export function CountdownTimer({ deadlineAt, compact = false }: CountdownTimerPr
 
   if (remainingMs === null) {
     return (
-      <span
-        className={`font-mono-telemetry inline-flex items-center font-medium text-[#A1A1AA] ${
-          compact ? "text-xs" : "text-[13px]"
-        }`}
-      >
+      <span className="font-tabular inline-flex items-center text-[14px] font-medium text-[var(--ink-muted)]">
         {formatStableUtcDeadline(deadlineAt)}
       </span>
     );
@@ -65,11 +63,7 @@ export function CountdownTimer({ deadlineAt, compact = false }: CountdownTimerPr
 
   if (remainingMs <= 0) {
     return (
-      <span
-        className={`font-mono-telemetry inline-flex items-center font-medium text-[#8B8B94] ${
-          compact ? "text-xs" : "text-[13px]"
-        }`}
-      >
+      <span className="font-tabular inline-flex items-center text-[14px] font-medium text-[var(--ink-muted)]">
         Window closed
       </span>
     );
@@ -89,26 +83,16 @@ export function CountdownTimer({ deadlineAt, compact = false }: CountdownTimerPr
 
   return (
     <span
-      className={`font-mono-telemetry inline-flex items-center gap-1.5 font-semibold whitespace-nowrap ${
-        compact ? "text-xs" : "text-[13px]"
-      } ${
+      className={`font-tabular inline-flex items-center text-[14px] font-semibold whitespace-nowrap ${
         isUrgent
           ? "text-[#FF6B54]"
           : isWarning
           ? "text-[#FBBF24]"
-          : "text-[#F4F3EF]"
+          : "text-[var(--ink-primary)]"
       }`}
     >
-      {isUrgent && (
-        <span
-          aria-hidden="true"
-          className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[#FF3B1F]"
-        />
-      )}
-      <span>
-        {pad(days)}d {pad(hours)}h {pad(minutes)}m
-        {!compact && ` ${pad(seconds)}s`}
-      </span>
+      {pad(days)}d {pad(hours)}h {pad(minutes)}m
+      {!compact && ` ${pad(seconds)}s`}
     </span>
   );
 }

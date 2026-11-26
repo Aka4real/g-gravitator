@@ -29,22 +29,23 @@ export default async function HackathonsPage({
   const { items: hackathons, lastSyncAt } = await getHackathons();
 
   return (
-    <div className="mx-auto max-w-[1360px] px-5 pt-10 pb-24 sm:px-8 lg:px-12 lg:pt-14 lg:pb-32">
-      {/* Unboxed Editorial Operate Header */}
+    <div className="mx-auto max-w-[1360px] px-5 pt-24 pb-24 sm:px-8 lg:px-12 lg:pt-28 lg:pb-32">
+      {/* Immediate Workspace Masthead (zero hero banner) */}
       <header className="max-w-3xl">
-        <h1 className="font-display text-[clamp(2rem,4.2vw,3.5rem)] font-bold tracking-[-0.03em] text-[#F4F3EF]">
+        <h1 className="font-display text-[clamp(2rem,4.2vw,3.5rem)] font-bold leading-[1.04] tracking-[-0.035em] text-[var(--ink-primary)]">
           Global AI and software hackathon radar
         </h1>
-        <p className="mt-4 max-w-[65ch] text-base leading-relaxed text-[#A1A1AA]">
-          Built for <strong className="font-medium text-[#F4F3EF]">OXAKALABS</strong>{" "}
-          strike deployment and the global builder community. Unifies Devpost, DoraHacks,
-          Lablab.ai, MLH, Luma, Devfolio, ETHGlobal, Kaggle, Unstop, and breaking
-          announcements on <strong className="font-medium text-[#F4F3EF]">X (Twitter)</strong>{" "}
-          into one normalized, deduplicated feed.
+        <p className="mt-3 max-w-[65ch] text-[16px] leading-[1.6] text-[var(--ink-muted)]">
+          Unified feed across Devpost, DoraHacks, Lablab.ai, MLH, Luma,
+          Devfolio, ETHGlobal, Kaggle, Unstop, and breaking announcements on X,
+          built for{" "}
+          <strong className="font-semibold text-[var(--ink-primary)]">
+            OXAKALABS
+          </strong>{" "}
+          and the global builder community.
         </p>
       </header>
 
-      {/* Interactive Radar Console */}
       <div className="mt-8">
         <HackathonRadar
           initialHackathons={hackathons}

@@ -48,23 +48,20 @@ function getVerdictTheme(code: GraduationVerdictCode) {
   switch (code) {
     case "PROMOTE_TO_LABS":
       return {
-        scoreText: "text-[#FF5238]",
-        badgeBg: "border-[#FF3B1F]/35 bg-[#FF3B1F]/12",
-        labelText: "text-[#FF8A7A]",
+        scoreText: "text-[var(--accent-on-stone)]",
+        borderAccent: "border-l-[var(--accent)]",
         thresholdTag: "20 to 25 threshold met",
       };
     case "B2B_CASE_STUDY_OPEN_SOURCE":
       return {
-        scoreText: "text-[#FBBF24]",
-        badgeBg: "border-[#F59E0B]/35 bg-[#F59E0B]/12",
-        labelText: "text-[#FBBF24]",
+        scoreText: "text-[#B45309]",
+        borderAccent: "border-l-[#D97706]",
         thresholdTag: "14 to 19 mid-band",
       };
     default:
       return {
-        scoreText: "text-[#D4D4D8]",
-        badgeBg: "border-white/[0.14] bg-white/[0.05]",
-        labelText: "text-[#D4D4D8]",
+        scoreText: "text-[var(--ink-stone-primary)]",
+        borderAccent: "border-l-[#4A5260]",
         thresholdTag: "Under 14 archive band",
       };
   }
@@ -101,59 +98,60 @@ export function GraduationScorecard({ presets }: GraduationScorecardProps) {
   };
 
   return (
-    <div className="surface-card rounded-2xl p-6 sm:p-8 lg:p-10">
-      {/* Top Instrument Control Bar */}
-      <div className="flex flex-col gap-5 border-b border-white/[0.07] pb-6 lg:flex-row lg:items-center lg:justify-between">
+    <div className="rounded-2xl border border-[var(--hairline-stone)] bg-white p-6 text-[var(--ink-stone-primary)] sm:p-9 lg:p-11">
+      {/* Connected Preset Control Bar */}
+      <div className="flex flex-col gap-5 border-b border-[var(--hairline-stone)] pb-6 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h3 className="font-display text-xl font-semibold tracking-[-0.02em] text-[#F4F3EF]">
+          <h3 className="type-subhead text-[var(--ink-stone-primary)]">
             Interactive 25-point filter
           </h3>
-          <p className="mt-1 text-sm text-[#8B8B94]">
-            Load an OXAKALABS preset or calibrate each axis from 1 to 5.
+          <p className="mt-1 text-[14px] text-[var(--ink-stone-muted)]">
+            Load a shipped OXAKALABS build or calibrate each axis from 1 to 5.
           </p>
         </div>
 
-        {/* Preset Pills & Reset */}
-        <div
-          role="group"
-          aria-label="Load OXAKALABS build presets"
-          className="flex flex-wrap items-center gap-2"
-        >
-          {presets
-            .filter((p) => p.scorecard)
-            .map((proj) => {
-              const isActive = activePresetCode === proj.code;
-              return (
-                <button
-                  key={proj.code}
-                  type="button"
-                  aria-pressed={isActive}
-                  onClick={() => handleLoadPreset(proj)}
-                  className={`press-tactile font-mono-telemetry cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                    isActive
-                      ? "border-[#F4F3EF] bg-[#F4F3EF] text-[#08080A]"
-                      : "border-white/[0.1] bg-[#18181D] text-[#A1A1AA] hover:border-white/[0.2] hover:text-[#F4F3EF]"
-                  }`}
-                >
-                  {proj.code}
-                </button>
-              );
-            })}
+        <div className="flex flex-wrap items-center gap-3">
+          <div
+            role="tablist"
+            aria-label="Load OXAKALABS build presets"
+            className="inline-flex max-w-full items-center overflow-x-auto rounded-full border border-[var(--hairline-stone)] bg-[var(--bg-stone)] p-1"
+          >
+            {presets
+              .filter((p) => p.scorecard)
+              .map((proj) => {
+                const isActive = activePresetCode === proj.code;
+                return (
+                  <button
+                    key={proj.code}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => handleLoadPreset(proj)}
+                    className={`press-tactile font-tabular shrink-0 cursor-pointer rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-colors duration-150 ${
+                      isActive
+                        ? "bg-[var(--ink-stone-primary)] text-[#F2F4F8]"
+                        : "text-[var(--ink-stone-muted)] hover:text-[var(--ink-stone-primary)]"
+                    }`}
+                  >
+                    {proj.code}
+                  </button>
+                );
+              })}
+          </div>
 
           <button
             type="button"
             onClick={handleReset}
-            className="press-tactile inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-[#D4D4D8] transition-colors hover:border-white/[0.2] hover:bg-white/[0.08] hover:text-[#F4F3EF]"
+            className="inline-flex cursor-pointer items-center gap-1.5 text-[14px] font-medium text-[var(--ink-stone-muted)] transition-colors duration-150 hover:text-[var(--ink-stone-primary)]"
           >
-            <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.7} />
+            <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.8} />
             <span>Reset</span>
           </button>
         </div>
       </div>
 
-      {/* Main Split: 5 Tactile Stepped Controls + Live Verdict Panel */}
-      <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
-        {/* Left 7 Cols: Stepped 1-5 Axes */}
+      {/* Main Split: 5 Stepped Controls + Verdict Readout */}
+      <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-12">
         <div className="space-y-6 lg:col-span-7">
           {AXES.map((axis) => {
             const val = scores[axis.key];
@@ -161,23 +159,23 @@ export function GraduationScorecard({ presets }: GraduationScorecardProps) {
               <div key={axis.key}>
                 <div className="flex items-baseline justify-between gap-3">
                   <div className="min-w-0">
-                    <span className="text-sm font-medium text-[#F4F3EF]">
+                    <span className="text-[16px] font-semibold text-[var(--ink-stone-primary)]">
                       {axis.label}
                     </span>
-                    <p className="mt-0.5 text-xs leading-relaxed text-[#8B8B94]">
+                    <p className="mt-0.5 text-[14px] text-[var(--ink-stone-muted)]">
                       {axis.desc}
                     </p>
                   </div>
-                  <span className="font-mono-telemetry shrink-0 text-sm font-semibold text-[#F4F3EF]">
+                  <span className="font-tabular shrink-0 text-[14px] font-semibold text-[var(--ink-stone-primary)]">
                     {val} / 5
                   </span>
                 </div>
 
-                {/* Recessed 1-5 Stepped Pill Rail */}
+                {/* Connected 1-5 Stepped Segment Rail */}
                 <div
                   role="group"
                   aria-label={axis.label}
-                  className="mt-3 grid grid-cols-5 gap-1.5 rounded-full border border-white/[0.07] bg-[#0B0B0E] p-1"
+                  className="mt-3 grid grid-cols-5 overflow-hidden rounded-full border border-[var(--hairline-stone)] bg-[var(--bg-stone)] p-1"
                 >
                   {[1, 2, 3, 4, 5].map((step) => {
                     const isExact = step === val;
@@ -193,12 +191,12 @@ export function GraduationScorecard({ presets }: GraduationScorecardProps) {
                           setActivePresetCode("Custom");
                           setScores((prev) => ({ ...prev, [axis.key]: step }));
                         }}
-                        className={`press-tactile font-mono-telemetry h-9 cursor-pointer rounded-full text-xs font-semibold transition-colors ${
+                        className={`press-tactile font-tabular h-9 cursor-pointer rounded-full text-[14px] font-semibold transition-colors duration-150 ${
                           isExact
-                            ? "bg-[#FF3B1F] text-[#08080A]"
+                            ? "bg-[var(--accent)] text-[#07090D]"
                             : isFilled
-                            ? "bg-[#FF3B1F]/20 text-[#F4F3EF] hover:bg-[#FF3B1F]/30"
-                            : "bg-transparent text-[#8B8B94] hover:bg-white/[0.06] hover:text-[#F4F3EF]"
+                            ? "bg-[var(--accent)]/15 text-[var(--ink-stone-primary)] hover:bg-[var(--accent)]/25"
+                            : "bg-transparent text-[var(--ink-stone-muted)] hover:text-[var(--ink-stone-primary)]"
                         }`}
                       >
                         {step}
@@ -211,112 +209,80 @@ export function GraduationScorecard({ presets }: GraduationScorecardProps) {
           })}
         </div>
 
-        {/* Right 5 Cols: Live Verdict Console */}
-        <div className="flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[#0B0B0E] p-6 sm:p-7 lg:col-span-5">
+        {/* Right Verdict Column (flat tonal plane, no nested card cages) */}
+        <div className="flex flex-col justify-between border-t border-[var(--hairline-stone)] pt-8 lg:col-span-5 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-10">
           <div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-medium text-[#8B8B94]">
-                Computed score
-              </span>
-              <span className="font-mono-telemetry rounded-full border border-white/[0.1] bg-white/[0.05] px-2.5 py-0.5 text-xs font-medium text-[#D4D4D8]">
-                {activePresetCode}
-              </span>
-            </div>
+            <p className="font-tabular text-[14px] font-medium text-[var(--ink-stone-muted)]">
+              Computed score · {activePresetCode}
+            </p>
 
-            <div className="mt-4 flex flex-wrap items-baseline justify-between gap-3">
-              <div className="flex items-baseline gap-2">
-                <span
-                  className={`font-display tabular-nums text-6xl font-bold leading-none tracking-[-0.03em] ${theme.scoreText}`}
-                >
-                  {verdict.total}
-                </span>
-                <span className="font-mono-telemetry text-lg text-[#8B8B94]">
-                  / {verdict.max}
-                </span>
-              </div>
+            <div className="mt-3 flex items-baseline gap-2">
               <span
-                className={`font-mono-telemetry rounded-full border px-3 py-1 text-xs font-medium ${theme.badgeBg} ${theme.labelText}`}
+                className={`font-display font-tabular text-[clamp(3.25rem,5vw,4.5rem)] font-bold leading-none tracking-[-0.04em] ${theme.scoreText}`}
               >
-                {theme.thresholdTag}
+                {verdict.total}
+              </span>
+              <span className="font-tabular text-[16px] text-[var(--ink-stone-muted)]">
+                / {verdict.max}
               </span>
             </div>
 
-            {/* Verdict Callout */}
-            <div className={`mt-6 rounded-xl border p-4 sm:p-5 ${theme.badgeBg}`}>
-              <div className="text-xs font-medium text-[#A1A1AA]">
+            <p className="mt-2 text-[14px] font-medium text-[var(--ink-stone-muted)]">
+              {theme.thresholdTag}
+            </p>
+
+            <div
+              className={`mt-7 border-l-2 pl-5 ${theme.borderAccent}`}
+            >
+              <p className="text-[14px] text-[var(--ink-stone-muted)]">
                 Pipeline verdict
-              </div>
-              <div
-                className={`font-display mt-1 text-lg font-semibold tracking-[-0.015em] ${theme.labelText}`}
+              </p>
+              <p
+                className={`type-subhead mt-1 ${theme.scoreText}`}
               >
                 {verdict.label}
-              </div>
-              <p className="mt-2 text-sm leading-relaxed text-[#D4D4D8]">
+              </p>
+              <p className="mt-2 text-[16px] leading-[1.6] text-[#2D3440]">
                 {verdict.actionDirective}
               </p>
             </div>
           </div>
 
-          {/* Threshold Indicators */}
-          <div className="mt-7 space-y-2.5 border-t border-white/[0.07] pt-5 text-xs">
+          {/* Threshold Ledger */}
+          <dl className="mt-8 divide-y divide-[var(--hairline-stone)] border-t border-[var(--hairline-stone)] text-[14px]">
             {[
               {
                 code: "PROMOTE_TO_LABS" as const,
                 band: "20 to 25",
                 label: "Promote to Labs (G-XX)",
-                activeClass: "text-[#FF8A7A]",
-                dotClass: "bg-[#FF3B1F]",
               },
               {
                 code: "B2B_CASE_STUDY_OPEN_SOURCE" as const,
                 band: "14 to 19",
                 label: "B2B case study and open source",
-                activeClass: "text-[#FBBF24]",
-                dotClass: "bg-[#F59E0B]",
               },
               {
                 code: "DISPATCH_AND_ARCHIVE" as const,
                 band: "Under 14",
                 label: "Dispatch and archive",
-                activeClass: "text-[#F4F3EF]",
-                dotClass: "bg-[#A1A1AA]",
               },
             ].map((row) => {
               const isCurrent = verdict.code === row.code;
               return (
                 <div
                   key={row.code}
-                  className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 transition-colors ${
+                  className={`flex items-center justify-between gap-3 py-3 ${
                     isCurrent
-                      ? "bg-white/[0.05] font-medium"
-                      : "text-[#8B8B94]"
+                      ? "font-semibold text-[var(--ink-stone-primary)]"
+                      : "text-[var(--ink-stone-muted)]"
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`h-2 w-2 shrink-0 rounded-full ${
-                        isCurrent ? row.dotClass : "bg-white/[0.16]"
-                      }`}
-                    />
-                    <span
-                      className={`font-mono-telemetry ${
-                        isCurrent ? row.activeClass : "text-[#8B8B94]"
-                      }`}
-                    >
-                      {row.band}
-                    </span>
-                  </div>
-                  <span
-                    className={`text-right ${
-                      isCurrent ? "text-[#F4F3EF]" : "text-[#8B8B94]"
-                    }`}
-                  >
-                    {row.label}
-                  </span>
+                  <dt className="font-tabular">{row.band}</dt>
+                  <dd className="text-right">{row.label}</dd>
                 </div>
               );
             })}
-          </div>
+          </dl>
         </div>
       </div>
     </div>

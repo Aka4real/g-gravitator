@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { AlertCircle, KeyRound, Lock, ShieldCheck, UserPlus } from "lucide-react";
+import { AlertCircle, KeyRound } from "lucide-react";
+import { BrandMark } from "@/lib/brand/mark";
 import type { OpsUserInfo } from "@/components/ops/ops-types";
 
 interface OpsAuthScreenProps {
@@ -64,38 +65,31 @@ export function OpsAuthScreen({
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#08080A] px-4 py-12 text-[#F4F3EF]">
-      <div className="w-full max-w-md rounded-2xl border border-white/[0.1] bg-[#111114] p-7 shadow-[0_24px_80px_rgba(0,0,0,0.65)] sm:p-9">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#FF3B1F]/35 bg-[#FF3B1F]/12 text-[#FF6B54]">
-            {mode === "login" ? (
-              <Lock className="h-5 w-5" strokeWidth={1.7} />
-            ) : (
-              <UserPlus className="h-5 w-5" strokeWidth={1.7} />
-            )}
-          </div>
-          <span className="font-mono inline-flex items-center gap-1.5 rounded-full border border-white/[0.1] bg-[#18181D] px-3 py-1 text-[11px] font-medium text-[#A1A1AA]">
-            <ShieldCheck className="h-3.5 w-3.5 text-[#34D399]" />
-            Isolated Ops Portal
+    <div className="flex min-h-[100dvh] items-center justify-center bg-[var(--bg-canvas)] px-5 py-12 text-[var(--ink-primary)]">
+      <div className="w-full max-w-md rounded-2xl border border-[var(--hairline)] bg-[var(--bg-surface)] p-7 sm:p-10">
+        <div className="flex items-center gap-3">
+          <BrandMark size={34} title="G-Gravitator" />
+          <span className="font-display text-[18px] font-bold tracking-[-0.03em] text-[var(--ink-primary)]">
+            G-Gravitator
           </span>
         </div>
 
-        <h1 className="font-display mt-5 text-2xl font-bold tracking-[-0.025em] text-[#F4F3EF]">
-          G-Gravitator Command
+        <h1 className="font-display mt-7 text-[28px] font-bold leading-[1.08] tracking-[-0.03em] text-[var(--ink-primary)]">
+          Command Center
         </h1>
-        <p className="mt-1.5 text-sm leading-relaxed text-[#A1A1AA]">
+        <p className="mt-2 text-[14px] leading-relaxed text-[var(--ink-muted)]">
           {mode === "login"
-            ? "Sign in with your operator credentials to access system controls."
+            ? "Sign in with your operator credentials to access platform controls."
             : hasAdmins
-            ? "Create a new operator account using a valid invite code."
+            ? "Create an operator account using a single-use invite code."
             : "Initialize the primary Super Admin account for this command center."}
         </p>
 
-        {/* Login / Sign Up Switcher */}
+        {/* Connected Login / Sign Up Switch */}
         <div
           role="tablist"
           aria-label="Authentication mode"
-          className="mt-6 grid grid-cols-2 gap-1.5 rounded-full border border-white/[0.08] bg-[#0B0B0E] p-1"
+          className="mt-6 grid grid-cols-2 rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] p-1"
         >
           <button
             type="button"
@@ -105,13 +99,13 @@ export function OpsAuthScreen({
               setMode("login");
               setError(null);
             }}
-            className={`h-9 cursor-pointer rounded-full text-xs font-semibold transition-colors ${
+            className={`h-9 cursor-pointer rounded-full text-[13px] font-semibold transition-colors duration-150 ${
               mode === "login"
-                ? "bg-[#F4F3EF] text-[#08080A]"
-                : "text-[#A1A1AA] hover:text-[#F4F3EF]"
+                ? "bg-[var(--ink-primary)] text-[#07090D]"
+                : "text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
             }`}
           >
-            Login
+            Sign in
           </button>
           <button
             type="button"
@@ -121,34 +115,38 @@ export function OpsAuthScreen({
               setMode("signup");
               setError(null);
             }}
-            className={`h-9 cursor-pointer rounded-full text-xs font-semibold transition-colors ${
+            className={`h-9 cursor-pointer rounded-full text-[13px] font-semibold transition-colors duration-150 ${
               mode === "signup"
-                ? "bg-[#F4F3EF] text-[#08080A]"
-                : "text-[#A1A1AA] hover:text-[#F4F3EF]"
+                ? "bg-[var(--ink-primary)] text-[#07090D]"
+                : "text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
             }`}
           >
-            Sign Up
+            Create account
           </button>
         </div>
 
         {error && (
           <div
             role="alert"
-            className="mt-5 flex items-start gap-2.5 rounded-xl border border-[#FF3B1F]/35 bg-[#FF3B1F]/12 px-4 py-3 text-sm text-[#FF8A7A]"
+            className="mt-5 flex items-start gap-2.5 rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-4 py-3 text-[14px] text-[#FF8A7A]"
           >
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.8} />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4" autoComplete="off">
+        <form
+          onSubmit={handleSubmit}
+          className="mt-6 space-y-4"
+          autoComplete="off"
+        >
           {mode === "signup" && (
             <div>
               <label
                 htmlFor="ops-auth-name"
-                className="block text-xs font-medium text-[#D4D4D8]"
+                className="block text-[14px] font-medium text-[var(--ink-primary)]"
               >
-                Operator Name
+                Operator name
               </label>
               <input
                 id="ops-auth-name"
@@ -157,7 +155,7 @@ export function OpsAuthScreen({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your full name"
-                className="mt-1.5 h-11 w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-4 text-sm text-[#F4F3EF] placeholder:text-[#71717A] focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/25 focus:outline-none"
+                className="mt-1.5 h-11 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-4 text-[14px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
               />
             </div>
           )}
@@ -165,9 +163,9 @@ export function OpsAuthScreen({
           <div>
             <label
               htmlFor="ops-auth-email"
-              className="block text-xs font-medium text-[#D4D4D8]"
+              className="block text-[14px] font-medium text-[var(--ink-primary)]"
             >
-              Email Address
+              Email address
             </label>
             <input
               id="ops-auth-email"
@@ -177,14 +175,14 @@ export function OpsAuthScreen({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="operator@domain.com"
-              className="mt-1.5 h-11 w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-4 text-sm text-[#F4F3EF] placeholder:text-[#71717A] focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/25 focus:outline-none"
+              className="mt-1.5 h-11 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-4 text-[14px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
             />
           </div>
 
           <div>
             <label
               htmlFor="ops-auth-password"
-              className="block text-xs font-medium text-[#D4D4D8]"
+              className="block text-[14px] font-medium text-[var(--ink-primary)]"
             >
               Password
             </label>
@@ -193,11 +191,13 @@ export function OpsAuthScreen({
               type="password"
               required
               minLength={8}
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
+              autoComplete={
+                mode === "login" ? "current-password" : "new-password"
+              }
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Minimum 8 characters"
-              className="mt-1.5 h-11 w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-4 text-sm text-[#F4F3EF] placeholder:text-[#71717A] focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/25 focus:outline-none"
+              className="mt-1.5 h-11 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-4 text-[14px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
             />
           </div>
 
@@ -206,9 +206,9 @@ export function OpsAuthScreen({
               <div>
                 <label
                   htmlFor="ops-auth-confirm"
-                  className="block text-xs font-medium text-[#D4D4D8]"
+                  className="block text-[14px] font-medium text-[var(--ink-primary)]"
                 >
-                  Confirm Password
+                  Confirm password
                 </label>
                 <input
                   id="ops-auth-confirm"
@@ -219,7 +219,7 @@ export function OpsAuthScreen({
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Re-enter password"
-                  className="mt-1.5 h-11 w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-4 text-sm text-[#F4F3EF] placeholder:text-[#71717A] focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/25 focus:outline-none"
+                  className="mt-1.5 h-11 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-4 text-[14px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
                 />
               </div>
 
@@ -227,10 +227,10 @@ export function OpsAuthScreen({
                 <div>
                   <label
                     htmlFor="ops-auth-invite"
-                    className="flex items-center gap-1.5 text-xs font-medium text-[#D4D4D8]"
+                    className="flex items-center gap-1.5 text-[14px] font-medium text-[var(--ink-primary)]"
                   >
-                    <KeyRound className="h-3.5 w-3.5 text-[#FF6B54]" />
-                    <span>Admin Invite Code</span>
+                    <KeyRound className="h-4 w-4 text-[var(--accent)]" />
+                    <span>Admin invite code</span>
                   </label>
                   <input
                     id="ops-auth-invite"
@@ -239,7 +239,7 @@ export function OpsAuthScreen({
                     value={inviteCode}
                     onChange={(e) => setInviteCode(e.target.value)}
                     placeholder="Enter invite code from an existing admin"
-                    className="mt-1.5 h-11 w-full rounded-xl border border-white/[0.12] bg-[#0B0B0E] px-4 font-mono text-sm text-[#F4F3EF] placeholder:font-sans placeholder:text-[#71717A] focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/25 focus:outline-none"
+                    className="mt-1.5 h-11 w-full rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-4 text-[14px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 focus:outline-none"
                   />
                 </div>
               )}
@@ -249,15 +249,15 @@ export function OpsAuthScreen({
           <button
             type="submit"
             disabled={submitting}
-            className="mt-2 inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-full bg-[#FF3B1F] px-5 text-sm font-semibold text-[#08080A] transition-colors hover:bg-[#FF5238] disabled:cursor-not-allowed disabled:opacity-60"
+            className="press-tactile mt-2 inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-full bg-[var(--accent)] px-5 text-[14px] font-semibold text-[#07090D] hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting
               ? mode === "login"
                 ? "Verifying..."
                 : "Creating account..."
               : mode === "login"
-              ? "Sign In"
-              : "Create Admin Account"}
+              ? "Sign in"
+              : "Create admin account"}
           </button>
         </form>
       </div>

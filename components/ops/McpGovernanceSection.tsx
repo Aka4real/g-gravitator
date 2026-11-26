@@ -50,18 +50,18 @@ interface McpGovernanceSectionProps {
 }
 
 const DOMAIN_LABELS: Record<McpScopeDomain, string> = {
-  READ_PRIVACY: "Read & Privacy (PII Gated)",
-  CONTENT_MODERATION: "Content & Moderation",
-  LABS_SKUNKWORKS: "Labs & Skunkworks",
-  CRM_AUDIENCE: "CRM & Audience",
-  RESEARCH_MEDIA: "Research, Ingestion & Media",
+  READ_PRIVACY: "Read and privacy (PII gated)",
+  CONTENT_MODERATION: "Content and moderation",
+  LABS_SKUNKWORKS: "Labs and Skunkworks",
+  CRM_AUDIENCE: "CRM and audience",
+  RESEARCH_MEDIA: "Research, ingestion, and media",
 };
 
-const RISK_STYLES: Record<string, string> = {
-  low: "bg-[#10B981]/15 text-[#34D399]",
-  medium: "bg-[#38BDF8]/15 text-[#7DD3FC]",
-  high: "bg-[#F59E0B]/15 text-[#FBBF24]",
-  destructive: "bg-[#FF3B1F]/15 text-[#FF8A7A]",
+const RISK_TEXT_STYLES: Record<string, string> = {
+  low: "text-[#34D399]",
+  medium: "text-[#7DD3FC]",
+  high: "text-[#FBBF24]",
+  destructive: "text-[#FF8A7A]",
 };
 
 function formatShortUtc(iso: string | null | undefined): string {
@@ -71,7 +71,9 @@ function formatShortUtc(iso: string | null | undefined): string {
   return d.toISOString().slice(0, 16).replace("T", " ") + " UTC";
 }
 
-function buildDefaultScopeMap(preset: McpRolePreset): Record<McpScopeKey, boolean> {
+function buildDefaultScopeMap(
+  preset: McpRolePreset
+): Record<McpScopeKey, boolean> {
   return { ...MCP_ROLE_PRESETS[preset].defaultScopes };
 }
 
@@ -99,7 +101,11 @@ type InspectionPayload = {
     destructiveHint: boolean;
   }>;
   resources: Array<{ uri: string; name: string; mimeType: string }>;
-  resourceTemplates: Array<{ uriTemplate: string; name: string; mimeType: string }>;
+  resourceTemplates: Array<{
+    uriTemplate: string;
+    name: string;
+    mimeType: string;
+  }>;
   prompts: Array<{ name: string; title: string }>;
 };
 
@@ -113,36 +119,39 @@ export function McpGovernanceSection({
   onJumpToPermissions,
 }: McpGovernanceSectionProps) {
   const [tokenName, setTokenName] = useState("");
-  const [rolePreset, setRolePreset] = useState<McpRolePreset>("editorial_writer");
-  const [customScopes, setCustomScopes] = useState<Record<McpScopeKey, boolean>>(() =>
-    buildDefaultScopeMap("editorial_writer")
-  );
+  const [rolePreset, setRolePreset] =
+    useState<McpRolePreset>("editorial_writer");
+  const [customScopes, setCustomScopes] = useState<
+    Record<McpScopeKey, boolean>
+  >(() => buildDefaultScopeMap("editorial_writer"));
   const [showCreateMatrix, setShowCreateMatrix] = useState(false);
   const [expiresDays, setExpiresDays] = useState<number>(90);
   const [rateLimitRpm, setRateLimitRpm] = useState<number>(60);
   const [tokenNotes, setTokenNotes] = useState("");
-  const [newPlaintextToken, setNewPlaintextToken] = useState<string | null>(null);
+  const [newPlaintextToken, setNewPlaintextToken] = useState<string | null>(
+    null
+  );
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Edit existing token modal state
   const [editingTokenId, setEditingTokenId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editPreset, setEditPreset] = useState<McpRolePreset>("inherit");
-  const [editScopes, setEditScopes] = useState<Record<McpScopeKey, boolean>>(() =>
-    buildDefaultScopeMap("inherit")
+  const [editScopes, setEditScopes] = useState<Record<McpScopeKey, boolean>>(
+    () => buildDefaultScopeMap("inherit")
   );
   const [editRateLimit, setEditRateLimit] = useState(60);
   const [editNotes, setEditNotes] = useState("");
 
-  // Client snippet selector
-  const [snippetTab, setSnippetTab] = useState<"claude" | "antigravity" | "vscode" | "curl">(
-    "claude"
-  );
+  const [snippetTab, setSnippetTab] = useState<
+    "claude" | "antigravity" | "vscode" | "curl"
+  >("claude");
 
-  // Live Inspector / Probe State
-  const [inspectorTarget, setInspectorTarget] = useState<string>("preset:editorial_writer");
+  const [inspectorTarget, setInspectorTarget] = useState<string>(
+    "preset:editorial_writer"
+  );
   const [probeMethod, setProbeMethod] = useState<string>("tools/list");
-  const [inspectionResult, setInspectionResult] = useState<InspectionPayload | null>(null);
+  const [inspectionResult, setInspectionResult] =
+    useState<InspectionPayload | null>(null);
   const [probeOutput, setProbeOutput] = useState<unknown>(null);
   const [inspectorBusy, setInspectorBusy] = useState(false);
 
@@ -227,7 +236,8 @@ export function McpGovernanceSection({
         name: editName,
         role_preset: editPreset,
         permissions_mode: mode,
-        custom_scopes: editPreset === "custom" || mode === "custom" ? editScopes : {},
+        custom_scopes:
+          editPreset === "custom" || mode === "custom" ? editScopes : {},
         rate_limit_rpm: editRateLimit,
         notes: editNotes,
       },
@@ -269,9 +279,15 @@ export function McpGovernanceSection({
         : { role_preset: inspectorTarget.replace(/^preset:/, "") };
       const toolCallParams =
         probeMethod === "tools/call:identity"
-          ? { method: "tools/call", params: { name: "get_my_mcp_identity", arguments: {} } }
+          ? {
+              method: "tools/call",
+              params: { name: "get_my_mcp_identity", arguments: {} },
+            }
           : probeMethod === "tools/call:overview"
-          ? { method: "tools/call", params: { name: "get_system_overview", arguments: {} } }
+          ? {
+              method: "tools/call",
+              params: { name: "get_system_overview", arguments: {} },
+            }
           : { method: probeMethod };
 
       const res = await fetch("/api/ops/execute", {
@@ -360,67 +376,63 @@ export function McpGovernanceSection({
   const allowPii = Boolean(aiPermissions.mcp_allow_pii_over_mcp);
 
   return (
-    <section className="space-y-6 rounded-2xl border border-white/[0.08] bg-[#111114] p-6">
-      {/* Header + Status */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <section className="space-y-6 rounded-xl border border-[var(--hairline)] bg-[var(--bg-surface)] p-6">
+      {/* Header + Plain Status Summary */}
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--hairline)] pb-5">
         <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-display text-xl font-semibold text-[#F4F3EF]">
-              External MCP Server &amp; Least-Privilege Tokens
-            </h2>
-            <span className="rounded-full border border-white/[0.1] bg-[#0B0B0E] px-2.5 py-0.5 font-mono text-[10px] text-[#A1A1AA]">
-              Streamable HTTP · 2026-07-28 / 2025-11-25
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-[#8B8B94]">
-            Scoped JSON-RPC 2.0 MCP endpoint with 29 granular permissions, 6 role presets,
-            resource templates, prompts, sliding-window rate limits, and PII guardrails.
+          <h2 className="type-subhead text-[var(--ink-primary)]">
+            External MCP server and least-privilege tokens
+          </h2>
+          <p className="mt-1 text-[14px] text-[var(--ink-muted)]">
+            Streamable HTTP JSON-RPC 2.0 (2026-07-28 / 2025-11-25) with 29
+            granular scopes, 6 role presets, rate limits, and PII guardrails.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-4 text-[13px] font-medium">
           <span
-            className={`rounded-full px-3 py-1 font-mono text-xs font-semibold ${
-              aiPermissions.mcp_enabled
-                ? "bg-[#10B981]/15 text-[#34D399]"
-                : "bg-[#FF3B1F]/15 text-[#FF8A7A]"
-            }`}
+            className={
+              aiPermissions.mcp_enabled ? "text-[#34D399]" : "text-[#FF8A7A]"
+            }
           >
-            {aiPermissions.mcp_enabled ? "MCP ONLINE" : "MCP DISABLED"}
+            {aiPermissions.mcp_enabled ? "MCP online" : "MCP disabled"}
+          </span>
+          <span aria-hidden="true" className="text-white/25">
+            ·
           </span>
           <span
-            className={`rounded-full px-3 py-1 font-mono text-[11px] font-medium ${
-              allowPii
-                ? "bg-[#F59E0B]/15 text-[#FBBF24]"
-                : "bg-white/[0.06] text-[#A1A1AA]"
-            }`}
+            className={allowPii ? "text-[#FBBF24]" : "text-[var(--ink-muted)]"}
           >
-            {allowPii ? "PII EXPOSED" : "PII SHIELDED"}
+            {allowPii ? "PII exposed" : "PII shielded"}
           </span>
           {onJumpToPermissions && (
             <button
               type="button"
               onClick={onJumpToPermissions}
-              className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-white/[0.12] bg-[#18181D] px-3 text-[11px] text-[#D4D4D8] hover:text-[#F4F3EF]"
+              className="inline-flex cursor-pointer items-center gap-1.5 text-[var(--ink-primary)] underline decoration-white/30 underline-offset-4 transition-colors duration-150 hover:text-[#FF7A63]"
             >
-              <Shield className="h-3 w-3" />
-              <span>Global Ceilings</span>
+              <Shield className="h-3.5 w-3.5" />
+              <span>Global ceilings</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Endpoint Copy Bar */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.1] bg-[#0B0B0E] p-3">
-        <code className="flex-1 truncate font-mono text-xs text-[#34D399]">
+      {/* Endpoint Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--hairline)] bg-[var(--bg-canvas)] px-4 py-3">
+        <code className="flex-1 truncate text-[13px] text-[#34D399]">
           {endpointUrl}
         </code>
         <button
           type="button"
           onClick={() => void handleCopy("mcp-url", endpointUrl)}
-          className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full bg-[#18181D] px-3 text-xs text-[#F4F3EF]"
+          className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-[var(--ink-primary)] transition-colors duration-150 hover:text-[#FF7A63]"
         >
-          {copiedKey === "mcp-url" ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+          {copiedKey === "mcp-url" ? (
+            <Check className="h-3.5 w-3.5 text-[#34D399]" />
+          ) : (
+            <Copy className="h-3.5 w-3.5" />
+          )}
           <span>{copiedKey === "mcp-url" ? "Copied" : "Copy URL"}</span>
         </button>
       </div>
@@ -437,7 +449,9 @@ export function McpGovernanceSection({
               role_preset: rolePreset,
               permissions_mode: mode,
               custom_scopes:
-                rolePreset === "custom" || mode === "custom" ? customScopes : undefined,
+                rolePreset === "custom" || mode === "custom"
+                  ? customScopes
+                  : undefined,
               expires_in_days: expiresDays > 0 ? expiresDays : null,
               rate_limit_rpm: rateLimitRpm,
               notes: tokenNotes.trim() || undefined,
@@ -451,19 +465,21 @@ export function McpGovernanceSection({
           setTokenName("");
           setTokenNotes("");
         }}
-        className="space-y-4 rounded-xl border border-white/[0.08] bg-[#0B0B0E] p-4"
+        className="space-y-4 border-t border-[var(--hairline)] pt-5"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="text-xs font-semibold text-[#F4F3EF]">
-            Issue Scoped MCP Token
+          <div className="text-[14px] font-semibold text-[var(--ink-primary)]">
+            Issue scoped MCP token
           </div>
           <button
             type="button"
             onClick={() => setShowCreateMatrix((s) => !s)}
-            className="inline-flex cursor-pointer items-center gap-1 text-xs text-[#A1A1AA] hover:text-[#F4F3EF]"
+            className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-[var(--ink-muted)] transition-colors duration-150 hover:text-[var(--ink-primary)]"
           >
             <Sliders className="h-3.5 w-3.5" />
-            <span>{showCreateMatrix ? "Hide 29-Scope Matrix" : "Customize 29 Scopes"}</span>
+            <span>
+              {showCreateMatrix ? "Hide 29-scope matrix" : "Customize 29 scopes"}
+            </span>
           </button>
         </div>
 
@@ -473,13 +489,17 @@ export function McpGovernanceSection({
             value={tokenName}
             onChange={(e) => setTokenName(e.target.value)}
             placeholder="Client name (e.g. Claude Editorial, Cursor Labs)"
-            className="h-9 rounded-xl border border-white/[0.12] bg-[#111114] px-3 text-xs text-[#F4F3EF] md:col-span-4"
+            aria-label="MCP client name"
+            className="h-10 rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3.5 text-[13px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] focus:border-[var(--accent)] focus:outline-none md:col-span-4"
           />
 
           <select
+            aria-label="MCP role preset"
             value={rolePreset}
-            onChange={(e) => handleCreatePresetChange(e.target.value as McpRolePreset)}
-            className="h-9 rounded-xl border border-white/[0.12] bg-[#111114] px-3 text-xs text-[#F4F3EF] md:col-span-3"
+            onChange={(e) =>
+              handleCreatePresetChange(e.target.value as McpRolePreset)
+            }
+            className="h-10 rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3 text-[13px] text-[var(--ink-primary)] focus:border-[var(--accent)] focus:outline-none md:col-span-3"
           >
             <option value="editorial_writer">Preset: Editorial Writer</option>
             <option value="hackathon_scout">Preset: Hackathon Scout</option>
@@ -488,15 +508,16 @@ export function McpGovernanceSection({
             <option value="crm_operator">Preset: CRM &amp; Orbit Operator</option>
             <option value="inherit">Inherit Global AI Policy</option>
             <option value="full_ops" disabled={!allowFullParity}>
-              Full Ops Parity {!allowFullParity ? "(Disabled Globally)" : ""}
+              Full Ops Parity {!allowFullParity ? "(Disabled globally)" : ""}
             </option>
             <option value="custom">Custom Scope Selection</option>
           </select>
 
           <select
+            aria-label="Token expiration"
             value={expiresDays}
             onChange={(e) => setExpiresDays(Number(e.target.value))}
-            className="h-9 rounded-xl border border-white/[0.12] bg-[#111114] px-3 text-xs text-[#F4F3EF] md:col-span-2"
+            className="h-10 rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3 text-[13px] text-[var(--ink-primary)] focus:border-[var(--accent)] focus:outline-none md:col-span-2"
           >
             <option value={7}>Expires: 7 days</option>
             <option value={30}>Expires: 30 days</option>
@@ -506,9 +527,10 @@ export function McpGovernanceSection({
           </select>
 
           <select
+            aria-label="Rate limit RPM"
             value={rateLimitRpm}
             onChange={(e) => setRateLimitRpm(Number(e.target.value))}
-            className="h-9 rounded-xl border border-white/[0.12] bg-[#111114] px-3 text-xs text-[#F4F3EF] md:col-span-1"
+            className="h-10 rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3 text-[13px] text-[var(--ink-primary)] focus:border-[var(--accent)] focus:outline-none md:col-span-1"
           >
             <option value={30}>30 rpm</option>
             <option value={60}>60 rpm</option>
@@ -518,40 +540,40 @@ export function McpGovernanceSection({
 
           <button
             type="submit"
-            className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-full bg-[#FF3B1F] px-4 text-xs font-semibold text-[#08080A] md:col-span-2"
+            className="press-tactile inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-full bg-[var(--accent)] px-4 text-[13px] font-semibold text-[#07090D] hover:bg-[var(--accent-hover)] md:col-span-2"
           >
             <KeyRound className="h-3.5 w-3.5" />
-            <span>Issue Token</span>
+            <span>Issue token</span>
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#8B8B94]">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-[13px] text-[var(--ink-muted)]">
           <span>{activePresetInfo.description}</span>
           <input
             type="text"
             value={tokenNotes}
             onChange={(e) => setTokenNotes(e.target.value)}
-            placeholder="Optional description or owner note..."
-            className="h-7 w-full rounded-lg border border-white/[0.08] bg-[#111114] px-2.5 text-[11px] text-[#D4D4D8] sm:w-64"
+            placeholder="Optional owner note..."
+            aria-label="Optional token note"
+            className="h-9 w-full rounded-xl border border-[var(--hairline)] bg-[var(--bg-canvas)] px-3 text-[13px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] sm:w-64"
           />
         </div>
 
         {!allowPii && rolePreset === "crm_operator" && (
-          <div className="flex items-center gap-2 rounded-lg border border-[#F59E0B]/35 bg-[#F59E0B]/10 px-3 py-2 text-[11px] text-[#FBBF24]">
-            <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+          <div className="flex items-center gap-2 border-l-2 border-[#F59E0B] pl-3 text-[13px] text-[#FBBF24]">
+            <ShieldAlert className="h-4 w-4 shrink-0" />
             <span>
-              Global PII Ceiling (<code>mcp_allow_pii_over_mcp</code>) is currently OFF.
-              CRM PII reads will stay blocked until you enable it in AI Permissions.
+              Global PII ceiling (<code>mcp_allow_pii_over_mcp</code>) is OFF.
+              CRM PII reads remain blocked until enabled in AI Permissions.
             </span>
           </div>
         )}
 
-        {/* Fine-Grained Scope Matrix */}
         {showCreateMatrix && (
-          <div className="space-y-4 border-t border-white/[0.08] pt-4">
+          <div className="space-y-5 border-t border-[var(--hairline)] pt-5">
             {(Object.keys(groupedScopes) as McpScopeDomain[]).map((domain) => (
-              <div key={domain} className="space-y-2">
-                <div className="font-mono text-[10px] font-semibold tracking-wider text-[#A1A1AA] uppercase">
+              <div key={domain} className="space-y-2.5">
+                <div className="text-[13px] font-semibold text-[var(--ink-primary)]">
                   {DOMAIN_LABELS[domain]}
                 </div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -560,32 +582,32 @@ export function McpGovernanceSection({
                     return (
                       <label
                         key={def.key}
-                        className={`flex cursor-pointer items-start gap-2 rounded-lg border p-2.5 text-xs transition-colors ${
+                        className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 text-[13px] transition-colors duration-150 ${
                           checked
-                            ? "border-[#10B981]/35 bg-[#10B981]/8"
-                            : "border-white/[0.06] bg-[#111114]"
+                            ? "border-[#10B981]/40 bg-[#10B981]/[0.07]"
+                            : "border-[var(--hairline)] bg-[var(--bg-canvas)]"
                         }`}
                       >
                         <input
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleCreateScope(def.key)}
-                          className="mt-0.5 accent-[#10B981]"
+                          className="mt-0.5 h-4 w-4 accent-[#10B981]"
                         />
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="font-medium text-[#F4F3EF]">
+                          <div className="flex flex-wrap items-baseline justify-between gap-2">
+                            <span className="font-medium text-[var(--ink-primary)]">
                               {def.label}
                             </span>
                             <span
-                              className={`rounded px-1.5 py-0.5 font-mono text-[9px] uppercase ${
-                                RISK_STYLES[def.risk]
+                              className={`text-[12px] font-medium ${
+                                RISK_TEXT_STYLES[def.risk]
                               }`}
                             >
                               {def.risk}
                             </span>
                           </div>
-                          <div className="mt-0.5 text-[11px] text-[#8B8B94]">
+                          <div className="mt-0.5 text-[13px] text-[var(--ink-muted)]">
                             {def.description}
                           </div>
                         </div>
@@ -599,29 +621,31 @@ export function McpGovernanceSection({
         )}
       </form>
 
-      {/* Newly Issued / Rotated Plaintext Secret Banner */}
+      {/* Plaintext Secret Banner */}
       {newPlaintextToken && (
-        <div className="rounded-xl border border-[#10B981]/40 bg-[#10B981]/12 p-4 text-xs">
+        <div className="rounded-xl border border-[#10B981]/40 bg-[#10B981]/10 p-4 text-[13px]">
           <div className="flex items-center justify-between gap-2">
             <span className="font-semibold text-[#34D399]">
-              Copy this MCP secret now (shown once — snippets below pre-filled automatically):
+              Copy this MCP secret now (shown once, pre-filled in snippets
+              below):
             </span>
             <button
               type="button"
               onClick={() => setNewPlaintextToken(null)}
-              className="text-[#A1A1AA] hover:text-[#F4F3EF]"
+              aria-label="Dismiss token banner"
+              className="cursor-pointer text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-4 w-4" />
             </button>
           </div>
-          <div className="mt-2 flex items-center gap-2">
-            <code className="flex-1 break-all rounded-lg bg-[#08080A] p-2 font-mono text-[#F4F3EF]">
+          <div className="mt-2.5 flex items-center gap-2">
+            <code className="flex-1 break-all rounded-lg bg-[var(--bg-canvas)] p-2.5 text-[13px] text-[var(--ink-primary)]">
               {newPlaintextToken}
             </code>
             <button
               type="button"
               onClick={() => void handleCopy("mcp-tok", newPlaintextToken)}
-              className="h-8 cursor-pointer rounded-full bg-[#10B981] px-3 font-semibold text-[#08080A]"
+              className="press-tactile h-9 cursor-pointer rounded-full bg-[#10B981] px-4 font-semibold text-[#07090D]"
             >
               {copiedKey === "mcp-tok" ? "Copied" : "Copy"}
             </button>
@@ -629,53 +653,52 @@ export function McpGovernanceSection({
         </div>
       )}
 
-      {/* Existing Tokens List */}
+      {/* Existing Tokens Ledger */}
       {tokens.length > 0 && (
-        <div className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.08] bg-[#0B0B0E]">
+        <div className="divide-y divide-[var(--hairline)] border-y border-[var(--hairline)]">
           {tokens.map((t) => {
             const delKey = `mcp-${t.id}`;
             const isExpired = Boolean(t.is_expired);
             const presetLabel =
               MCP_ROLE_PRESETS[t.role_preset ?? "inherit"]?.badge ??
-              t.permissions_mode.toUpperCase();
+              t.permissions_mode;
             const deniedCount = t.denied_count ?? 0;
             const requestCount = t.request_count ?? 0;
 
             return (
-              <div key={t.id} className="space-y-2.5 px-4 py-3.5 text-xs">
+              <div key={t.id} className="space-y-3 py-4 text-[13px]">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0 space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-[#F4F3EF]">
+                    <div className="font-tabular flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+                      <span className="text-[14px] font-semibold text-[var(--ink-primary)]">
                         {t.name}
                       </span>
-                      <span className="font-mono text-[#8B8B94]">
+                      <span className="text-[var(--ink-muted)]">
                         {t.prefix}...
                       </span>
-                      <span className="rounded-full bg-white/[0.08] px-2 py-0.5 font-mono text-[10px] text-[#D4D4D8]">
-                        {presetLabel}
+                      <span className="text-[var(--ink-muted)]">
+                        {presetLabel} · {t.rate_limit_rpm ?? 60} rpm
                       </span>
-                      <span className="rounded-full bg-white/[0.05] px-2 py-0.5 font-mono text-[10px] text-[#8B8B94]">
-                        {t.rate_limit_rpm ?? 60} rpm
+                      <span
+                        className={`font-medium ${
+                          !t.is_active
+                            ? "text-[#FF8A7A]"
+                            : isExpired
+                            ? "text-[#FBBF24]"
+                            : "text-[#34D399]"
+                        }`}
+                      >
+                        {!t.is_active
+                          ? "Revoked"
+                          : isExpired
+                          ? "Expired"
+                          : "Active"}
                       </span>
-                      {!t.is_active ? (
-                        <span className="rounded-full bg-[#FF3B1F]/15 px-2 py-0.5 font-mono text-[10px] text-[#FF8A7A]">
-                          REVOKED
-                        </span>
-                      ) : isExpired ? (
-                        <span className="rounded-full bg-[#F59E0B]/15 px-2 py-0.5 font-mono text-[10px] text-[#FBBF24]">
-                          EXPIRED
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-[#10B981]/15 px-2 py-0.5 font-mono text-[10px] text-[#34D399]">
-                          ACTIVE
-                        </span>
-                      )}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-[#8B8B94]">
-                      <span>{requestCount} reqs</span>
-                      <span className={deniedCount > 0 ? "text-[#FBBF24]" : undefined}>
+                    <div className="font-tabular flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-[var(--ink-muted)]">
+                      <span>{requestCount} requests</span>
+                      <span className={deniedCount > 0 ? "text-[#FBBF24]" : ""}>
                         {deniedCount} denied
                       </span>
                       <span>Last used: {formatShortUtc(t.last_used_at)}</span>
@@ -683,20 +706,18 @@ export function McpGovernanceSection({
                         <span>Expires: {t.expires_at.slice(0, 10)}</span>
                       )}
                       {t.last_client_info && (
-                        <span className="font-mono text-[#A1A1AA]">
-                          Client: {t.last_client_info}
-                        </span>
+                        <span>Client: {t.last_client_info}</span>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2.5">
+                  <div className="flex flex-wrap items-center gap-3.5 text-[13px] font-medium">
                     <button
                       type="button"
                       onClick={() => void runInspection(`token:${t.id}`)}
                       className="inline-flex cursor-pointer items-center gap-1 text-[#7DD3FC] hover:underline"
                     >
-                      <Eye className="h-3 w-3" />
+                      <Eye className="h-3.5 w-3.5" />
                       <span>Inspect</span>
                     </button>
                     <button
@@ -706,10 +727,12 @@ export function McpGovernanceSection({
                           ? setEditingTokenId(null)
                           : startEditToken(t)
                       }
-                      className="inline-flex cursor-pointer items-center gap-1 text-[#D4D4D8] hover:underline"
+                      className="inline-flex cursor-pointer items-center gap-1 text-[var(--ink-primary)] hover:underline"
                     >
-                      <Edit3 className="h-3 w-3" />
-                      <span>{editingTokenId === t.id ? "Close" : "Edit Scopes"}</span>
+                      <Edit3 className="h-3.5 w-3.5" />
+                      <span>
+                        {editingTokenId === t.id ? "Close" : "Edit scopes"}
+                      </span>
                     </button>
                     <button
                       type="button"
@@ -725,7 +748,7 @@ export function McpGovernanceSection({
                       }}
                       className="inline-flex cursor-pointer items-center gap-1 text-[#34D399] hover:underline"
                     >
-                      <RefreshCw className="h-3 w-3" />
+                      <RefreshCw className="h-3.5 w-3.5" />
                       <span>Rotate</span>
                     </button>
                     {t.is_active ? (
@@ -769,7 +792,7 @@ export function McpGovernanceSection({
                       }
                       className={`cursor-pointer hover:underline ${
                         confirmDeleteKey === delKey
-                          ? "font-semibold text-[#FF3B1F]"
+                          ? "font-semibold text-[var(--accent)]"
                           : "text-[#FF8A7A]"
                       }`}
                     >
@@ -778,22 +801,23 @@ export function McpGovernanceSection({
                   </div>
                 </div>
 
-                {/* Inline Edit Token Panel */}
                 {editingTokenId === t.id && (
-                  <div className="mt-3 space-y-3 rounded-xl border border-white/[0.1] bg-[#111114] p-4">
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <div className="mt-3 space-y-3 rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] p-4">
+                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
                       <input
                         type="text"
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
-                        className="h-8 rounded-lg border border-white/[0.12] bg-[#0B0B0E] px-2.5 text-xs text-[#F4F3EF]"
+                        className="h-9 rounded-lg border border-[var(--hairline-strong)] bg-[var(--bg-surface)] px-3 text-[13px] text-[var(--ink-primary)]"
                       />
                       <select
                         value={editPreset}
                         onChange={(e) =>
-                          handleEditPresetChange(e.target.value as McpRolePreset)
+                          handleEditPresetChange(
+                            e.target.value as McpRolePreset
+                          )
                         }
-                        className="h-8 rounded-lg border border-white/[0.12] bg-[#0B0B0E] px-2.5 text-xs text-[#F4F3EF]"
+                        className="h-9 rounded-lg border border-[var(--hairline-strong)] bg-[var(--bg-surface)] px-3 text-[13px] text-[var(--ink-primary)]"
                       >
                         {Object.values(MCP_ROLE_PRESETS).map((p) => (
                           <option
@@ -810,9 +834,11 @@ export function McpGovernanceSection({
                         min={5}
                         max={1000}
                         value={editRateLimit}
-                        onChange={(e) => setEditRateLimit(Number(e.target.value) || 60)}
+                        onChange={(e) =>
+                          setEditRateLimit(Number(e.target.value) || 60)
+                        }
                         placeholder="RPM"
-                        className="h-8 rounded-lg border border-white/[0.12] bg-[#0B0B0E] px-2.5 text-xs text-[#F4F3EF]"
+                        className="h-9 rounded-lg border border-[var(--hairline-strong)] bg-[var(--bg-surface)] px-3 text-[13px] text-[var(--ink-primary)]"
                       />
                     </div>
 
@@ -821,7 +847,7 @@ export function McpGovernanceSection({
                       value={editNotes}
                       onChange={(e) => setEditNotes(e.target.value)}
                       placeholder="Token notes..."
-                      className="h-8 w-full rounded-lg border border-white/[0.12] bg-[#0B0B0E] px-2.5 text-xs text-[#D4D4D8]"
+                      className="h-9 w-full rounded-lg border border-[var(--hairline-strong)] bg-[var(--bg-surface)] px-3 text-[13px] text-[var(--ink-primary)]"
                     />
 
                     <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
@@ -830,7 +856,7 @@ export function McpGovernanceSection({
                         return (
                           <label
                             key={def.key}
-                            className="flex cursor-pointer items-center gap-2 rounded-md border border-white/[0.06] bg-[#0B0B0E] px-2.5 py-1.5 text-[11px]"
+                            className="flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--hairline)] bg-[var(--bg-surface)] px-3 py-2 text-[13px]"
                           >
                             <input
                               type="checkbox"
@@ -842,28 +868,30 @@ export function McpGovernanceSection({
                                   [def.key]: !prev[def.key],
                                 }));
                               }}
-                              className="accent-[#10B981]"
+                              className="h-3.5 w-3.5 accent-[#10B981]"
                             />
-                            <span className="truncate text-[#E4E4E7]">{def.label}</span>
+                            <span className="truncate text-[var(--ink-primary)]">
+                              {def.label}
+                            </span>
                           </label>
                         );
                       })}
                     </div>
 
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-3 pt-1">
                       <button
                         type="button"
                         onClick={() => setEditingTokenId(null)}
-                        className="h-8 cursor-pointer rounded-full border border-white/[0.12] px-3 text-xs text-[#A1A1AA]"
+                        className="cursor-pointer px-3 text-[13px] font-medium text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
                       >
                         Cancel
                       </button>
                       <button
                         type="button"
                         onClick={() => void saveEditToken()}
-                        className="h-8 cursor-pointer rounded-full bg-[#10B981] px-4 text-xs font-semibold text-[#08080A]"
+                        className="press-tactile h-9 cursor-pointer rounded-full bg-[#10B981] px-4 text-[13px] font-semibold text-[#07090D]"
                       >
-                        Save Scope Changes
+                        Save scope changes
                       </button>
                     </div>
                   </div>
@@ -875,25 +903,31 @@ export function McpGovernanceSection({
       )}
 
       {/* Multi-Client Config Generator */}
-      <div className="space-y-2 rounded-xl border border-white/[0.08] bg-[#0B0B0E] p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap gap-1.5">
+      <div className="space-y-3 border-t border-[var(--hairline)] pt-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div
+            role="tablist"
+            aria-label="MCP client snippet format"
+            className="inline-flex flex-wrap rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] p-1"
+          >
             {(
               [
                 ["claude", "Claude / Cursor"],
                 ["antigravity", "Antigravity"],
-                ["vscode", "VS Code MCP"],
-                ["curl", "cURL Test"],
+                ["vscode", "VS Code"],
+                ["curl", "cURL"],
               ] as const
             ).map(([id, label]) => (
               <button
                 key={id}
                 type="button"
+                role="tab"
+                aria-selected={snippetTab === id}
                 onClick={() => setSnippetTab(id)}
-                className={`cursor-pointer rounded-full px-3 py-1 text-xs font-medium ${
+                className={`cursor-pointer rounded-full px-3.5 py-1 text-[13px] font-medium transition-colors duration-150 ${
                   snippetTab === id
-                    ? "bg-[#F4F3EF] text-[#08080A]"
-                    : "bg-[#18181D] text-[#A1A1AA]"
+                    ? "bg-[var(--ink-primary)] text-[#07090D]"
+                    : "text-[var(--ink-muted)] hover:text-[var(--ink-primary)]"
                 }`}
               >
                 {label}
@@ -903,29 +937,34 @@ export function McpGovernanceSection({
           <button
             type="button"
             onClick={() => void handleCopy("mcp-cfg", clientSnippet)}
-            className="inline-flex cursor-pointer items-center gap-1 text-xs text-[#F4F3EF] hover:underline"
+            className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-[var(--ink-primary)] hover:text-[#FF7A63]"
           >
-            {copiedKey === "mcp-cfg" ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-            <span>{copiedKey === "mcp-cfg" ? "Copied" : "Copy Snippet"}</span>
+            {copiedKey === "mcp-cfg" ? (
+              <Check className="h-3.5 w-3.5 text-[#34D399]" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
+            <span>{copiedKey === "mcp-cfg" ? "Copied" : "Copy snippet"}</span>
           </button>
         </div>
-        <pre className="overflow-x-auto rounded-xl border border-white/[0.06] bg-[#08080A] p-3 font-mono text-[11px] text-[#A1A1AA]">
-          {clientSnippet}
+        <pre className="overflow-x-auto rounded-xl border border-[var(--hairline)] bg-[var(--bg-canvas)] p-4 text-[13px] leading-relaxed text-[var(--ink-muted)]">
+          <code>{clientSnippet}</code>
         </pre>
       </div>
 
-      {/* Live MCP Inspector & JSON-RPC Probe */}
-      <div className="space-y-3 rounded-xl border border-white/[0.08] bg-[#0B0B0E] p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#F4F3EF]">
-            <Terminal className="h-4 w-4 text-[#FF3B1F]" />
-            <span>Live MCP Protocol Inspector &amp; Simulator</span>
+      {/* Live MCP Protocol Inspector & JSON-RPC Probe */}
+      <div className="space-y-3 border-t border-[var(--hairline)] pt-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-[14px] font-semibold text-[var(--ink-primary)]">
+            <Terminal className="h-4 w-4 text-[var(--accent)]" />
+            <span>Live MCP protocol inspector and simulator</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <select
+              aria-label="Inspect target"
               value={inspectorTarget}
               onChange={(e) => setInspectorTarget(e.target.value)}
-              className="h-8 rounded-lg border border-white/[0.12] bg-[#111114] px-2.5 text-xs text-[#F4F3EF]"
+              className="h-9 rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3 text-[13px] text-[var(--ink-primary)]"
             >
               <optgroup label="Simulate Preset">
                 {Object.values(MCP_ROLE_PRESETS).map((p) => (
@@ -949,82 +988,91 @@ export function McpGovernanceSection({
               type="button"
               disabled={inspectorBusy}
               onClick={() => void runInspection()}
-              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-[#18181D] px-3 text-xs text-[#F4F3EF] hover:bg-white/[0.12]"
+              className="press-tactile inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-[var(--hairline-strong)] bg-[var(--bg-recessed)] px-3.5 text-[13px] font-medium text-[var(--ink-primary)]"
             >
               {inspectorBusy ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <CheckCircle2 className="h-3 w-3 text-[#34D399]" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-[#34D399]" />
               )}
-              <span>Inspect Scopes</span>
+              <span>Inspect scopes</span>
             </button>
 
             <select
+              aria-label="RPC probe method"
               value={probeMethod}
               onChange={(e) => setProbeMethod(e.target.value)}
-              className="h-8 rounded-lg border border-white/[0.12] bg-[#111114] px-2.5 text-xs text-[#F4F3EF]"
+              className="h-9 rounded-xl border border-[var(--hairline-strong)] bg-[var(--bg-canvas)] px-3 text-[13px] text-[var(--ink-primary)]"
             >
               <option value="server/discover">RPC: server/discover</option>
               <option value="initialize">RPC: initialize</option>
               <option value="tools/list">RPC: tools/list</option>
               <option value="resources/list">RPC: resources/list</option>
-              <option value="resources/templates/list">RPC: resources/templates/list</option>
+              <option value="resources/templates/list">
+                RPC: resources/templates/list
+              </option>
               <option value="prompts/list">RPC: prompts/list</option>
-              <option value="tools/call:identity">Tool: get_my_mcp_identity</option>
-              <option value="tools/call:overview">Tool: get_system_overview</option>
+              <option value="tools/call:identity">
+                Tool: get_my_mcp_identity
+              </option>
+              <option value="tools/call:overview">
+                Tool: get_system_overview
+              </option>
             </select>
 
             <button
               type="button"
               disabled={inspectorBusy}
               onClick={() => void runRpcProbe()}
-              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-[#FF3B1F] px-3 text-xs font-semibold text-[#08080A]"
+              className="press-tactile inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full bg-[var(--accent)] px-4 text-[13px] font-semibold text-[#07090D]"
             >
-              <Play className="h-3 w-3" />
-              <span>Run Probe</span>
+              <Play className="h-3.5 w-3.5" />
+              <span>Run probe</span>
             </button>
           </div>
         </div>
 
         {inspectionResult && (
-          <div className="space-y-3 rounded-lg border border-white/[0.06] bg-[#111114] p-3 text-xs">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="font-mono text-[#34D399]">
+          <div className="space-y-3 rounded-xl border border-[var(--hairline)] bg-[var(--bg-canvas)] p-4 text-[13px]">
+            <div className="font-tabular flex flex-wrap items-center gap-x-4 gap-y-1 font-medium">
+              <span className="text-[#34D399]">
                 {inspectionResult.counts.tools} tools exposed
               </span>
-              <span className="font-mono text-[#7DD3FC]">
+              <span className="text-[#7DD3FC]">
                 {inspectionResult.counts.resources} resources
               </span>
-              <span className="font-mono text-[#FBBF24]">
+              <span className="text-[#FBBF24]">
                 {inspectionResult.counts.resourceTemplates} URI templates
               </span>
-              <span className="font-mono text-[#C084FC]">
+              <span className="text-[var(--ink-primary)]">
                 {inspectionResult.counts.prompts} prompts
               </span>
             </div>
 
-            <div className="flex flex-wrap gap-1.5">
-              {inspectionResult.tools.map((tool) => (
-                <span
-                  key={tool.name}
-                  className={`rounded-md px-2 py-0.5 font-mono text-[10px] ${
-                    tool.destructiveHint
-                      ? "bg-[#FF3B1F]/15 text-[#FF8A7A]"
-                      : tool.readOnlyHint
-                      ? "bg-[#10B981]/12 text-[#34D399]"
-                      : "bg-white/[0.08] text-[#E4E4E7]"
-                  }`}
-                >
-                  {tool.name}
-                </span>
+            <p className="text-[13px] leading-relaxed text-[var(--ink-muted)]">
+              {inspectionResult.tools.map((tool, i) => (
+                <React.Fragment key={tool.name}>
+                  {i > 0 && " · "}
+                  <code
+                    className={
+                      tool.destructiveHint
+                        ? "text-[#FF8A7A]"
+                        : tool.readOnlyHint
+                        ? "text-[#34D399]"
+                        : "text-[var(--ink-primary)]"
+                    }
+                  >
+                    {tool.name}
+                  </code>
+                </React.Fragment>
               ))}
-            </div>
+            </p>
           </div>
         )}
 
         {probeOutput !== null && (
-          <pre className="max-h-72 overflow-auto rounded-lg border border-white/[0.06] bg-[#08080A] p-3 font-mono text-[11px] text-[#D4D4D8]">
-            {JSON.stringify(probeOutput, null, 2)}
+          <pre className="max-h-72 overflow-auto rounded-xl border border-[var(--hairline)] bg-[var(--bg-canvas)] p-4 text-[13px] text-[var(--ink-muted)]">
+            <code>{JSON.stringify(probeOutput, null, 2)}</code>
           </pre>
         )}
       </div>

@@ -2,7 +2,7 @@ import React from "react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { PreloadLink } from "@/components/layout/PreloadLink";
-import { ArrowUpRight, GitBranch, Radar } from "lucide-react";
+import { ArrowUpRight, GitBranch } from "lucide-react";
 import { GraduationScorecard } from "@/components/skunkworks/GraduationScorecard";
 import { Reveal, StaggerGroup, StaggerItem } from "@/lib/motion";
 import { getLabProjects } from "@/lib/db/repository";
@@ -50,14 +50,14 @@ function sanitizeText(text: string): string {
   return text.replaceAll(" // ", " \u00B7 ").replaceAll("\u2014", ", ");
 }
 
-function getScorePillClasses(code: GraduationVerdictCode): string {
+function getScoreTextColor(code: GraduationVerdictCode): string {
   switch (code) {
     case "PROMOTE_TO_LABS":
-      return "border-[#FF3B1F]/30 bg-[#FF3B1F]/12 text-[#FF8A7A]";
+      return "text-[#FF7A63]";
     case "B2B_CASE_STUDY_OPEN_SOURCE":
-      return "border-[#F59E0B]/30 bg-[#F59E0B]/12 text-[#FBBF24]";
+      return "text-[#FBBF24]";
     default:
-      return "border-white/[0.12] bg-white/[0.06] text-[#D4D4D8]";
+      return "text-[var(--ink-muted)]";
   }
 }
 
@@ -65,194 +65,177 @@ export default async function SkunkworksPage() {
   const builds = await getLabProjects("SKUNKWORKS");
 
   return (
-    <div className="mx-auto max-w-[1360px] px-5 pt-12 pb-24 sm:px-8 lg:px-12 lg:pt-16 lg:pb-32">
-      {/* Experience-Mode Editorial Hero + Studio Photography */}
-      <header className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-12">
-        <div className="lg:col-span-6">
-          <h1 className="font-display text-[clamp(2.35rem,4.7vw,4.35rem)] font-bold leading-[1.04] tracking-[-0.03em] text-[#F4F3EF]">
-            OXAKALABS. Our 48-hour build engine and R&amp;D foundry.
+    <div className="bg-[var(--bg-canvas)] text-[var(--ink-primary)]">
+      {/* Centered Architectural Opening + Panoramic Foundry Stage */}
+      <section className="mx-auto max-w-[1360px] px-5 pt-24 pb-16 sm:px-8 lg:px-12 lg:pt-28 lg:pb-20">
+        <header className="mx-auto max-w-4xl text-center">
+          <h1 className="font-display text-[clamp(2.5rem,5.2vw,4.5rem)] font-bold leading-[1.0] tracking-[-0.035em] text-[var(--ink-primary)]">
+            OXAKALABS. 48 hours from hypothesis to code.
           </h1>
 
-          <p className="mt-6 max-w-[56ch] text-base leading-relaxed text-[#A1A1AA] sm:text-lg">
+          <p className="mx-auto mt-6 max-w-[58ch] text-[16px] leading-[1.65] text-[var(--ink-muted)]">
             Founded in 2022,{" "}
-            <strong className="font-semibold text-[#F4F3EF]">OXAKALABS</strong> operates
-            as G-Gravitator&apos;s experimental R&amp;D arm and hackathon strike team.
-            Every prototype, multi-agent harness, and open-source tool runs through our
-            25-point filter to earn promotion into commercial Labs drops.
+            <strong className="font-semibold text-[var(--ink-primary)]">
+              OXAKALABS
+            </strong>{" "}
+            is G-Gravitator&apos;s R&amp;D foundry and hackathon strike arm.
+            Every prototype runs through our 25-point filter to earn promotion
+            into commercial Labs drops.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center gap-3">
+          <div className="mt-8">
             <PreloadLink
               href="/hackathons"
-              className="press-tactile inline-flex h-11 items-center gap-2 rounded-full bg-[#FF3B1F] px-6 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238]"
+              className="press-tactile inline-flex h-12 items-center gap-2 rounded-full bg-[var(--accent)] px-7 text-[14px] font-semibold whitespace-nowrap text-[#07090D] hover:bg-[var(--accent-hover)]"
             >
-              <Radar className="h-4 w-4 shrink-0" strokeWidth={2} />
               <span>Open Hackathon Radar</span>
               <ArrowUpRight className="h-4 w-4 shrink-0" strokeWidth={2} />
             </PreloadLink>
+          </div>
+        </header>
+
+        <div className="mt-14 aspect-[21/9] w-full overflow-hidden rounded-2xl bg-[var(--bg-surface)] ring-1 ring-inset ring-white/[0.08]">
+          <Image
+            src="/images/skunkworks-forge.jpg"
+            alt="Macro CNC-milled matte black aerospace alloy mechanism around a frosted optical glass aperture"
+            width={1376}
+            height={768}
+            preload
+            sizes="100vw"
+            className="h-full w-full object-cover"
+          />
+        </div>
+      </section>
+
+      {/* Cool Architectural Stone Band: Interactive 25-Point Graduation Filter */}
+      <section className="surface-stone py-24 lg:py-32">
+        <div className="mx-auto max-w-[1360px] px-5 sm:px-8 lg:px-12">
+          <Reveal>
+            <h2 className="type-heading text-[var(--ink-stone-primary)]">
+              How weekend builds graduate into Labs drops
+            </h2>
+            <p className="mt-3 max-w-[62ch] text-[16px] leading-[1.65] text-[var(--ink-stone-muted)]">
+              Prototypes scoring 20 to 25 promote directly into numbered
+              G-Gravitator Labs releases. Test any shipped build or calibrate
+              your own prototype below.
+            </p>
+          </Reveal>
+
+          <Reveal delay={0.05} className="mt-10">
+            <GraduationScorecard presets={builds} />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Shipped Prototypes Archive */}
+      <section className="border-t border-[var(--hairline)] py-24 lg:py-32">
+        <div className="mx-auto max-w-[1360px] px-5 sm:px-8 lg:px-12">
+          <Reveal className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="type-heading text-[var(--ink-primary)]">
+                Shipped open-source prototypes
+              </h2>
+              <p className="mt-3 max-w-[60ch] text-[16px] leading-[1.65] text-[var(--ink-muted)]">
+                Public repositories built under OXAKALABS and audited against
+                our 25-point commercial viability criteria.
+              </p>
+            </div>
+
             <a
               href="https://github.com/Aka4real"
               target="_blank"
               rel="noreferrer"
-              className="press-tactile inline-flex h-11 items-center gap-2 rounded-full border border-white/[0.12] bg-[#18181D] px-5 text-sm font-medium whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.22] hover:bg-white/[0.08]"
+              className="inline-flex items-center gap-1.5 text-[14px] font-medium text-[var(--ink-primary)] underline decoration-white/25 underline-offset-4 transition-colors duration-150 hover:text-[#FF7A63]"
             >
-              <span>GitHub (@Aka4real)</span>
-              <ArrowUpRight className="h-4 w-4 text-[#FF3B1F]" strokeWidth={1.8} />
+              <span>All repositories on GitHub</span>
+              <ArrowUpRight className="h-4 w-4" strokeWidth={1.8} />
             </a>
-          </div>
-        </div>
+          </Reveal>
 
-        <div className="lg:col-span-6">
-          <div className="aspect-video overflow-hidden rounded-2xl bg-[#111114] ring-1 ring-inset ring-white/[0.08]">
-            <Image
-              src="/images/skunkworks-forge.jpg"
-              alt="Macro CNC-milled matte black aerospace alloy gearwork surrounding a frosted optical glass aperture with warm inner reflection"
-              width={1376}
-              height={768}
-              preload
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="h-full w-full object-cover"
-            />
-          </div>
-        </div>
-      </header>
+          <StaggerGroup className="mt-12 grid grid-cols-1 gap-x-8 gap-y-12 md:grid-cols-2 lg:grid-cols-3">
+            {builds.map((build) => {
+              const verdict = build.scorecard
+                ? evaluateGraduationScorecard(build.scorecard)
+                : null;
+              const displayName = formatBuildName(build.code, build.name);
 
-      {/* Interactive 25-Point Graduation Scorecard */}
-      <section className="mt-20 border-t border-white/[0.07] pt-16 lg:mt-28 lg:pt-20">
-        <Reveal>
-          <h2 className="font-display text-[clamp(1.75rem,3vw,2.75rem)] font-semibold leading-[1.08] tracking-[-0.025em] text-[#F4F3EF]">
-            How weekend builds graduate into Labs drops
-          </h2>
-          <p className="mt-3 max-w-[62ch] text-base text-[#A1A1AA]">
-            Prototypes scoring 20 to 25 promote directly into numbered G-Gravitator Labs
-            releases. Test any shipped build or calibrate your own prototype below.
-          </p>
-        </Reveal>
-
-        <Reveal delay={0.05} className="mt-10">
-          <GraduationScorecard presets={builds} />
-        </Reveal>
-      </section>
-
-      {/* Shipped Prototypes & Hackathon Archive (OXA-01 to OXA-06) */}
-      <section className="mt-20 border-t border-white/[0.07] pt-16 lg:mt-28 lg:pt-20">
-        <Reveal className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="font-display text-[clamp(1.75rem,3vw,2.75rem)] font-semibold leading-[1.08] tracking-[-0.025em] text-[#F4F3EF]">
-              Shipped prototypes (OXA-01 to OXA-06)
-            </h2>
-            <p className="mt-3 max-w-[60ch] text-base text-[#A1A1AA]">
-              Public repositories built under OXAKALABS and audited against our 25-point
-              commercial viability criteria.
-            </p>
-          </div>
-
-          <a
-            href="https://github.com/Aka4real"
-            target="_blank"
-            rel="noreferrer"
-            className="press-tactile inline-flex h-10 w-fit shrink-0 items-center gap-1.5 rounded-full border border-white/[0.12] bg-[#18181D] px-4 text-xs font-medium whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.22] hover:bg-white/[0.08]"
-          >
-            <span>All repositories on GitHub</span>
-            <ArrowUpRight className="h-3.5 w-3.5 text-[#FF3B1F]" strokeWidth={1.8} />
-          </a>
-        </Reveal>
-
-        <StaggerGroup className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {builds.map((build) => {
-            const verdict = build.scorecard
-              ? evaluateGraduationScorecard(build.scorecard)
-              : null;
-            const displayName = formatBuildName(build.code, build.name);
-
-            return (
-              <StaggerItem key={build.id} className="flex">
-                <article
-                  id={build.slug}
-                  className="surface-card surface-card-interactive scroll-mt-24 flex w-full flex-col justify-between p-6 sm:p-7"
-                >
-                  <div>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="font-mono-telemetry rounded-full border border-[#FF3B1F]/30 bg-[#FF3B1F]/12 px-3 py-1 text-xs font-semibold text-[#FF8A7A]">
-                        {build.code}
-                      </span>
-                      {verdict && (
-                        <span
-                          className={`font-mono-telemetry rounded-full border px-2.5 py-1 text-xs font-semibold ${getScorePillClasses(
-                            verdict.code
-                          )}`}
-                        >
-                          {verdict.total}/25
+              return (
+                <StaggerItem key={build.id} className="flex">
+                  <article
+                    id={build.slug}
+                    className="flex w-full scroll-mt-24 flex-col justify-between border-t border-[var(--hairline-strong)] pt-6"
+                  >
+                    <div>
+                      <div className="font-tabular flex items-baseline justify-between gap-2 text-[14px]">
+                        <span className="font-semibold text-[var(--accent)]">
+                          {build.code}
                         </span>
-                      )}
-                    </div>
-
-                    <h3 className="font-display mt-5 text-xl font-semibold tracking-[-0.02em] text-[#F4F3EF]">
-                      {displayName}
-                    </h3>
-
-                    <p className="mt-2.5 text-sm font-medium leading-snug text-[#F4F3EF]/90">
-                      {sanitizeText(build.tagline)}
-                    </p>
-
-                    <p className="mt-2.5 text-sm leading-relaxed text-[#A1A1AA]">
-                      {sanitizeText(build.description)}
-                    </p>
-
-                    {build.hackathon_origin && (
-                      <div className="mt-4 flex items-start gap-2 text-xs text-[#8B8B94]">
-                        <GitBranch
-                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FF3B1F]"
-                          strokeWidth={1.7}
-                        />
-                        <span>{sanitizeText(build.hackathon_origin)}</span>
+                        {verdict && (
+                          <span
+                            className={`font-semibold ${getScoreTextColor(verdict.code)}`}
+                          >
+                            {verdict.total}/25
+                          </span>
+                        )}
                       </div>
-                    )}
-                  </div>
 
-                  <div className="mt-6 border-t border-white/[0.07] pt-5">
-                    <div className="flex flex-wrap gap-1.5">
-                      {build.tech_stack.map((tech) => (
-                        <span
-                          key={tech}
-                          className="font-mono-telemetry rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 text-[11px] text-[#A1A1AA]"
-                        >
-                          {tech}
-                        </span>
-                      ))}
-                    </div>
+                      <h3 className="type-subhead mt-3 text-[var(--ink-primary)]">
+                        {displayName}
+                      </h3>
 
-                    <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                      {build.repo_url && (
-                        <a
-                          href={build.repo_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="press-tactile inline-flex h-9 items-center gap-1.5 rounded-full border border-white/[0.12] bg-[#18181D] px-4 text-xs font-semibold whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.24] hover:bg-white/[0.08]"
-                        >
-                          <span>Open repository</span>
-                          <ArrowUpRight
-                            className="h-3.5 w-3.5 text-[#FF3B1F]"
-                            strokeWidth={2}
+                      <p className="mt-2.5 text-[16px] font-medium leading-[1.55] text-[var(--ink-primary)]">
+                        {sanitizeText(build.tagline)}
+                      </p>
+
+                      <p className="mt-2.5 text-[16px] leading-[1.65] text-[var(--ink-muted)]">
+                        {sanitizeText(build.description)}
+                      </p>
+
+                      {build.hackathon_origin && (
+                        <p className="mt-4 flex items-start gap-2 text-[14px] text-[var(--ink-muted)]">
+                          <GitBranch
+                            className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]"
+                            strokeWidth={1.8}
                           />
-                        </a>
-                      )}
-                      {verdict && (
-                        <span className="text-xs font-medium text-[#8B8B94]">
-                          {verdict.code === "PROMOTE_TO_LABS"
-                            ? "Promoted to Labs"
-                            : verdict.code === "B2B_CASE_STUDY_OPEN_SOURCE"
-                            ? "Case study and OSS"
-                            : "Archived"}
-                        </span>
+                          <span>{sanitizeText(build.hackathon_origin)}</span>
+                        </p>
                       )}
                     </div>
-                  </div>
-                </article>
-              </StaggerItem>
-            );
-          })}
-        </StaggerGroup>
+
+                    <div className="mt-6 border-t border-[var(--hairline)] pt-4">
+                      <p className="text-[14px] text-[var(--ink-muted)]">
+                        {build.tech_stack.join(" · ")}
+                      </p>
+
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                        {build.repo_url && (
+                          <a
+                            href={build.repo_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-[var(--ink-primary)] underline decoration-[var(--accent)]/70 underline-offset-4 transition-colors duration-150 hover:text-[#FF7A63]"
+                          >
+                            <span>Open repository</span>
+                            <ArrowUpRight className="h-4 w-4" strokeWidth={1.9} />
+                          </a>
+                        )}
+                        {verdict && (
+                          <span className="text-[14px] text-[var(--ink-muted)]">
+                            {verdict.code === "PROMOTE_TO_LABS"
+                              ? "Promoted to Labs"
+                              : verdict.code === "B2B_CASE_STUDY_OPEN_SOURCE"
+                              ? "Case study and OSS"
+                              : "Archived"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                </StaggerItem>
+              );
+            })}
+          </StaggerGroup>
+        </div>
       </section>
     </div>
   );
