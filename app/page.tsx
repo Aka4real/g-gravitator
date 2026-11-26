@@ -132,25 +132,25 @@ export default async function HomePage() {
       {/* ===================================================================
           SECTION 1: HERO (ASYMMETRIC SCULPTURAL VISUAL COMPOSITION)
          =================================================================== */}
-      <section className="relative flex min-h-[calc(100dvh-76px)] items-center overflow-hidden pt-8 pb-16 lg:min-h-[min(calc(100dvh-76px),860px)] lg:pt-12 lg:pb-20">
+      <section className="relative overflow-hidden pt-5 pb-12 sm:pt-8 sm:pb-16 md:flex md:min-h-[min(calc(100svh-76px),660px)] md:items-center md:py-12 lg:min-h-[min(calc(100svh-76px),740px)] lg:py-16">
         {/* Subtle cursor-reactive orbital backdrop */}
-        <div className="pointer-events-none absolute inset-0 z-0 opacity-75">
+        <div className="pointer-events-none absolute inset-0 z-0 opacity-80">
           <GravityFieldCanvas />
         </div>
 
-        {/* Seamless right-anchored studio photograph blended into #08080A */}
-        <div className="relative z-10 mx-auto w-full max-w-[1360px] px-5 sm:px-8 lg:px-12">
-          <div className="relative flex flex-col lg:min-h-[580px] lg:justify-center">
+        {/* Balanced 12-column editorial + sculptural composition */}
+        <div className="relative z-10 mx-auto w-full max-w-[1440px] px-4 sm:px-6 md:px-8 lg:px-12">
+          <div className="grid grid-cols-1 items-center gap-8 sm:gap-10 md:grid-cols-12 md:gap-8 lg:gap-12">
             {/* Editorial Stack: strictly 3 text groups (H1, subtext, CTA row) */}
-            <div className="relative z-20 max-w-[580px] xl:max-w-[650px]">
-              <h1 className="font-display text-[clamp(2.5rem,5vw,4.65rem)] font-bold leading-[1.04] tracking-[-0.03em] text-[#F4F3EF]">
+            <div className="relative z-20 md:col-span-7 lg:col-span-7 xl:col-span-6">
+              <h1 className="font-display text-[clamp(2.35rem,4.7vw,4.5rem)] font-bold leading-[1.04] tracking-[-0.03em] text-[#F4F3EF]">
                 Build with weight.
-                <span className="mt-2.5 block text-[clamp(1.45rem,2.45vw,2.3rem)] font-semibold leading-[1.14] tracking-[-0.025em] text-[#A1A1AA]">
+                <span className="mt-2 block text-[clamp(1.3rem,2.25vw,2.15rem)] font-semibold leading-[1.15] tracking-[-0.025em] text-[#A1A1AA]">
                   Software engineered to pull markets.
                 </span>
               </h1>
 
-              <p className="mt-6 max-w-[44ch] text-base leading-relaxed text-[#A1A1AA] sm:text-lg">
+              <p className="mt-5 max-w-[46ch] text-[15px] leading-relaxed text-[#A1A1AA] sm:mt-6 sm:text-lg">
                 A software and AI lab engineering enterprise systems, commercial
                 drops, and 48-hour prototypes through{" "}
                 <PreloadLink
@@ -162,11 +162,11 @@ export default async function HomePage() {
                 .
               </p>
 
-              <div className="mt-9 flex flex-wrap items-center gap-3.5">
+              <div className="mt-7 flex flex-col gap-3 min-[400px]:flex-row min-[400px]:flex-wrap min-[400px]:items-center sm:mt-8 sm:gap-3.5">
                 <PreloadLink
                   href="/systems"
                   id="hero-cta-commission-system"
-                  className="press-tactile inline-flex h-12 items-center gap-2 rounded-full bg-[#FF3B1F] px-6 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238]"
+                  className="press-tactile inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#FF3B1F] px-5 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238] min-[400px]:h-12 min-[400px]:w-auto sm:px-6"
                 >
                   <span>Commission a system</span>
                   <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
@@ -175,7 +175,7 @@ export default async function HomePage() {
                 <PreloadLink
                   href="/labs"
                   id="hero-cta-explore-lab"
-                  className="press-tactile inline-flex h-12 items-center gap-2 rounded-full border border-white/[0.14] bg-[#18181D]/85 px-6 text-sm font-medium whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.24] hover:bg-white/[0.1]"
+                  className="press-tactile inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-white/[0.14] bg-[#18181D]/85 px-5 text-sm font-medium whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.24] hover:bg-white/[0.1] min-[400px]:h-12 min-[400px]:w-auto sm:px-6"
                 >
                   <span>Explore Labs</span>
                   <ArrowUpRight
@@ -186,33 +186,24 @@ export default async function HomePage() {
               </div>
             </div>
 
-            {/* Right-anchored studio sphere (stacks cleanly below on mobile) */}
-            <div className="relative mt-10 w-full lg:pointer-events-none lg:absolute lg:inset-y-0 lg:-right-8 lg:z-10 lg:mt-0 lg:flex lg:w-[74%] lg:max-w-[1040px] lg:items-center lg:justify-end xl:-right-12">
-              <div className="relative aspect-[4/3] w-full overflow-hidden sm:aspect-video lg:aspect-video">
+            {/* Centered sculptural sphere stage (seamless radial alpha melt into #08080A) */}
+            <div className="relative md:col-span-5 lg:col-span-5 xl:col-span-6">
+              <div
+                style={{
+                  WebkitMaskImage:
+                    "radial-gradient(closest-side at 50% 48%, #000 54%, rgba(0,0,0,0.68) 70%, rgba(0,0,0,0.18) 85%, transparent 97%)",
+                  maskImage:
+                    "radial-gradient(closest-side at 50% 48%, #000 54%, rgba(0,0,0,0.68) 70%, rgba(0,0,0,0.18) 85%, transparent 97%)",
+                }}
+                className="hero-sphere-mask relative mx-auto aspect-square w-full max-w-[300px] sm:max-w-[360px] md:max-w-[430px] lg:max-w-[500px] xl:max-w-[540px]"
+              >
                 <Image
                   src="/images/hero-gravity-mass.jpg"
                   alt="Anodized matte titanium and smoked optical glass gravitational sphere suspended in dark obsidian space"
                   fill
                   preload
-                  sizes="(max-width: 1024px) 100vw, 74vw"
-                  className="object-cover object-[76%_50%] lg:object-right"
-                />
-                {/* Soft CSS edge masks melting photography seamlessly into #08080A */}
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#08080A]/80 via-transparent via-18% to-transparent lg:from-[#08080A] lg:via-[#08080A]/65 lg:via-38% lg:to-transparent"
-                />
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-l from-[#08080A]/85 via-transparent via-14% to-transparent"
-                />
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#08080A] via-transparent via-22% to-transparent"
-                />
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#08080A]/90 via-transparent via-18% to-transparent"
+                  sizes="(max-width: 767px) 360px, (max-width: 1280px) 460px, 540px"
+                  className="select-none object-cover object-right"
                 />
               </div>
             </div>
@@ -223,8 +214,8 @@ export default async function HomePage() {
       {/* ===================================================================
           SECTION 2: OPERATING ARCHITECTURE (INTERACTIVE FLYWHEEL STAGE)
          =================================================================== */}
-      <section className="border-t border-white/[0.06] py-24 lg:py-32">
-        <div className="mx-auto max-w-[1360px] px-5 sm:px-8 lg:px-12">
+      <section className="border-t border-white/[0.06] py-16 sm:py-20 lg:py-24">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 md:px-8 lg:px-12">
           <Reveal>
             <h2 className="font-display text-[clamp(1.875rem,3.2vw,3rem)] font-semibold leading-[1.08] tracking-[-0.025em] text-[#F4F3EF]">
               One lab, four interlocking engines.
@@ -235,7 +226,7 @@ export default async function HomePage() {
             </p>
           </Reveal>
 
-          <Reveal delay={0.08} className="mt-12 lg:mt-14">
+          <Reveal delay={0.08} className="mt-10 lg:mt-12">
             <FlywheelMatrix />
           </Reveal>
         </div>
@@ -244,8 +235,8 @@ export default async function HomePage() {
       {/* ===================================================================
           SECTION 3: FEATURED LABS DROPS (VISUAL ANCHOR + ASYMMETRIC SHOWCASE)
          =================================================================== */}
-      <section className="border-t border-white/[0.06] py-24 lg:py-32">
-        <div className="mx-auto max-w-[1360px] px-5 sm:px-8 lg:px-12">
+      <section className="border-t border-white/[0.06] py-16 sm:py-20 lg:py-24">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 md:px-8 lg:px-12">
           <Reveal className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end">
             <div>
               <h2 className="font-display text-[clamp(1.875rem,3.2vw,3rem)] font-semibold leading-[1.08] tracking-[-0.025em] text-[#F4F3EF]">
@@ -393,8 +384,8 @@ export default async function HomePage() {
       {/* ===================================================================
           SECTION 4: LIVE INTELLIGENCE (EDITORIAL STREAM + FLOATING RADAR)
          =================================================================== */}
-      <section className="border-t border-white/[0.06] py-24 lg:py-32">
-        <div className="mx-auto max-w-[1360px] px-5 sm:px-8 lg:px-12">
+      <section className="border-t border-white/[0.06] py-16 sm:py-20 lg:py-24">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 md:px-8 lg:px-12">
           <Reveal>
             <h2 className="font-display text-[clamp(1.875rem,3.2vw,3rem)] font-semibold leading-[1.08] tracking-[-0.025em] text-[#F4F3EF]">
               Live intelligence from the frontier.
@@ -642,8 +633,8 @@ export default async function HomePage() {
       {/* ===================================================================
           SECTION 5: MANIFESTO & VISUAL STUDIO PATHWAYS (BENTO DIVERSITY)
          =================================================================== */}
-      <section className="border-t border-white/[0.06] py-24 lg:py-32">
-        <div className="mx-auto max-w-[1360px] px-5 sm:px-8 lg:px-12">
+      <section className="border-t border-white/[0.06] py-16 sm:py-20 lg:py-24">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 md:px-8 lg:px-12">
           {/* Editorial Display Manifesto */}
           <Reveal className="mx-auto max-w-4xl text-center">
             <blockquote className="font-display text-[clamp(1.625rem,3vw,2.625rem)] font-semibold leading-[1.18] tracking-[-0.025em] text-[#F4F3EF]">

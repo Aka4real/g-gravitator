@@ -206,7 +206,7 @@ export function JournalHubClient({
 
       {/* Featured Flagship Lab Dispatch */}
       {featuredDispatch && (
-        <article className="surface-card p-7 sm:p-10 lg:p-12">
+        <article className="surface-card p-5 sm:p-9 lg:p-11">
           <div className="flex flex-wrap items-center gap-2.5">
             <span className="font-mono-telemetry inline-flex items-center rounded-full bg-[#FF3B1F] px-3 py-1 text-xs font-semibold text-[#08080A]">
               Issue {featuredDispatch.issue_number}
@@ -225,12 +225,12 @@ export function JournalHubClient({
 
           <PreloadLink
             href={`/journal/${featuredDispatch.slug}`}
-            className="font-display mt-5 block max-w-4xl text-[clamp(1.75rem,3.4vw,2.875rem)] leading-[1.1] font-bold tracking-[-0.025em] text-[#F4F3EF] transition-colors hover:text-[#FF6B54]"
+            className="font-display mt-5 block max-w-4xl text-[clamp(1.45rem,3.2vw,2.75rem)] leading-[1.12] font-bold tracking-[-0.025em] text-[#F4F3EF] transition-colors hover:text-[#FF6B54]"
           >
             {featuredDispatch.title}
           </PreloadLink>
 
-          <p className="mt-4 max-w-[65ch] text-base leading-relaxed text-[#A1A1AA] sm:text-lg">
+          <p className="mt-3.5 max-w-[65ch] text-[15px] leading-relaxed text-[#A1A1AA] sm:mt-4 sm:text-lg">
             {sanitizeProse(featuredDispatch.subtitle)}
           </p>
 
@@ -334,7 +334,7 @@ export function JournalHubClient({
           </div>
 
           {/* Dispatch Category Pills */}
-          <div className="mt-4 flex items-center gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
+          <div className="no-scrollbar mt-4 flex items-center gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
             {DISPATCH_CATEGORIES.map((cat) => {
               const active = dispatchCat === cat.key;
               return (
@@ -501,7 +501,7 @@ export function JournalHubClient({
           </div>
 
           {/* News Category Pills */}
-          <div className="mt-4 flex items-center gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
+          <div className="no-scrollbar mt-4 flex items-center gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
             {NEWS_CATEGORIES.map((cat) => {
               const active = newsCat === cat.key;
               return (

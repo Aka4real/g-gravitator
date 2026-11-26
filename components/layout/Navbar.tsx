@@ -44,8 +44,8 @@ export function Navbar({
   }, [mobileMenuOpen]);
 
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-3 z-40 px-4 sm:px-6">
-      <div className="mx-auto max-w-[1360px]">
+    <header className="pointer-events-none fixed inset-x-0 top-3 z-40 px-3.5 sm:px-6 md:px-8">
+      <div className="mx-auto max-w-[1440px]">
         <div className="glass-chrome pointer-events-auto flex h-14 items-center justify-between gap-2 rounded-full px-3 sm:px-4 lg:px-5">
           {/* Brand Wordmark */}
           <StretchedWordmark />
@@ -53,7 +53,7 @@ export function Navbar({
           {/* Center Single-Line Desktop Navigation */}
           <nav
             aria-label="Primary Navigation"
-            className="hidden items-center gap-0.5 lg:flex"
+            className="hidden items-center gap-0.5 min-[900px]:flex"
           >
             {NAV_ITEMS.map((item) => {
               const isActive =
@@ -65,7 +65,7 @@ export function Navbar({
                   key={item.href}
                   href={item.href}
                   id={`nav-link-${item.label.toLowerCase()}`}
-                  className={`relative inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13.5px] font-medium whitespace-nowrap transition-colors duration-150 ${
+                  className={`relative inline-flex items-center gap-1.5 rounded-full px-2.5 py-2 text-[13px] font-medium whitespace-nowrap transition-colors duration-150 xl:px-3.5 xl:text-[13.5px] ${
                     isActive
                       ? "text-[#F4F3EF]"
                       : "text-[#A1A1AA] hover:text-[#F4F3EF]"
@@ -96,17 +96,19 @@ export function Navbar({
           </nav>
 
           {/* Right Controls */}
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             {/* Command Palette Trigger */}
             <button
               type="button"
               id="nav-cmd-k-trigger"
               onClick={onOpenCommandPalette}
               aria-label="Open command palette"
-              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-white/[0.09] bg-white/[0.04] px-3 text-xs font-medium text-[#A1A1AA] transition-[background-color,border-color,color,transform] duration-150 hover:border-white/[0.16] hover:bg-white/[0.09] hover:text-[#F4F3EF] active:scale-[0.97]"
+              className="inline-flex h-9 w-9 items-center justify-center gap-1.5 rounded-full border border-white/[0.09] bg-white/[0.04] text-xs font-medium text-[#A1A1AA] transition-[background-color,border-color,color,transform] duration-150 hover:border-white/[0.16] hover:bg-white/[0.09] hover:text-[#F4F3EF] active:scale-[0.97] sm:w-auto sm:px-3"
             >
               <Search className="h-3.5 w-3.5 text-[#A1A1AA]" strokeWidth={1.6} />
-              <kbd className="font-mono-telemetry text-[11px] text-current">⌘K</kbd>
+              <kbd className="font-mono-telemetry hidden text-[11px] text-current sm:inline">
+                ⌘K
+              </kbd>
             </button>
 
             {/* Primary CTA: Initiate build */}
@@ -114,7 +116,7 @@ export function Navbar({
               id="nav-initiate-build-btn"
               strength={4}
               onClick={onOpenScopeDrawer}
-              className="hidden h-9 items-center gap-1.5 rounded-full bg-[#FF3B1F] px-4 text-[13px] font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238] sm:inline-flex"
+              className="hidden h-9 items-center gap-1.5 rounded-full bg-[#FF3B1F] px-3.5 text-xs font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238] min-[520px]:inline-flex sm:px-4 sm:text-[13px]"
             >
               <span>Initiate build</span>
               <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
@@ -130,7 +132,7 @@ export function Navbar({
               aria-expanded={mobileMenuOpen}
               aria-controls="nav-mobile-drawer"
               aria-label="Toggle Menu"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.05] text-[#F4F3EF] transition-[background-color,transform] duration-150 hover:bg-white/[0.1] active:scale-[0.95] lg:hidden"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.05] text-[#F4F3EF] transition-[background-color,transform] duration-150 hover:bg-white/[0.1] active:scale-[0.95] min-[900px]:hidden"
             >
               {mobileMenuOpen ? (
                 <X className="h-4 w-4" strokeWidth={1.6} />
@@ -165,7 +167,7 @@ export function Navbar({
                 prefersReducedMotion ? { duration: 0.14 } : SPRING_UI
               }
               style={{ transformOrigin: "top center" }}
-              className="glass-chrome pointer-events-auto mt-2.5 overflow-hidden rounded-2xl p-2.5 lg:hidden"
+              className="glass-chrome pointer-events-auto mt-2.5 overflow-hidden rounded-2xl p-2.5 min-[900px]:hidden"
             >
               <nav aria-label="Mobile Navigation" className="flex flex-col gap-0.5">
                 {NAV_ITEMS.map((item) => {

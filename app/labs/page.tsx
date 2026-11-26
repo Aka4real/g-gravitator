@@ -86,15 +86,15 @@ export default async function LabsCatalogPage() {
   const [flagship, ...remainingDrops] = drops;
 
   return (
-    <div className="mx-auto max-w-[1360px] px-5 pt-12 pb-24 sm:px-8 lg:px-12 lg:pt-16 lg:pb-32">
+    <div className="mx-auto max-w-[1440px] px-4 pt-8 pb-20 sm:px-6 sm:pt-10 md:px-8 lg:px-12 lg:pt-12 lg:pb-28">
       {/* Experience-Mode Editorial Hero + Studio Photography */}
-      <header className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-12">
-        <div className="lg:col-span-6">
-          <h1 className="font-display text-[clamp(2.35rem,4.7vw,4.35rem)] font-bold leading-[1.04] tracking-[-0.03em] text-[#F4F3EF]">
+      <header className="grid grid-cols-1 items-center gap-8 sm:gap-10 md:grid-cols-12 md:gap-8 lg:gap-12">
+        <div className="md:col-span-6">
+          <h1 className="font-display text-[clamp(2.1rem,3.8vw,3.65rem)] font-bold leading-[1.05] tracking-[-0.03em] text-[#F4F3EF]">
             Numbered software drops engineered to hold load.
           </h1>
 
-          <p className="mt-6 max-w-[56ch] text-base leading-relaxed text-[#A1A1AA] sm:text-lg">
+          <p className="mt-5 max-w-[56ch] text-[15px] leading-relaxed text-[#A1A1AA] sm:mt-6 sm:text-lg">
             Every G-Gravitator Labs release starts as an acute operational bottleneck
             inside{" "}
             <PreloadLink
@@ -113,17 +113,17 @@ export default async function LabsCatalogPage() {
             after clearing our 20/25 graduation filter.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center gap-3">
+          <div className="mt-7 flex flex-col gap-3 min-[440px]:flex-row min-[440px]:flex-wrap min-[440px]:items-center sm:mt-8">
             <a
               href="#labs-catalog"
-              className="press-tactile inline-flex h-11 items-center gap-2 rounded-full bg-[#FF3B1F] px-6 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238]"
+              className="press-tactile inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#FF3B1F] px-6 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238] min-[440px]:w-auto"
             >
               <span>Explore drops</span>
               <ArrowRight className="h-4 w-4" strokeWidth={2} />
             </a>
             <PreloadLink
               href="/skunkworks"
-              className="press-tactile inline-flex h-11 items-center gap-2 rounded-full border border-white/[0.12] bg-[#18181D] px-5 text-sm font-medium whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.22] hover:bg-white/[0.08]"
+              className="press-tactile inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-white/[0.12] bg-[#18181D] px-5 text-sm font-medium whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.22] hover:bg-white/[0.08] min-[440px]:w-auto"
             >
               <span>Inspect Skunkworks pipeline</span>
               <ArrowUpRight className="h-4 w-4 text-[#A1A1AA]" strokeWidth={1.8} />
@@ -131,7 +131,7 @@ export default async function LabsCatalogPage() {
           </div>
         </div>
 
-        <div className="lg:col-span-6">
+        <div className="md:col-span-6">
           <div className="aspect-video overflow-hidden rounded-2xl bg-[#111114] ring-1 ring-inset ring-white/[0.08]">
             <Image
               src="/images/labs-prism.jpg"
@@ -139,7 +139,7 @@ export default async function LabsCatalogPage() {
               width={1376}
               height={768}
               preload
-              sizes="(max-width: 1024px) 100vw, 50vw"
+              sizes="(max-width: 767px) 100vw, 50vw"
               className="h-full w-full object-cover"
             />
           </div>

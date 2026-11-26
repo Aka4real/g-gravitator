@@ -42,16 +42,27 @@ export function GravityFieldCanvas() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
 
+    const getFocalCenter = (w: number, h: number) => {
+      if (w < 768) {
+        return { x: w * 0.5, y: h * 0.72 };
+      }
+      return {
+        x: w * 0.5 + Math.min(w * 0.24, 340),
+        y: h * 0.5,
+      };
+    };
+
     resize();
+    const initialFocal = getFocalCenter(width, height);
 
     // Velocity-damped gravitational attractor (smooth weight & momentum)
     const attractor = {
-      x: width * 0.72,
-      y: height * 0.44,
+      x: initialFocal.x,
+      y: initialFocal.y,
       vx: 0,
       vy: 0,
-      targetX: width * 0.72,
-      targetY: height * 0.44,
+      targetX: initialFocal.x,
+      targetY: initialFocal.y,
       influence: 0,
       targetInfluence: 0,
     };
@@ -86,20 +97,27 @@ export function GravityFieldCanvas() {
         attractor.targetY = e.clientY - rect.top;
         attractor.targetInfluence = 1;
       } else {
-        attractor.targetX = width * 0.72;
-        attractor.targetY = height * 0.44;
+        const rest = getFocalCenter(width, height);
+        attractor.targetX = rest.x;
+        attractor.targetY = rest.y;
         attractor.targetInfluence = 0;
       }
     };
 
     const handlePointerLeave = () => {
-      attractor.targetX = width * 0.72;
-      attractor.targetY = height * 0.44;
+      const rest = getFocalCenter(width, height);
+      attractor.targetX = rest.x;
+      attractor.targetY = rest.y;
       attractor.targetInfluence = 0;
     };
 
     const resizeObserver = new ResizeObserver(() => {
       resize();
+      if (attractor.targetInfluence < 0.01) {
+        const rest = getFocalCenter(width, height);
+        attractor.targetX = rest.x;
+        attractor.targetY = rest.y;
+      }
       if (prefersReduced) {
         drawFrame(0);
       }
@@ -121,11 +139,12 @@ export function GravityFieldCanvas() {
       attractor.y += attractor.vy;
       attractor.influence += (attractor.targetInfluence - attractor.influence) * 0.06;
 
-      const focalX = width * 0.74;
-      const focalY = height * 0.44;
-      const maxDim = Math.max(width, height);
-      const baseRadius = maxDim * 0.12;
-      const radiusStep = maxDim * 0.088;
+      const focal = getFocalCenter(width, height);
+      const focalX = focal.x;
+      const focalY = focal.y;
+      const maxDim = Math.min(Math.max(width, height), 1520);
+      const baseRadius = width < 768 ? width * 0.22 : maxDim * 0.12;
+      const radiusStep = width < 768 ? width * 0.13 : maxDim * 0.082;
       const warpRadius = Math.min(340, maxDim * 0.36);
 
       // 1. Quiet deep-space ambient luminance around the primary orbital focus
@@ -297,7 +316,7 @@ export function GravityFieldCanvas() {
     <canvas
       ref={canvasRef}
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 h-full w-full opacity-95 [mask-image:radial-gradient(ellipse_90%_85%_at_65%_44%,black_38%,transparent_100%)]"
+      className="pointer-events-none absolute inset-0 h-full w-full opacity-95 [mask-image:radial-gradient(ellipse_95%_88%_at_50%_62%,black_42%,transparent_100%)] md:[mask-image:radial-gradient(ellipse_90%_85%_at_64%_50%,black_40%,transparent_100%)]"
     />
   );
 }

@@ -57,6 +57,7 @@ html {
 
 html,
 body {
+  overflow-x: clip;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -183,6 +184,34 @@ kbd {
     border-color: var(--border-active);
     transform: translateY(-2px);
   }
+}
+
+/* Seamless radial alpha mask so studio sphere photography melts into #08080A with zero box edges */
+.hero-sphere-mask {
+  -webkit-mask-image: radial-gradient(
+    closest-side at 50% 49%,
+    #000 58%,
+    rgba(0, 0, 0, 0.72) 72%,
+    rgba(0, 0, 0, 0.22) 86%,
+    transparent 98%
+  );
+  mask-image: radial-gradient(
+    closest-side at 50% 49%,
+    #000 58%,
+    rgba(0, 0, 0, 0.72) 72%,
+    rgba(0, 0, 0, 0.22) 86%,
+    transparent 98%
+  );
+}
+
+/* Hide horizontal scrollbar on touch/chip rails while keeping scrollability */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Smooth Dark Scrollbar */

@@ -65,15 +65,15 @@ export default async function SkunkworksPage() {
   const builds = await getLabProjects("SKUNKWORKS");
 
   return (
-    <div className="mx-auto max-w-[1360px] px-5 pt-12 pb-24 sm:px-8 lg:px-12 lg:pt-16 lg:pb-32">
+    <div className="mx-auto max-w-[1440px] px-4 pt-8 pb-20 sm:px-6 sm:pt-10 md:px-8 lg:px-12 lg:pt-12 lg:pb-28">
       {/* Experience-Mode Editorial Hero + Studio Photography */}
-      <header className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-12">
-        <div className="lg:col-span-6">
-          <h1 className="font-display text-[clamp(2.35rem,4.7vw,4.35rem)] font-bold leading-[1.04] tracking-[-0.03em] text-[#F4F3EF]">
+      <header className="grid grid-cols-1 items-center gap-8 sm:gap-10 md:grid-cols-12 md:gap-8 lg:gap-12">
+        <div className="md:col-span-6">
+          <h1 className="font-display text-[clamp(2.1rem,3.8vw,3.65rem)] font-bold leading-[1.05] tracking-[-0.03em] text-[#F4F3EF]">
             OXAKALABS. Our 48-hour build engine and R&amp;D foundry.
           </h1>
 
-          <p className="mt-6 max-w-[56ch] text-base leading-relaxed text-[#A1A1AA] sm:text-lg">
+          <p className="mt-5 max-w-[56ch] text-[15px] leading-relaxed text-[#A1A1AA] sm:mt-6 sm:text-lg">
             Founded in 2022,{" "}
             <strong className="font-semibold text-[#F4F3EF]">OXAKALABS</strong> operates
             as G-Gravitator&apos;s experimental R&amp;D arm and hackathon strike team.
@@ -81,10 +81,10 @@ export default async function SkunkworksPage() {
             25-point filter to earn promotion into commercial Labs drops.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center gap-3">
+          <div className="mt-7 flex flex-col gap-3 min-[430px]:flex-row min-[430px]:flex-wrap min-[430px]:items-center sm:mt-8">
             <PreloadLink
               href="/hackathons"
-              className="press-tactile inline-flex h-11 items-center gap-2 rounded-full bg-[#FF3B1F] px-6 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238]"
+              className="press-tactile inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#FF3B1F] px-6 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238] min-[430px]:w-auto"
             >
               <Radar className="h-4 w-4 shrink-0" strokeWidth={2} />
               <span>Open Hackathon Radar</span>
@@ -94,7 +94,7 @@ export default async function SkunkworksPage() {
               href="https://github.com/Aka4real"
               target="_blank"
               rel="noreferrer"
-              className="press-tactile inline-flex h-11 items-center gap-2 rounded-full border border-white/[0.12] bg-[#18181D] px-5 text-sm font-medium whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.22] hover:bg-white/[0.08]"
+              className="press-tactile inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-white/[0.12] bg-[#18181D] px-5 text-sm font-medium whitespace-nowrap text-[#F4F3EF] hover:border-white/[0.22] hover:bg-white/[0.08] min-[430px]:w-auto"
             >
               <span>GitHub (@Aka4real)</span>
               <ArrowUpRight className="h-4 w-4 text-[#FF3B1F]" strokeWidth={1.8} />
@@ -102,7 +102,7 @@ export default async function SkunkworksPage() {
           </div>
         </div>
 
-        <div className="lg:col-span-6">
+        <div className="md:col-span-6">
           <div className="aspect-video overflow-hidden rounded-2xl bg-[#111114] ring-1 ring-inset ring-white/[0.08]">
             <Image
               src="/images/skunkworks-forge.jpg"
@@ -110,7 +110,7 @@ export default async function SkunkworksPage() {
               width={1376}
               height={768}
               preload
-              sizes="(max-width: 1024px) 100vw, 50vw"
+              sizes="(max-width: 767px) 100vw, 50vw"
               className="h-full w-full object-cover"
             />
           </div>

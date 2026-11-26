@@ -95,12 +95,12 @@ export function FlywheelMatrix() {
   const activeUnit = UNIT_BY_ID[activeId];
 
   return (
-    <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-12 lg:gap-8">
+    <div className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-12 lg:gap-8">
       {/* Left: Open 4-Unit Architectural Selector */}
       <div
         role="tablist"
         aria-label="G-Gravitator Operating Divisions"
-        className="flex flex-col gap-2 lg:col-span-5"
+        className="flex flex-col gap-2 md:col-span-5"
       >
         {FLYWHEEL_UNITS.map((unit) => {
           const isActive = activeId === unit.id;
@@ -175,7 +175,7 @@ export function FlywheelMatrix() {
         id="flywheel-stage-panel"
         role="tabpanel"
         aria-labelledby={`flywheel-tab-${activeUnit.id}`}
-        className="surface-card relative flex flex-col justify-between overflow-hidden rounded-2xl p-7 sm:p-10 lg:col-span-7 lg:p-11"
+        className="surface-card relative flex flex-col justify-between overflow-hidden rounded-2xl p-6 sm:p-9 md:col-span-7 lg:p-11"
       >
         {/* Soft ambient depth highlight */}
         <div

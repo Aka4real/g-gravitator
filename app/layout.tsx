@@ -31,6 +31,9 @@ const geistMono = Geist_Mono({
 });
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
   themeColor: BRAND.obsidian,
   colorScheme: "dark",
 };
@@ -106,7 +109,7 @@ export default async function RootLayout({
       lang="en"
       className={`${bricolageGrotesque.variable} ${geist.variable} ${geistMono.variable} dark`}
     >
-      <body className="min-h-screen bg-[#08080A] text-[#F4F3EF] antialiased">
+      <body className="min-h-screen overflow-x-clip bg-[#08080A] text-[#F4F3EF] antialiased">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

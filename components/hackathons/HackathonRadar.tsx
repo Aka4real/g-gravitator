@@ -571,7 +571,7 @@ export function HackathonRadar({
         {/* Source Filter Pill Rail (horizontally scrollable on mobile, wraps cleanly on desktop) */}
         <div className="mt-3.5 flex min-w-0 items-center gap-2 border-t border-white/[0.06] pt-3.5">
           <span className="shrink-0 text-xs font-medium text-[#8B8B94]">Sources</span>
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
+          <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
             {SOURCE_CHIPS.map((src) => {
               const active = selectedSource === src.key;
               return (
@@ -597,7 +597,7 @@ export function HackathonRadar({
         {/* Theme Filter Pill Rail */}
         <div className="mt-2.5 flex min-w-0 items-center gap-2">
           <span className="shrink-0 text-xs font-medium text-[#8B8B94]">Themes</span>
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
+          <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
             {THEME_CHIPS.map((theme) => {
               const active = selectedTheme === theme;
               const label = theme === "ALL" ? "All themes" : theme;

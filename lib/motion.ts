@@ -50,7 +50,8 @@ export const EASE_DRAWER = [0.32, 0.72, 0, 1] as const;
  */
 export const VIEWPORT_ONCE = {
   once: true,
-  margin: "-80px",
+  margin: "0px 0px -32px 0px",
+  amount: 0.05,
 } as const;
 
 export interface RevealProps {

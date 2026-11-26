@@ -156,7 +156,7 @@ export default async function LabDropDetailPage({
   ]);
 
   return (
-    <div className="mx-auto max-w-[1360px] px-5 pt-10 pb-24 sm:px-8 lg:px-12 lg:pt-14 lg:pb-32">
+    <div className="mx-auto max-w-[1440px] px-4 pt-8 pb-20 sm:px-6 sm:pt-10 md:px-8 lg:px-12 lg:pt-12 lg:pb-28">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
