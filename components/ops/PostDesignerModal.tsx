@@ -10,6 +10,7 @@ import {
   Loader2,
   Palette,
   Plus,
+  Share2,
   Sparkles,
   Trash2,
   Upload,
@@ -17,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import type { OpsMediaSummary } from "@/components/ops/ops-types";
+import { getDispatchOgVersion, sanitizeShareText } from "@/lib/journal/share";
 import type {
   Dispatch,
   DispatchCategory,
@@ -197,6 +199,12 @@ export function PostDesignerModal({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
+  const [previewMode, setPreviewMode] = useState<"article" | "share">("article");
+  const [coverMeta, setCoverMeta] = useState<{
+    url: string;
+    width: number;
+    height: number;
+  } | null>(null);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -627,6 +635,38 @@ export function PostDesignerModal({
     if (imageUrl.startsWith("/api/media/")) return `${imageUrl}?download=1`;
     return imageUrl;
   }, [imageUrl]);
+
+  const activeCoverMeta =
+    coverMeta && coverMeta.url === imageUrl ? coverMeta : null;
+  const coverAspectRatio =
+    activeCoverMeta && activeCoverMeta.height > 0
+      ? activeCoverMeta.width / activeCoverMeta.height
+      : null;
+  const isPortraitCover =
+    coverAspectRatio !== null && coverAspectRatio < 1.25;
+
+  const shareTitle = sanitizeShareText(title || "Journal Dispatch Title Preview");
+  const shareDescription = sanitizeShareText(
+    initialDesign.seo_description ||
+      subtitle ||
+      "Concise summary shown beneath the cover header on WhatsApp, X, and LinkedIn."
+  );
+  const shareSlug = useMemo(() => {
+    if (entity === "dispatch" && disp?.slug) return disp.slug;
+    const base = (title || "new-journal-dispatch")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 64);
+    return base || "new-journal-dispatch";
+  }, [entity, disp?.slug, title]);
+
+  const liveOgUrl = useMemo(() => {
+    if (entity !== "dispatch" || !disp?.slug || disp.is_published === false) {
+      return null;
+    }
+    return `/journal/${disp.slug}/og?v=${getDispatchOgVersion(disp)}`;
+  }, [entity, disp]);
 
   return (
     <div
@@ -1500,10 +1540,39 @@ export function PostDesignerModal({
               mobileView === "edit" ? "hidden lg:block" : "block"
             }`}
           >
-            <div className="mb-3 flex items-center justify-between">
-              <span className="font-mono text-[11px] uppercase tracking-wider text-[#8B8B94]">
-                Live Design Preview
-              </span>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              {entity === "dispatch" ? (
+                <div className="inline-flex rounded-full border border-white/[0.1] bg-[#141418] p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewMode("article")}
+                    className={`cursor-pointer rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
+                      previewMode === "article"
+                        ? "bg-[#F4F3EF] text-[#08080A]"
+                        : "text-[#A1A1AA] hover:text-[#F4F3EF]"
+                    }`}
+                  >
+                    Article
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewMode("share")}
+                    className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
+                      previewMode === "share"
+                        ? "bg-[#F4F3EF] text-[#08080A]"
+                        : "text-[#A1A1AA] hover:text-[#F4F3EF]"
+                    }`}
+                  >
+                    <Share2 className="h-3 w-3" />
+                    <span>Share Card</span>
+                  </button>
+                </div>
+              ) : (
+                <span className="font-mono text-[11px] uppercase tracking-wider text-[#8B8B94]">
+                  Live Design Preview
+                </span>
+              )}
+
               <span
                 className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-[#08080A]"
                 style={{ backgroundColor: accentColor }}
@@ -1512,117 +1581,353 @@ export function PostDesignerModal({
               </span>
             </div>
 
-            <div
-              className="rounded-2xl border border-white/[0.1] bg-[#111114] p-5"
-              style={
-                surfaceTint
-                  ? {
-                      backgroundImage: `radial-gradient(circle at 85% 10%, ${surfaceTint}25, transparent 55%)`,
-                    }
-                  : undefined
-              }
-            >
-              {imageUrl && (
-                <div className="mb-4 overflow-hidden rounded-xl border border-white/[0.1]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={imageUrl}
-                    alt={title || "Cover preview"}
-                    className="max-h-52 w-full object-cover"
-                  />
-                </div>
-              )}
-
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-[#08080A]"
-                  style={{ backgroundColor: accentColor }}
-                >
-                  {entity === "dispatch"
-                    ? dispatchCat
-                    : entity === "news"
-                    ? newsCat
-                    : prizeDisplay}
-                </span>
-                <span className="text-xs text-[#8B8B94]">
-                  {entity === "dispatch"
-                    ? authorName
-                    : entity === "news"
-                    ? sourceName || "Source"
-                    : organizer || "Organizer"}
-                </span>
-              </div>
-
-              <h3 className="font-display mt-3 text-xl font-bold leading-snug text-[#F4F3EF]">
-                {title || "Post Title Preview"}
-              </h3>
-
-              <p className="mt-2 text-sm leading-relaxed text-[#A1A1AA]">
-                {entity === "dispatch"
-                  ? subtitle || "Subtitle preview..."
-                  : entity === "news"
-                  ? gravityTake || "Gravity Take preview..."
-                  : summary || "Hackathon summary preview..."}
-              </p>
-
-              {entity === "dispatch" && (
-                <div className="mt-4 space-y-2 border-t border-white/[0.08] pt-4 text-xs leading-relaxed text-[#D4D4D8]">
-                  {mdxContent
-                    .split(/\n\n+/)
-                    .slice(0, 4)
-                    .map((blk, i) => {
-                      const t = blk.trim();
-                      if (t.startsWith("## ")) {
-                        return (
-                          <div
-                            key={i}
-                            className="font-display pt-1 text-sm font-semibold text-[#F4F3EF]"
-                          >
-                            {t.replace(/^##\s+/, "")}
-                          </div>
-                        );
-                      }
-                      if (t.startsWith(">")) {
-                        return (
-                          <div
-                            key={i}
-                            style={{
-                              borderColor: accentColor,
-                              backgroundColor:
-                                calloutStyle === "tinted-banner"
-                                  ? `${accentColor}1A`
-                                  : "#18181D",
-                            }}
-                            className={`rounded-lg p-3 ${
-                              calloutStyle === "left-bar"
-                                ? "border-l-4"
-                                : "border"
-                            }`}
-                          >
-                            {t.replace(/^>\s*(\[![A-Z]+\]\s*)?/, "")}
-                          </div>
-                        );
-                      }
-                      return <p key={i}>{t.slice(0, 180)}</p>;
-                    })}
-                </div>
-              )}
-
-              {links.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2 border-t border-white/[0.08] pt-3">
-                  {links.map((lnk, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-2.5 py-1 text-[11px] font-medium"
-                      style={{ color: accentColor }}
-                    >
-                      <span>{lnk.label}</span>
-                      <ExternalLink className="h-3 w-3" />
+            {entity === "dispatch" && previewMode === "share" ? (
+              <div className="space-y-4">
+                {/* Master vs. Share Copy Telemetry */}
+                <div className="rounded-xl border border-white/[0.08] bg-[#111114] p-3 text-[11px] text-[#A1A1AA]">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 font-medium text-[#D4D4D8]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#10B981]" />
+                      Master cover untouched (full-res)
                     </span>
-                  ))}
+                    <span className="rounded-full border border-white/[0.1] bg-[#18181D] px-2 py-0.5 font-mono text-[10px] text-[#D4D4D8]">
+                      {!imageUrl
+                        ? "Editorial Fallback"
+                        : isPortraitCover
+                        ? "Smart Framed Portrait"
+                        : "Full-Bleed 16:9"}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[10px] text-[#8B8B94]">
+                    <span>
+                      Share copy: 1200×630 baseline JPEG · q90 adaptive ≤ 265 KB
+                    </span>
+                    {activeCoverMeta && (
+                      <span className="font-mono">
+                        {activeCoverMeta.width}×{activeCoverMeta.height}
+                      </span>
+                    )}
+                  </div>
+                  {liveOgUrl && imageUrl === initialImage && (
+                    <a
+                      href={liveOgUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-[#38BDF8] hover:underline"
+                    >
+                      <span>Open live server /og JPEG</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
                 </div>
-              )}
-            </div>
+
+                {/* WhatsApp Dark Link Preview Mockup */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-[#8B8B94]">
+                      WhatsApp Share Preview
+                    </span>
+                    <span className="text-[10px] text-[#34D399]">
+                      Rich Header Card
+                    </span>
+                  </div>
+                  <div className="rounded-2xl rounded-tr-sm bg-[#005C4B] p-2 shadow-lg">
+                    <div className="overflow-hidden rounded-xl bg-[#025144]">
+                      <div className="relative aspect-[1200/630] w-full overflow-hidden bg-[#08080A]">
+                        {imageUrl ? (
+                          isPortraitCover ? (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={imageUrl}
+                                alt=""
+                                aria-hidden="true"
+                                className="absolute inset-0 h-full w-full scale-110 object-cover brightness-[0.42] blur-md"
+                              />
+                              <div className="absolute inset-0 bg-[#08080A]/25" />
+                              <div className="relative flex h-full w-full items-center justify-center p-2.5">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={imageUrl}
+                                  alt={shareTitle}
+                                  onLoad={(e) => {
+                                    const img = e.currentTarget;
+                                    if (img.naturalWidth && img.naturalHeight) {
+                                      setCoverMeta({
+                                        url: imageUrl,
+                                        width: img.naturalWidth,
+                                        height: img.naturalHeight,
+                                      });
+                                    }
+                                  }}
+                                  className="h-full max-w-full border border-white/20 object-contain shadow-lg"
+                                />
+                              </div>
+                            </>
+                          ) : (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={imageUrl}
+                              alt={shareTitle}
+                              onLoad={(e) => {
+                                const img = e.currentTarget;
+                                if (img.naturalWidth && img.naturalHeight) {
+                                  setCoverMeta({
+                                    url: imageUrl,
+                                    width: img.naturalWidth,
+                                    height: img.naturalHeight,
+                                  });
+                                }
+                              }}
+                              className="h-full w-full object-cover"
+                            />
+                          )
+                        ) : (
+                          <div
+                            className="flex h-full w-full flex-col justify-between p-4"
+                            style={{
+                              backgroundImage: `radial-gradient(circle at 86% 12%, ${accentColor}40 0%, transparent 55%)`,
+                            }}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-display text-xs font-bold text-[#F4F3EF]">
+                                G-Gravitator
+                              </span>
+                              <span
+                                className="rounded-full px-2 py-0.5 text-[9px] font-bold text-[#08080A]"
+                                style={{ backgroundColor: accentColor }}
+                              >
+                                {disp?.issue_number
+                                  ? `Issue ${disp.issue_number}`
+                                  : "Journal"}
+                              </span>
+                            </div>
+                            <div className="font-display line-clamp-2 text-sm font-bold leading-tight text-[#F4F3EF]">
+                              {shareTitle}
+                            </div>
+                            <div className="flex items-center justify-between text-[9px] text-[#A1A1AA]">
+                              <span>{authorName}</span>
+                              <span>ggravitator.xyz/journal</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-1 p-2.5">
+                        <div className="line-clamp-2 text-xs font-semibold leading-snug text-[#E9EDEF]">
+                          {shareTitle}
+                        </div>
+                        <div className="line-clamp-2 text-[11px] leading-snug text-[#AEBAC1]">
+                          {shareDescription}
+                        </div>
+                        <div className="pt-0.5 text-[10px] text-[#8696A0]">
+                          ggravitator.xyz
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 space-y-1 px-1 pb-0.5 text-[11px] leading-snug text-[#E9EDEF]">
+                      <p className="line-clamp-2 font-medium">{shareTitle}</p>
+                      <p className="truncate text-[#53BDEB] underline">
+                        {`https://www.ggravitator.xyz/journal/${shareSlug}`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* X / LinkedIn Large Summary Card Mockup */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-[#8B8B94]">
+                      X / LinkedIn Large Card
+                    </span>
+                    <span className="font-mono text-[10px] text-[#8B8B94]">
+                      summary_large_image
+                    </span>
+                  </div>
+                  <div className="overflow-hidden rounded-2xl border border-white/[0.12] bg-[#111114]">
+                    <div className="relative aspect-[1200/630] w-full overflow-hidden bg-[#08080A]">
+                      {imageUrl ? (
+                        isPortraitCover ? (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={imageUrl}
+                              alt=""
+                              aria-hidden="true"
+                              className="absolute inset-0 h-full w-full scale-110 object-cover brightness-[0.42] blur-md"
+                            />
+                            <div className="absolute inset-0 bg-[#08080A]/25" />
+                            <div className="relative flex h-full w-full items-center justify-center p-2.5">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={imageUrl}
+                                alt={shareTitle}
+                                className="h-full max-w-full border border-white/20 object-contain shadow-lg"
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={imageUrl}
+                            alt={shareTitle}
+                            className="h-full w-full object-cover"
+                          />
+                        )
+                      ) : (
+                        <div
+                          className="flex h-full w-full flex-col justify-between p-4"
+                          style={{
+                            backgroundImage: `radial-gradient(circle at 86% 12%, ${accentColor}40 0%, transparent 55%)`,
+                          }}
+                        >
+                          <span className="font-display text-xs font-bold text-[#F4F3EF]">
+                            G-Gravitator Journal
+                          </span>
+                          <div className="font-display line-clamp-2 text-sm font-bold text-[#F4F3EF]">
+                            {shareTitle}
+                          </div>
+                        </div>
+                      )}
+                      <span className="absolute bottom-2.5 left-2.5 rounded-md bg-black/75 px-2 py-0.5 text-[10px] font-medium text-[#F4F3EF] backdrop-blur-sm">
+                        ggravitator.xyz
+                      </span>
+                    </div>
+                    <div className="space-y-1 border-t border-white/[0.08] p-3">
+                      <div className="line-clamp-2 text-xs font-semibold text-[#F4F3EF]">
+                        {shareTitle}
+                      </div>
+                      <div className="line-clamp-2 text-[11px] text-[#8B8B94]">
+                        {shareDescription}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div
+                className="rounded-2xl border border-white/[0.1] bg-[#111114] p-5"
+                style={
+                  surfaceTint
+                    ? {
+                        backgroundImage: `radial-gradient(circle at 85% 10%, ${surfaceTint}25, transparent 55%)`,
+                      }
+                    : undefined
+                }
+              >
+                {imageUrl && (
+                  <div className="mb-4 overflow-hidden rounded-xl border border-white/[0.1]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={imageUrl}
+                      alt={title || "Cover preview"}
+                      onLoad={(e) => {
+                        const img = e.currentTarget;
+                        if (img.naturalWidth && img.naturalHeight) {
+                          setCoverMeta({
+                            url: imageUrl,
+                            width: img.naturalWidth,
+                            height: img.naturalHeight,
+                          });
+                        }
+                      }}
+                      className="max-h-52 w-full object-cover"
+                    />
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-[#08080A]"
+                    style={{ backgroundColor: accentColor }}
+                  >
+                    {entity === "dispatch"
+                      ? dispatchCat
+                      : entity === "news"
+                      ? newsCat
+                      : prizeDisplay}
+                  </span>
+                  <span className="text-xs text-[#8B8B94]">
+                    {entity === "dispatch"
+                      ? authorName
+                      : entity === "news"
+                      ? sourceName || "Source"
+                      : organizer || "Organizer"}
+                  </span>
+                </div>
+
+                <h3 className="font-display mt-3 text-xl font-bold leading-snug text-[#F4F3EF]">
+                  {title || "Post Title Preview"}
+                </h3>
+
+                <p className="mt-2 text-sm leading-relaxed text-[#A1A1AA]">
+                  {entity === "dispatch"
+                    ? subtitle || "Subtitle preview..."
+                    : entity === "news"
+                    ? gravityTake || "Gravity Take preview..."
+                    : summary || "Hackathon summary preview..."}
+                </p>
+
+                {entity === "dispatch" && (
+                  <div className="mt-4 space-y-2 border-t border-white/[0.08] pt-4 text-xs leading-relaxed text-[#D4D4D8]">
+                    {mdxContent
+                      .split(/\n\n+/)
+                      .slice(0, 4)
+                      .map((blk, i) => {
+                        const t = blk.trim();
+                        if (t.startsWith("## ")) {
+                          return (
+                            <div
+                              key={i}
+                              className="font-display pt-1 text-sm font-semibold text-[#F4F3EF]"
+                            >
+                              {t.replace(/^##\s+/, "")}
+                            </div>
+                          );
+                        }
+                        if (t.startsWith(">")) {
+                          return (
+                            <div
+                              key={i}
+                              style={{
+                                borderColor: accentColor,
+                                backgroundColor:
+                                  calloutStyle === "tinted-banner"
+                                    ? `${accentColor}1A`
+                                    : "#18181D",
+                              }}
+                              className={`rounded-lg p-3 ${
+                                calloutStyle === "left-bar"
+                                  ? "border-l-4"
+                                  : "border"
+                              }`}
+                            >
+                              {t.replace(/^>\s*(\[![A-Z]+\]\s*)?/, "")}
+                            </div>
+                          );
+                        }
+                        return <p key={i}>{t.slice(0, 180)}</p>;
+                      })}
+                  </div>
+                )}
+
+                {links.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2 border-t border-white/[0.08] pt-3">
+                    {links.map((lnk, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-2.5 py-1 text-[11px] font-medium"
+                        style={{ color: accentColor }}
+                      >
+                        <span>{lnk.label}</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Modal Footer */}

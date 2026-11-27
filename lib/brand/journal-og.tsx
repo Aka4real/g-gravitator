@@ -13,11 +13,13 @@ import type { Dispatch, DispatchCategory } from "@/lib/supabase/types";
 const MAX_REMOTE_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
 /**
  * WhatsApp enforces a strict ~300 KB thumbnail budget for rich full-width
- * Open Graph link previews. Targeting <= 240 KB guarantees every journal
- * share card renders with its full header image across WhatsApp, X,
- * LinkedIn, Facebook, iMessage, Slack, Telegram, and Discord.
+ * Open Graph link previews. Targeting <= 265 KB lets us encode at high
+ * visual quality (starting at q=90) while guaranteeing every share card
+ * renders with its full header image across WhatsApp, X, LinkedIn,
+ * Facebook, iMessage, Slack, Telegram, and Discord.
  */
-export const MAX_SOCIAL_OG_BYTES = 240 * 1024;
+export const MAX_SOCIAL_OG_BYTES = 265 * 1024;
+export const SMART_PORTRAIT_RATIO_THRESHOLD = 1.25;
 
 export interface RenderedJournalOgImage {
   buffer: Buffer;
@@ -463,19 +465,71 @@ function decodeResolvedDataUrlBuffer(resolved: ResolvedCoverAsset): Buffer | nul
  * Encodes any image buffer (cover photograph or Satori-rendered PNG card) into a
  * universally compatible 1200x630 non-progressive baseline JPEG guaranteed to sit
  * comfortably below WhatsApp's ~300 KB Open Graph preview ceiling.
+ *
+ * - Landscape / widescreen covers (ratio >= 1.25): edge-to-edge full-bleed 1200x630.
+ * - Portrait / square covers (ratio < 1.25): full uncropped cover centered inside
+ *   a subtle hairline frame over a darkened, blurred obsidian backdrop so text on
+ *   invitations or posters is never cropped in social previews.
  */
 export async function encodeSocialOgJpeg(
   input: Buffer
 ): Promise<RenderedJournalOgImage> {
-  const basePipeline = sharp(input, { animated: false })
-    .rotate()
-    .resize(OG_SIZE.width, OG_SIZE.height, {
-      fit: "cover",
-      position: "centre",
-    })
-    .flatten({ background: BRAND.obsidian });
+  const oriented = await sharp(input, { animated: false }).rotate().toBuffer();
+  const meta = await sharp(oriented).metadata();
+  const srcWidth = meta.width || OG_SIZE.width;
+  const srcHeight = meta.height || OG_SIZE.height;
+  const aspectRatio = srcWidth / srcHeight;
 
-  const qualitySteps = [82, 74, 66, 56, 46];
+  let composedCanvas: Buffer;
+  if (aspectRatio < SMART_PORTRAIT_RATIO_THRESHOLD) {
+    const backdrop = await sharp(oriented)
+      .resize(OG_SIZE.width, OG_SIZE.height, {
+        fit: "cover",
+        position: "centre",
+      })
+      .blur(26)
+      .modulate({ brightness: 0.42, saturation: 1.08 })
+      .flatten({ background: BRAND.obsidian })
+      .toBuffer();
+
+    const foreground = await sharp(oriented)
+      .resize(OG_SIZE.width - 80, OG_SIZE.height - 44, {
+        fit: "inside",
+        withoutEnlargement: false,
+      })
+      .flatten({ background: BRAND.obsidian })
+      .toBuffer();
+
+    const fgMeta = await sharp(foreground).metadata();
+    const fgW = fgMeta.width || 586;
+    const fgH = fgMeta.height || 586;
+    const borderX = Math.max(0, Math.round((OG_SIZE.width - fgW) / 2) - 1);
+    const borderY = Math.max(0, Math.round((OG_SIZE.height - fgH) / 2) - 1);
+    const frameOverlay = Buffer.from(
+      `<svg width="${OG_SIZE.width}" height="${OG_SIZE.height}" xmlns="http://www.w3.org/2000/svg">` +
+        `<rect x="0" y="0" width="${OG_SIZE.width}" height="${OG_SIZE.height}" fill="rgba(8,8,10,0.22)"/>` +
+        `<rect x="${borderX}" y="${borderY}" width="${fgW + 2}" height="${fgH + 2}" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>` +
+      `</svg>`
+    );
+
+    composedCanvas = await sharp(backdrop)
+      .composite([
+        { input: frameOverlay, top: 0, left: 0 },
+        { input: foreground, gravity: "centre" },
+      ])
+      .toBuffer();
+  } else {
+    composedCanvas = await sharp(oriented)
+      .resize(OG_SIZE.width, OG_SIZE.height, {
+        fit: "cover",
+        position: "centre",
+      })
+      .flatten({ background: BRAND.obsidian })
+      .toBuffer();
+  }
+
+  const basePipeline = sharp(composedCanvas);
+  const qualitySteps = [90, 86, 82, 76, 68, 58, 48];
   let bestBuffer: Buffer | null = null;
 
   for (const quality of qualitySteps) {
@@ -501,18 +555,16 @@ export async function encodeSocialOgJpeg(
   }
 
   // Final safety valve for extreme high-entropy textures: slightly downscale
-  // while keeping exact 1.905:1 OG aspect ratio and <= 240 KB budget.
+  // while keeping exact 1.905:1 OG aspect ratio and <= 265 KB budget.
   const compactWidth = 960;
   const compactHeight = 504;
-  const compactBuffer = await sharp(input, { animated: false })
-    .rotate()
+  const compactBuffer = await sharp(composedCanvas)
     .resize(compactWidth, compactHeight, {
       fit: "cover",
       position: "centre",
     })
-    .flatten({ background: BRAND.obsidian })
     .jpeg({
-      quality: 58,
+      quality: 60,
       progressive: false,
       optimiseCoding: true,
       trellisQuantisation: true,

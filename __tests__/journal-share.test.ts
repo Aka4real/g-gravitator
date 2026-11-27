@@ -242,10 +242,10 @@ describe("Sharable Journals, Share Links & Matching Cover Open Graph Preload", (
     expect(pg).toBeGreaterThan(165);
     expect(pb).toBeGreaterThan(110);
 
-    // Verify photographic static cover compresses strictly under WhatsApp's 240 KB budget
+    // Verify photographic static cover compresses strictly under WhatsApp's 265 KB budget
     const photoDispatch = await createDispatch({
       title: "Photographic Cover WhatsApp Budget Check",
-      subtitle: "Ensuring photographic covers never exceed 240 KB baseline JPEG.",
+      subtitle: "Ensuring photographic covers stay under 265 KB baseline JPEG.",
       category: "ARCHITECTURE",
       mdx_content: "## Visuals\n\nPhotographic cover test.",
       cover_image_url: "/images/labs-prism.jpg",
@@ -260,6 +260,61 @@ describe("Sharable Journals, Share Links & Matching Cover Open Graph Preload", (
       height: 630,
     });
     expect(photoInfo.isProgressive).toBe(false);
+
+    // Verify portrait cover (600x900) is smart-framed uncropped (top cyan & bottom magenta bands preserved!)
+    const portraitPng = await sharp(
+      Buffer.from(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900">` +
+          `<rect x="0" y="0" width="600" height="180" fill="#22D3EE"/>` +
+          `<rect x="0" y="180" width="600" height="540" fill="#10B981"/>` +
+          `<rect x="0" y="720" width="600" height="180" fill="#EC4899"/>` +
+        `</svg>`
+      )
+    )
+      .png()
+      .toBuffer();
+    const portraitMedia = await createMediaAsset({
+      filename: "portrait-invite.png",
+      mime_type: "image/png",
+      data_url: `data:image/png;base64,${portraitPng.toString("base64")}`,
+      source_type: "uploaded",
+      created_by: "admin",
+    });
+    const portraitDispatch = await createDispatch({
+      title: "Portrait Invite Dispatch",
+      subtitle: "Checking uncropped portrait framing on /og.",
+      category: "ARCHITECTURE",
+      mdx_content: "## Invite\n\nDetails.",
+      cover_image_url: portraitMedia.url,
+      is_published: true,
+    });
+    const portraitOg = await renderJournalOgImage(portraitDispatch);
+    expect(portraitOg.contentType).toBe("image/jpeg");
+    expect(portraitOg.buffer.byteLength).toBeLessThanOrEqual(MAX_SOCIAL_OG_BYTES);
+    const portraitInfo = await inspectJpegImage(portraitOg.buffer);
+    expect({ width: portraitInfo.width, height: portraitInfo.height }).toEqual({
+      width: 1200,
+      height: 630,
+    });
+    expect(portraitInfo.isProgressive).toBe(false);
+    // Inspect exact top band, bottom band, center, and darkened side backdrop
+    const { data: pRaw } = await sharp(portraitOg.buffer)
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const px = (x: number, y: number): [number, number, number] => {
+      const idx = (y * 1200 + x) * 3;
+      return [pRaw[idx], pRaw[idx + 1], pRaw[idx + 2]];
+    };
+    const [topR, topG, topB] = px(600, 48); // Top cyan band preserved!
+    expect(topR).toBeLessThan(80);
+    expect(topG).toBeGreaterThan(170);
+    expect(topB).toBeGreaterThan(190);
+    const [botR, botG, botB] = px(600, 582); // Bottom magenta band preserved!
+    expect(botR).toBeGreaterThan(185);
+    expect(botG).toBeLessThan(110);
+    expect(botB).toBeGreaterThan(120);
+    const [sideR, sideG, sideB] = px(60, 315); // Darkened side blurred backdrop
+    expect(Math.max(sideR, sideG, sideB)).toBeLessThan(110);
 
     // Also verify Studio Editorial SVG cover rendering
     const studioSvgDataUrl = generateProceduralEditorialSvg({
