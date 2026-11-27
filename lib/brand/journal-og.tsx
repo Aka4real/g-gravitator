@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import React from "react";
 import { ImageResponse } from "next/og";
+import sharp from "sharp";
 import { getMediaAssetById } from "@/lib/db/repository";
 import { validateSafePublicUrl } from "@/lib/ops/research";
 import { BRAND, BrandMark } from "@/lib/brand/mark";
@@ -10,6 +11,20 @@ import { sanitizeShareText } from "@/lib/journal/share";
 import type { Dispatch, DispatchCategory } from "@/lib/supabase/types";
 
 const MAX_REMOTE_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
+/**
+ * WhatsApp enforces a strict ~300 KB thumbnail budget for rich full-width
+ * Open Graph link previews. Targeting <= 240 KB guarantees every journal
+ * share card renders with its full header image across WhatsApp, X,
+ * LinkedIn, Facebook, iMessage, Slack, Telegram, and Discord.
+ */
+export const MAX_SOCIAL_OG_BYTES = 240 * 1024;
+
+export interface RenderedJournalOgImage {
+  buffer: Buffer;
+  contentType: "image/jpeg" | "image/png";
+  width: number;
+  height: number;
+}
 
 const CATEGORY_LABELS: Record<DispatchCategory, string> = {
   "AI SYSTEMS": "AI Systems",
@@ -433,6 +448,163 @@ function renderJournalEditorialCard(dispatch: Dispatch): ImageResponse {
     ),
     OG_SIZE
   );
+}
+
+function decodeResolvedDataUrlBuffer(resolved: ResolvedCoverAsset): Buffer | null {
+  const commaIdx = resolved.dataUrl.indexOf(",");
+  if (commaIdx < 0) return null;
+  const b64 = resolved.dataUrl.slice(commaIdx + 1).trim();
+  if (!b64) return null;
+  const buf = Buffer.from(b64, "base64");
+  return buf.byteLength > 0 ? buf : null;
+}
+
+/**
+ * Encodes any image buffer (cover photograph or Satori-rendered PNG card) into a
+ * universally compatible 1200x630 non-progressive baseline JPEG guaranteed to sit
+ * comfortably below WhatsApp's ~300 KB Open Graph preview ceiling.
+ */
+export async function encodeSocialOgJpeg(
+  input: Buffer
+): Promise<RenderedJournalOgImage> {
+  const basePipeline = sharp(input, { animated: false })
+    .rotate()
+    .resize(OG_SIZE.width, OG_SIZE.height, {
+      fit: "cover",
+      position: "centre",
+    })
+    .flatten({ background: BRAND.obsidian });
+
+  const qualitySteps = [82, 74, 66, 56, 46];
+  let bestBuffer: Buffer | null = null;
+
+  for (const quality of qualitySteps) {
+    const candidate = await basePipeline
+      .clone()
+      .jpeg({
+        quality,
+        progressive: false,
+        optimiseCoding: true,
+        trellisQuantisation: true,
+        overshootDeringing: true,
+      })
+      .toBuffer();
+    bestBuffer = candidate;
+    if (candidate.byteLength <= MAX_SOCIAL_OG_BYTES) {
+      return {
+        buffer: candidate,
+        contentType: "image/jpeg",
+        width: OG_SIZE.width,
+        height: OG_SIZE.height,
+      };
+    }
+  }
+
+  // Final safety valve for extreme high-entropy textures: slightly downscale
+  // while keeping exact 1.905:1 OG aspect ratio and <= 240 KB budget.
+  const compactWidth = 960;
+  const compactHeight = 504;
+  const compactBuffer = await sharp(input, { animated: false })
+    .rotate()
+    .resize(compactWidth, compactHeight, {
+      fit: "cover",
+      position: "centre",
+    })
+    .flatten({ background: BRAND.obsidian })
+    .jpeg({
+      quality: 58,
+      progressive: false,
+      optimiseCoding: true,
+      trellisQuantisation: true,
+      overshootDeringing: true,
+    })
+    .toBuffer();
+
+  if (!bestBuffer || compactBuffer.byteLength < bestBuffer.byteLength) {
+    return {
+      buffer: compactBuffer,
+      contentType: "image/jpeg",
+      width: compactWidth,
+      height: compactHeight,
+    };
+  }
+
+  return {
+    buffer: bestBuffer,
+    contentType: "image/jpeg",
+    width: OG_SIZE.width,
+    height: OG_SIZE.height,
+  };
+}
+
+/**
+ * Generates a materialized 1200x630 baseline JPEG Open Graph / Twitter share card
+ * sized under 240 KB for universal social unfurling (WhatsApp, X, Facebook,
+ * LinkedIn, iMessage, Telegram, Slack, Discord).
+ *
+ * Uses a fast direct sharp pipeline for raster cover photos (avoiding Satori's
+ * ~1.8 MB lossless PNG bloat) and compresses Studio SVG / editorial fallback
+ * cards through the exact same baseline JPEG encoder.
+ */
+export async function renderJournalOgImage(
+  dispatch: Dispatch | null
+): Promise<RenderedJournalOgImage> {
+  if (!dispatch) {
+    const fallbackPng = await materializePng(renderLinkCard());
+    try {
+      return await encodeSocialOgJpeg(fallbackPng);
+    } catch {
+      return {
+        buffer: fallbackPng,
+        contentType: "image/png",
+        width: OG_SIZE.width,
+        height: OG_SIZE.height,
+      };
+    }
+  }
+
+  if (dispatch.cover_image_url) {
+    const resolved = await resolveDispatchCoverAsset(dispatch.cover_image_url);
+    if (resolved) {
+      try {
+        if (resolved.mimeType === "image/svg+xml") {
+          const rawSvgBuf = decodeResolvedDataUrlBuffer(resolved);
+          const svgText = rawSvgBuf ? rawSvgBuf.toString("utf8") : "";
+          if (svgText.includes("G-GRAVITATOR // EDITORIAL STUDIO")) {
+            const studioPng = await materializePng(
+              renderStudioSvgReplicaCard(dispatch, svgText)
+            );
+            return await encodeSocialOgJpeg(studioPng);
+          }
+          if (rawSvgBuf) {
+            return await encodeSocialOgJpeg(rawSvgBuf);
+          }
+        } else {
+          const rawRasterBuf = decodeResolvedDataUrlBuffer(resolved);
+          if (rawRasterBuf) {
+            return await encodeSocialOgJpeg(rawRasterBuf);
+          }
+        }
+      } catch (error) {
+        console.warn(
+          `[journal-og] Failed rendering cover image for "${dispatch.slug}", using editorial fallback:`,
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    }
+  }
+
+  const editorialPng = await materializePng(renderJournalEditorialCard(dispatch));
+  try {
+    return await encodeSocialOgJpeg(editorialPng);
+  } catch {
+    return {
+      buffer: editorialPng,
+      contentType: "image/png",
+      width: OG_SIZE.width,
+      height: OG_SIZE.height,
+    };
+  }
 }
 
 /**

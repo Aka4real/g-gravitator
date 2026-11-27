@@ -2,6 +2,7 @@ import zlib from "node:zlib";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ImageResponse } from "next/og";
 import React from "react";
+import sharp from "sharp";
 import {
   createDispatch,
   createMediaAsset,
@@ -11,6 +12,8 @@ import {
 } from "@/lib/db/repository";
 import { generateProceduralEditorialSvg } from "@/lib/ops/media";
 import {
+  MAX_SOCIAL_OG_BYTES,
+  renderJournalOgImage,
   renderJournalOgPngBuffer,
   resolveDispatchCoverAsset,
 } from "@/lib/brand/journal-og";
@@ -23,8 +26,35 @@ import {
   signDispatchShareToken,
   verifyDispatchShareToken,
 } from "@/lib/journal/share-token";
-import { GET as getJournalOgRoute } from "@/app/journal/[slug]/og/route";
+import {
+  GET as getJournalOgRoute,
+  HEAD as headJournalOgRoute,
+} from "@/app/journal/[slug]/og/route";
 import { POST as postJournalShareRoute } from "@/app/api/journal/share/route";
+
+async function inspectJpegImage(buf: Buffer): Promise<{
+  width: number;
+  height: number;
+  isProgressive: boolean;
+  centerRgb: [number, number, number];
+}> {
+  expect(buf.subarray(0, 3).toString("hex")).toBe("ffd8ff");
+  const meta = await sharp(buf).metadata();
+  const width = meta.width ?? 0;
+  const height = meta.height ?? 0;
+  const { data } = await sharp(buf)
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const cy = Math.floor(height / 2);
+  const cx = Math.floor(width / 2);
+  const offset = (cy * width + cx) * 3;
+  return {
+    width,
+    height,
+    isProgressive: Boolean(meta.isProgressive),
+    centerRgb: [data[offset], data[offset + 1], data[offset + 2]],
+  };
+}
 
 function parsePngDimensions(buf: Buffer): { width: number; height: number } {
   expect(buf.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
@@ -190,12 +220,46 @@ describe("Sharable Journals, Share Links & Matching Cover Open Graph Preload", (
       is_published: true,
     });
 
-    const ogBuffer = await renderJournalOgPngBuffer(publishedWithCover);
-    expect(parsePngDimensions(ogBuffer)).toEqual({ width: 1200, height: 630 });
-    const [r, g, b] = getPngCenterPixelRgb(ogBuffer);
+    const ogImage = await renderJournalOgImage(publishedWithCover);
+    expect(ogImage.contentType).toBe("image/jpeg");
+    expect(ogImage.buffer.byteLength).toBeLessThanOrEqual(MAX_SOCIAL_OG_BYTES);
+    const ogInfo = await inspectJpegImage(ogImage.buffer);
+    expect({ width: ogInfo.width, height: ogInfo.height }).toEqual({
+      width: 1200,
+      height: 630,
+    });
+    expect(ogInfo.isProgressive).toBe(false);
+    const [r, g, b] = ogInfo.centerRgb;
     expect(r).toBeLessThan(35);
     expect(g).toBeGreaterThan(165);
     expect(b).toBeGreaterThan(110);
+
+    // Verify legacy PNG helper remains functional too
+    const ogBuffer = await renderJournalOgPngBuffer(publishedWithCover);
+    expect(parsePngDimensions(ogBuffer)).toEqual({ width: 1200, height: 630 });
+    const [pr, pg, pb] = getPngCenterPixelRgb(ogBuffer);
+    expect(pr).toBeLessThan(35);
+    expect(pg).toBeGreaterThan(165);
+    expect(pb).toBeGreaterThan(110);
+
+    // Verify photographic static cover compresses strictly under WhatsApp's 240 KB budget
+    const photoDispatch = await createDispatch({
+      title: "Photographic Cover WhatsApp Budget Check",
+      subtitle: "Ensuring photographic covers never exceed 240 KB baseline JPEG.",
+      category: "ARCHITECTURE",
+      mdx_content: "## Visuals\n\nPhotographic cover test.",
+      cover_image_url: "/images/labs-prism.jpg",
+      is_published: true,
+    });
+    const photoOg = await renderJournalOgImage(photoDispatch);
+    expect(photoOg.contentType).toBe("image/jpeg");
+    expect(photoOg.buffer.byteLength).toBeLessThanOrEqual(MAX_SOCIAL_OG_BYTES);
+    const photoInfo = await inspectJpegImage(photoOg.buffer);
+    expect({ width: photoInfo.width, height: photoInfo.height }).toEqual({
+      width: 1200,
+      height: 630,
+    });
+    expect(photoInfo.isProgressive).toBe(false);
 
     // Also verify Studio Editorial SVG cover rendering
     const studioSvgDataUrl = generateProceduralEditorialSvg({
@@ -222,11 +286,17 @@ describe("Sharable Journals, Share Links & Matching Cover Open Graph Preload", (
       design: { accent_color: "#3B82F6" },
     });
 
-    const svgOgBuffer = await renderJournalOgPngBuffer(svgDispatch);
-    expect(parsePngDimensions(svgOgBuffer)).toEqual({ width: 1200, height: 630 });
+    const svgOg = await renderJournalOgImage(svgDispatch);
+    expect(svgOg.contentType).toBe("image/jpeg");
+    expect(svgOg.buffer.byteLength).toBeLessThanOrEqual(MAX_SOCIAL_OG_BYTES);
+    const svgInfo = await inspectJpegImage(svgOg.buffer);
+    expect({ width: svgInfo.width, height: svgInfo.height }).toEqual({
+      width: 1200,
+      height: 630,
+    });
   });
 
-  it("serves /journal/[slug]/og and /api/journal/share safely for both published and token-shared drafts", async () => {
+  it("serves /journal/[slug]/og (GET & HEAD) with baseline JPEG, Content-Length, and draft token safety", async () => {
     const draftAsset = await createMediaAsset({
       filename: "amber-draft-cover.png",
       mime_type: "image/png",
@@ -268,28 +338,47 @@ describe("Sharable Journals, Share Links & Matching Cover Open Graph Preload", (
       { params: Promise.resolve({ slug: draftDispatch.slug }) }
     );
     expect(unauthOgRes.status).toBe(200);
+    expect(unauthOgRes.headers.get("content-type")).toBe("image/jpeg");
     expect(unauthOgRes.headers.get("x-robots-tag")).toBe("noindex, nofollow");
     const unauthBuf = Buffer.from(await unauthOgRes.arrayBuffer());
-    const [ur] = getPngCenterPixelRgb(unauthBuf);
-    expect(ur).toBeLessThan(30);
+    expect(unauthOgRes.headers.get("content-length")).toBe(String(unauthBuf.byteLength));
+    expect(unauthBuf.byteLength).toBeLessThanOrEqual(MAX_SOCIAL_OG_BYTES);
+    const unauthInfo = await inspectJpegImage(unauthBuf);
+    expect(unauthInfo.centerRgb[0]).toBeLessThan(30);
 
     // With valid token: GET /journal/[slug]/og renders the draft's actual amber (#F59E0B) cover picture!
     const validToken = signDispatchShareToken(draftDispatch);
+    const authUrl = `https://www.ggravitator.xyz/journal/${draftDispatch.slug}/og?share=${encodeURIComponent(validToken)}`;
     const authOgRes = await getJournalOgRoute(
-      new Request(
-        `https://www.ggravitator.xyz/journal/${draftDispatch.slug}/og?share=${encodeURIComponent(validToken)}`
-      ),
+      new Request(authUrl),
       { params: Promise.resolve({ slug: draftDispatch.slug }) }
     );
     expect(authOgRes.status).toBe(200);
-    expect(authOgRes.headers.get("content-type")).toBe("image/png");
+    expect(authOgRes.headers.get("content-type")).toBe("image/jpeg");
     expect(authOgRes.headers.get("cache-control")).toContain("no-store");
     const authBuf = Buffer.from(await authOgRes.arrayBuffer());
-    expect(parsePngDimensions(authBuf)).toEqual({ width: 1200, height: 630 });
-    const [ar, ag, ab] = getPngCenterPixelRgb(authBuf);
+    expect(authOgRes.headers.get("content-length")).toBe(String(authBuf.byteLength));
+    expect(authBuf.byteLength).toBeLessThanOrEqual(MAX_SOCIAL_OG_BYTES);
+    const authInfo = await inspectJpegImage(authBuf);
+    expect({ width: authInfo.width, height: authInfo.height }).toEqual({
+      width: 1200,
+      height: 630,
+    });
+    expect(authInfo.isProgressive).toBe(false);
+    const [ar, ag, ab] = authInfo.centerRgb;
     expect(ar).toBeGreaterThan(220);
     expect(ag).toBeGreaterThan(130);
     expect(ab).toBeLessThan(30);
+
+    // HEAD /journal/[slug]/og returns matching Content-Type and Content-Length with empty body
+    const headOgRes = await headJournalOgRoute(
+      new Request(authUrl, { method: "HEAD" }),
+      { params: Promise.resolve({ slug: draftDispatch.slug }) }
+    );
+    expect(headOgRes.status).toBe(200);
+    expect(headOgRes.headers.get("content-type")).toBe("image/jpeg");
+    expect(headOgRes.headers.get("content-length")).toBe(String(authBuf.byteLength));
+    expect((await headOgRes.arrayBuffer()).byteLength).toBe(0);
 
     // Published dispatch works publicly via POST /api/journal/share
     const pubShareRes = await postJournalShareRoute(

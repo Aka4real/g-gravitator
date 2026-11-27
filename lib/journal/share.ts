@@ -21,6 +21,7 @@ export function getDispatchOgVersion(
   >
 ): string {
   const raw = [
+    "og-jpg-v2",
     dispatch.updated_at || "",
     dispatch.cover_image_url || "",
     dispatch.title || "",
