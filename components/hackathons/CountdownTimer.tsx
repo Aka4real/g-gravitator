@@ -87,28 +87,32 @@ export function CountdownTimer({ deadlineAt, compact = false }: CountdownTimerPr
 
   const pad = (n: number) => String(n).padStart(2, "0");
 
+  const timeLabel =
+    days > 0
+      ? `${days}d ${pad(hours)}h left`
+      : hours > 0
+      ? `${hours}h ${pad(minutes)}m left`
+      : `${minutes}m ${pad(seconds)}s left`;
+
   return (
     <span
-      className={`font-mono-telemetry inline-flex items-center gap-1.5 font-semibold whitespace-nowrap ${
+      className={`font-mono-telemetry inline-flex items-center gap-1.5 font-medium whitespace-nowrap ${
         compact ? "text-xs" : "text-[13px]"
       } ${
         isUrgent
           ? "text-[#FF6B54]"
           : isWarning
           ? "text-[#FBBF24]"
-          : "text-[#F4F3EF]"
+          : "text-[#A1A1AA]"
       }`}
     >
       {isUrgent && (
         <span
           aria-hidden="true"
-          className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[#FF3B1F]"
+          className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#FF3B1F]"
         />
       )}
-      <span>
-        {pad(days)}d {pad(hours)}h {pad(minutes)}m
-        {!compact && ` ${pad(seconds)}s`}
-      </span>
+      <span>{timeLabel}</span>
     </span>
   );
 }

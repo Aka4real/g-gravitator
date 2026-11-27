@@ -55,10 +55,10 @@ export function ArchitecturalShell({
   return (
     <MotionConfig reducedMotion="user">
       <div className="relative flex min-h-screen flex-col bg-[#08080A] text-[#F4F3EF]">
-        {/* Soft scroll-edge top vignette so scrolling content glides cleanly under floating nav */}
+        {/* Soft scroll-edge top vignette so scrolling content fades cleanly before the floating nav */}
         <div
           aria-hidden="true"
-          className="pointer-events-none fixed inset-x-0 top-0 z-30 h-24 bg-gradient-to-b from-[#08080A]/90 via-[#08080A]/45 to-transparent"
+          className="pointer-events-none fixed inset-x-0 top-0 z-30 h-24 bg-gradient-to-b from-[#08080A] via-[#08080A]/92 via-55% to-transparent"
         />
 
         <Navbar

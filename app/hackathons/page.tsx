@@ -29,30 +29,13 @@ export default async function HackathonsPage({
   const { items: hackathons, lastSyncAt } = await getHackathons();
 
   return (
-    <div className="mx-auto max-w-[1440px] px-4 pt-8 pb-20 sm:px-6 sm:pt-10 md:px-8 lg:px-12 lg:pt-12 lg:pb-28">
-      {/* Unboxed Editorial Operate Header */}
-      <header className="max-w-3xl">
-        <h1 className="font-display text-[clamp(2rem,4.2vw,3.5rem)] font-bold tracking-[-0.03em] text-[#F4F3EF]">
-          Global AI and software hackathon radar
-        </h1>
-        <p className="mt-4 max-w-[65ch] text-base leading-relaxed text-[#A1A1AA]">
-          Built for <strong className="font-medium text-[#F4F3EF]">OXAKALABS</strong>{" "}
-          strike deployment and the global builder community. Unifies Devpost, DoraHacks,
-          Lablab.ai, MLH, Luma, Devfolio, ETHGlobal, Kaggle, Unstop, and breaking
-          announcements on <strong className="font-medium text-[#F4F3EF]">X (Twitter)</strong>{" "}
-          into one normalized, deduplicated feed.
-        </p>
-      </header>
-
-      {/* Interactive Radar Console */}
-      <div className="mt-8">
-        <HackathonRadar
-          initialHackathons={hackathons}
-          lastSyncAt={lastSyncAt}
-          initialQuery={sp.q ?? ""}
-          initialOpenSubmit={sp.submit === "1"}
-        />
-      </div>
+    <div className="mx-auto max-w-[1440px] px-4 pt-6 pb-20 sm:px-6 sm:pt-8 md:px-8 lg:px-12 lg:pt-10 lg:pb-24">
+      <HackathonRadar
+        initialHackathons={hackathons}
+        lastSyncAt={lastSyncAt}
+        initialQuery={sp.q ?? ""}
+        initialOpenSubmit={sp.submit === "1"}
+      />
     </div>
   );
 }

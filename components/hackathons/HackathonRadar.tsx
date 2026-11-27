@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   Radar,
   RotateCcw,
+  SlidersHorizontal,
 } from "lucide-react";
 import { CountdownTimer } from "@/components/hackathons/CountdownTimer";
 import {
@@ -138,6 +139,7 @@ export function HackathonRadar({
   >("closing_soon");
   const [viewMode, setViewMode] = useState<"GRID" | "TABLE">("GRID");
   const [bookmarksOnly, setBookmarksOnly] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const bookmarks = useSyncExternalStore(
     subscribeBookmarks,
     getBookmarksSnapshot,
@@ -219,12 +221,13 @@ export function HackathonRadar({
     setBookmarksOnly(false);
   };
 
+  const activeFilterCount =
+    (selectedSource !== "all" ? 1 : 0) +
+    (selectedFormat !== "ALL" ? 1 : 0) +
+    (selectedTheme !== "ALL" ? 1 : 0);
+
   const hasActiveFilters =
-    searchQuery.trim().length > 0 ||
-    selectedSource !== "all" ||
-    selectedFormat !== "ALL" ||
-    selectedTheme !== "ALL" ||
-    bookmarksOnly;
+    searchQuery.trim().length > 0 || activeFilterCount > 0 || bookmarksOnly;
 
   const filteredHackathons = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -296,18 +299,16 @@ export function HackathonRadar({
     }).length;
   }, [hackathons, nowMs]);
 
-  const xSignalCount = useMemo(
-    () =>
-      hackathons.filter((h) => h.sources.some((s) => s.provider === "twitter"))
-        .length,
-    [hackathons]
-  );
-
-  const syncMinutesAgo = useMemo(() => {
+  const syncAgeLabel = useMemo(() => {
     if (nowMs === null) return null;
     const syncMs = new Date(lastSyncAt).getTime();
     if (Number.isNaN(syncMs)) return null;
-    return Math.max(1, Math.round((nowMs - syncMs) / 60_000));
+    const mins = Math.max(1, Math.round((nowMs - syncMs) / 60_000));
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.round(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.round(hours / 24);
+    return `${days}d ago`;
   }, [lastSyncAt, nowMs]);
 
   const handleSubmitUrl = async (e: React.FormEvent) => {
@@ -345,48 +346,69 @@ export function HackathonRadar({
     }
   };
 
+  const activeSourceLabel =
+    SOURCE_CHIPS.find((s) => s.key === selectedSource)?.label ?? selectedSource;
+
   return (
     <div className="min-w-0">
-      {/* Compact Metric Pills & Primary Submit Trigger */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-[#111114] px-3.5 py-2 text-xs">
-            <span
-              aria-hidden="true"
-              className="h-1.5 w-1.5 rounded-full bg-[#10B981]"
-            />
-            <span className="font-mono-telemetry font-semibold text-[#F4F3EF]">
-              {hackathons.length}
-            </span>
-            <span className="text-[#A1A1AA]">active events</span>
-          </div>
+      {/* Unified Header + Quiet Inline Telemetry + Single Primary CTA */}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="font-display text-[clamp(1.85rem,3.6vw,2.75rem)] font-bold leading-[1.06] tracking-[-0.03em] text-[#F4F3EF]">
+            Hackathon Radar
+          </h1>
+          <p className="mt-2 max-w-[66ch] text-sm leading-relaxed text-[#A1A1AA] sm:text-[15px]">
+            Live AI and software hackathons across global platforms and X, curated by{" "}
+            <span className="font-medium text-[#F4F3EF]">OXAKALABS</span>.
+          </p>
 
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-[#111114] px-3.5 py-2 text-xs">
-            <span className="font-mono-telemetry font-semibold text-[#34D399]">
-              ${totalPrizeUsd.toLocaleString("en-US")}
+          {/* Quiet Typographic Telemetry Strip (zero noisy bordered pills) */}
+          <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-[#8B8B94]">
+            <span className="inline-flex items-center gap-1.5 text-[#D4D4D8]">
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-1.5 rounded-full bg-[#10B981]"
+              />
+              <span className="font-mono-telemetry font-medium text-[#F4F3EF]">
+                {hackathons.length}
+              </span>{" "}
+              live
             </span>
-            <span className="text-[#A1A1AA]">in prizes</span>
-          </div>
-
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-[#FF3B1F]/25 bg-[#FF3B1F]/[0.08] px-3.5 py-2 text-xs">
-            <span className="font-mono-telemetry font-semibold text-[#FF8A7A]">
-              {closingUnder72h === null ? "--" : closingUnder72h}
+            <span aria-hidden="true" className="text-white/20">
+              ·
             </span>
-            <span className="text-[#D4D4D8]">closing &lt;72h</span>
-          </div>
-
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-[#111114] px-3.5 py-2 text-xs">
-            <span className="font-mono-telemetry font-semibold text-[#F4F3EF]">
-              {xSignalCount}
+            <span>
+              <span className="font-mono-telemetry font-medium text-[#34D399]">
+                ${totalPrizeUsd.toLocaleString("en-US")}
+              </span>{" "}
+              in prizes
             </span>
-            <span className="text-[#A1A1AA]">X signals</span>
-          </div>
-
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.07] bg-transparent px-3 py-2 text-xs text-[#8B8B94]">
-            <span>Synced</span>
-            <span className="font-mono-telemetry text-[#A1A1AA]">
-              {syncMinutesAgo === null ? "recently" : `${syncMinutesAgo}m ago`}
-            </span>
+            {closingUnder72h !== null && closingUnder72h > 0 && (
+              <>
+                <span aria-hidden="true" className="text-white/20">
+                  ·
+                </span>
+                <span>
+                  <span className="font-mono-telemetry font-medium text-[#FF8A7A]">
+                    {closingUnder72h}
+                  </span>{" "}
+                  closing &lt;72h
+                </span>
+              </>
+            )}
+            {syncAgeLabel && (
+              <>
+                <span aria-hidden="true" className="text-white/20">
+                  ·
+                </span>
+                <span>
+                  Synced{" "}
+                  <span className="font-mono-telemetry text-[#A1A1AA]">
+                    {syncAgeLabel}
+                  </span>
+                </span>
+              </>
+            )}
           </div>
         </div>
 
@@ -397,267 +419,339 @@ export function HackathonRadar({
           className="press-tactile inline-flex h-10 shrink-0 cursor-pointer items-center justify-center gap-1.5 self-start rounded-full bg-[#FF3B1F] px-5 text-sm font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238] sm:self-auto"
         >
           <Plus className="h-4 w-4" strokeWidth={2} />
-          <span>Submit X or link</span>
+          <span>Submit signal</span>
         </button>
-      </div>
+      </header>
 
-      {/* Floating Frosted Filter Toolbar */}
-      <div className="glass-chrome mt-6 rounded-2xl p-4 sm:p-5 lg:sticky lg:top-[76px] lg:z-20">
-        {/* Top Row: Search + Format + Sort + Saved + View Switcher */}
-        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center">
-          {/* Instant Search Input */}
-          <div className="relative min-w-0 flex-1">
-            <label htmlFor="hackathon-search-input" className="sr-only">
-              Search hackathons
-            </label>
-            <Search
-              aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[#8B8B94]"
-              strokeWidth={1.6}
-            />
-            <input
-              type="text"
-              id="hackathon-search-input"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, sponsor (DeepMind, Anthropic, Vercel), stack, or theme..."
-              className="h-10 w-full min-w-0 rounded-xl border border-white/[0.12] bg-[#0B0B0E]/85 pr-9 pl-10 text-sm text-[#F4F3EF] placeholder:text-[#8B8B94] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/25 focus:outline-none"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                aria-label="Clear search query"
-                className="absolute top-1/2 right-2.5 -translate-y-1/2 rounded-full p-1 text-[#8B8B94] transition-colors hover:bg-white/[0.08] hover:text-[#F4F3EF]"
-              >
-                <X className="h-3.5 w-3.5" strokeWidth={1.8} />
-              </button>
-            )}
-          </div>
-
-          {/* Right Control Cluster */}
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            {/* Format Segmented Control */}
-            <div
-              role="group"
-              aria-label="Hackathon format"
-              className="inline-flex max-w-full items-center overflow-x-auto rounded-full border border-white/[0.08] bg-[#0B0B0E]/90 p-1"
-            >
-              {FORMAT_OPTIONS.map((fmt) => {
-                const active = selectedFormat === fmt.key;
-                return (
-                  <button
-                    key={fmt.key}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => setSelectedFormat(fmt.key)}
-                    className={`press-tactile relative shrink-0 cursor-pointer rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
-                      active
-                        ? "text-[#08080A]"
-                        : "text-[#A1A1AA] hover:text-[#F4F3EF]"
-                    }`}
-                  >
-                    {active && (
-                      <motion.span
-                        layoutId="hackathon-format-pill"
-                        transition={prefersReducedMotion ? { duration: 0.1 } : SPRING_UI}
-                        className="absolute inset-0 rounded-full bg-[#F4F3EF]"
-                      />
-                    )}
-                    <span className="relative z-10">{fmt.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Sort Selector */}
-            <div className="min-w-0">
-              <label htmlFor="hackathon-sort-select" className="sr-only">
-                Sort hackathons
-              </label>
-              <select
-                id="hackathon-sort-select"
-                value={sortBy}
-                onChange={(e) =>
-                  setSortBy(
-                    e.target.value as
-                      | "closing_soon"
-                      | "prize_pool"
-                      | "newest"
-                      | "oxakalabs"
-                  )
-                }
-                className="h-9 max-w-full cursor-pointer rounded-xl border border-white/[0.12] bg-[#111114] px-3 text-xs font-medium text-[#F4F3EF] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/25 focus:outline-none"
-              >
-                <option value="closing_soon">Sort: Closing soonest</option>
-                <option value="prize_pool">Sort: Highest prize pool</option>
-                <option value="newest">Sort: Newly discovered</option>
-                <option value="oxakalabs">Sort: OXAKALABS picks</option>
-              </select>
-            </div>
-
-            {/* Bookmarks Filter */}
+      {/* Streamlined Single-Row Command Bar (Progressive Disclosure for Filters) */}
+      <div className="mt-6 flex min-w-0 flex-col gap-2.5 md:flex-row md:items-center">
+        {/* Search Input */}
+        <div className="relative min-w-0 flex-1">
+          <label htmlFor="hackathon-search-input" className="sr-only">
+            Search hackathons
+          </label>
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[#8B8B94]"
+            strokeWidth={1.6}
+          />
+          <input
+            type="text"
+            id="hackathon-search-input"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search hackathons, sponsors, or stack..."
+            className="h-10 w-full min-w-0 rounded-xl border border-white/[0.09] bg-[#111114] pr-9 pl-10 text-sm text-[#F4F3EF] placeholder:text-[#8B8B94] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/25 focus:outline-none"
+          />
+          {searchQuery && (
             <button
               type="button"
-              aria-pressed={bookmarksOnly}
-              onClick={() => setBookmarksOnly((v) => !v)}
-              className={`press-tactile inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 text-xs font-medium whitespace-nowrap ${
-                bookmarksOnly
-                  ? "border-[#FF3B1F]/40 bg-[#FF3B1F]/15 text-[#FF8A7A]"
-                  : "border-white/[0.09] bg-[#111114] text-[#A1A1AA] hover:border-white/[0.18] hover:text-[#F4F3EF]"
+              onClick={() => setSearchQuery("")}
+              aria-label="Clear search query"
+              className="absolute top-1/2 right-2.5 -translate-y-1/2 rounded-full p-1 text-[#8B8B94] transition-colors hover:bg-white/[0.08] hover:text-[#F4F3EF]"
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={1.8} />
+            </button>
+          )}
+        </div>
+
+        {/* Compact Control Row */}
+        <div className="flex min-w-0 items-center gap-2">
+          {/* Collapsible Filters Toggle */}
+          <button
+            type="button"
+            aria-expanded={filtersOpen}
+            aria-controls="hackathon-filter-drawer"
+            onClick={() => setFiltersOpen((v) => !v)}
+            className={`press-tactile inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border px-3 text-xs font-medium whitespace-nowrap transition-colors ${
+              filtersOpen || activeFilterCount > 0
+                ? "border-white/[0.2] bg-[#18181D] text-[#F4F3EF]"
+                : "border-white/[0.09] bg-[#111114] text-[#A1A1AA] hover:border-white/[0.18] hover:text-[#F4F3EF]"
+            }`}
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={1.7} />
+            <span>Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="font-mono-telemetry inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF3B1F] px-1 text-[10px] font-semibold text-[#08080A]">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
+          {/* Sort Select */}
+          <div className="min-w-0 flex-1 sm:flex-none">
+            <label htmlFor="hackathon-sort-select" className="sr-only">
+              Sort hackathons
+            </label>
+            <select
+              id="hackathon-sort-select"
+              value={sortBy}
+              onChange={(e) =>
+                setSortBy(
+                  e.target.value as
+                    | "closing_soon"
+                    | "prize_pool"
+                    | "newest"
+                    | "oxakalabs"
+                )
+              }
+              className="h-10 w-full cursor-pointer rounded-xl border border-white/[0.09] bg-[#111114] px-3 text-xs font-medium text-[#F4F3EF] transition-colors focus:border-[#FF3B1F] focus:ring-2 focus:ring-[#FF3B1F]/25 focus:outline-none sm:w-auto"
+            >
+              <option value="closing_soon">Closing soon</option>
+              <option value="prize_pool">Highest prize</option>
+              <option value="newest">Newest</option>
+              <option value="oxakalabs">OXAKALABS picks</option>
+            </select>
+          </div>
+
+          {/* Saved Toggle */}
+          <button
+            type="button"
+            aria-pressed={bookmarksOnly}
+            aria-label="Filter saved hackathons"
+            onClick={() => setBookmarksOnly((v) => !v)}
+            className={`press-tactile inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border px-3 text-xs font-medium whitespace-nowrap transition-colors ${
+              bookmarksOnly
+                ? "border-[#FF3B1F]/40 bg-[#FF3B1F]/15 text-[#FF8A7A]"
+                : "border-white/[0.09] bg-[#111114] text-[#A1A1AA] hover:border-white/[0.18] hover:text-[#F4F3EF]"
+            }`}
+          >
+            <Bookmark
+              className="h-3.5 w-3.5"
+              strokeWidth={1.7}
+              fill={bookmarksOnly ? "currentColor" : "none"}
+            />
+            <span className="hidden sm:inline">Saved</span>
+            {bookmarks.length > 0 && (
+              <span className="font-mono-telemetry text-[11px]">
+                {bookmarks.length}
+              </span>
+            )}
+          </button>
+
+          {/* Grid / Table View Switcher */}
+          <div
+            role="group"
+            aria-label="Layout view"
+            className="inline-flex h-10 shrink-0 items-center rounded-xl border border-white/[0.09] bg-[#111114] p-1"
+          >
+            <button
+              type="button"
+              id="view-mode-grid"
+              aria-label="Grid cards view"
+              aria-pressed={viewMode === "GRID"}
+              onClick={() => setViewMode("GRID")}
+              title="Grid view"
+              className={`press-tactile relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition-colors ${
+                viewMode === "GRID"
+                  ? "text-[#08080A]"
+                  : "text-[#A1A1AA] hover:text-[#F4F3EF]"
               }`}
             >
-              <Bookmark className="h-3.5 w-3.5" strokeWidth={1.6} />
-              <span>Saved</span>
-              <span className="font-mono-telemetry text-[11px]">
-                ({bookmarks.length})
-              </span>
+              {viewMode === "GRID" && (
+                <motion.span
+                  layoutId="hackathon-view-pill"
+                  transition={prefersReducedMotion ? { duration: 0.1 } : SPRING_UI}
+                  className="absolute inset-0 rounded-lg bg-[#F4F3EF]"
+                />
+              )}
+              <LayoutGrid className="relative z-10 h-3.5 w-3.5" strokeWidth={1.7} />
             </button>
-
-            {/* View Switcher: Grid vs Table */}
-            <div
-              role="group"
-              aria-label="Layout view"
-              className="inline-flex shrink-0 items-center rounded-full border border-white/[0.08] bg-[#0B0B0E]/90 p-1"
+            <button
+              type="button"
+              id="view-mode-table"
+              aria-label="Compact table view"
+              aria-pressed={viewMode === "TABLE"}
+              onClick={() => setViewMode("TABLE")}
+              title="Table view"
+              className={`press-tactile relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition-colors ${
+                viewMode === "TABLE"
+                  ? "text-[#08080A]"
+                  : "text-[#A1A1AA] hover:text-[#F4F3EF]"
+              }`}
             >
-              <button
-                type="button"
-                id="view-mode-grid"
-                aria-label="Grid cards view"
-                aria-pressed={viewMode === "GRID"}
-                onClick={() => setViewMode("GRID")}
-                title="Grid view"
-                className={`press-tactile relative flex h-7 w-8 cursor-pointer items-center justify-center rounded-full transition-colors ${
-                  viewMode === "GRID"
-                    ? "text-[#08080A]"
-                    : "text-[#A1A1AA] hover:text-[#F4F3EF]"
-                }`}
-              >
-                {viewMode === "GRID" && (
-                  <motion.span
-                    layoutId="hackathon-view-pill"
-                    transition={prefersReducedMotion ? { duration: 0.1 } : SPRING_UI}
-                    className="absolute inset-0 rounded-full bg-[#F4F3EF]"
-                  />
-                )}
-                <LayoutGrid className="relative z-10 h-3.5 w-3.5" strokeWidth={1.7} />
-              </button>
-              <button
-                type="button"
-                id="view-mode-table"
-                aria-label="Compact table view"
-                aria-pressed={viewMode === "TABLE"}
-                onClick={() => setViewMode("TABLE")}
-                title="Table view"
-                className={`press-tactile relative flex h-7 w-8 cursor-pointer items-center justify-center rounded-full transition-colors ${
-                  viewMode === "TABLE"
-                    ? "text-[#08080A]"
-                    : "text-[#A1A1AA] hover:text-[#F4F3EF]"
-                }`}
-              >
-                {viewMode === "TABLE" && (
-                  <motion.span
-                    layoutId="hackathon-view-pill"
-                    transition={prefersReducedMotion ? { duration: 0.1 } : SPRING_UI}
-                    className="absolute inset-0 rounded-full bg-[#F4F3EF]"
-                  />
-                )}
-                <TableIcon className="relative z-10 h-3.5 w-3.5" strokeWidth={1.7} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Source Filter Pill Rail (horizontally scrollable on mobile, wraps cleanly on desktop) */}
-        <div className="mt-3.5 flex min-w-0 items-center gap-2 border-t border-white/[0.06] pt-3.5">
-          <span className="shrink-0 text-xs font-medium text-[#8B8B94]">Sources</span>
-          <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
-            {SOURCE_CHIPS.map((src) => {
-              const active = selectedSource === src.key;
-              return (
-                <button
-                  key={src.key}
-                  type="button"
-                  id={`source-chip-${src.key}`}
-                  aria-pressed={active}
-                  onClick={() => setSelectedSource(src.key)}
-                  className={`press-tactile shrink-0 cursor-pointer rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap ${
-                    active
-                      ? "border-[#F4F3EF] bg-[#F4F3EF] font-semibold text-[#08080A]"
-                      : "border-white/[0.08] bg-[#111114]/80 text-[#A1A1AA] hover:border-white/[0.18] hover:text-[#F4F3EF]"
-                  }`}
-                >
-                  {src.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Theme Filter Pill Rail */}
-        <div className="mt-2.5 flex min-w-0 items-center gap-2">
-          <span className="shrink-0 text-xs font-medium text-[#8B8B94]">Themes</span>
-          <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
-            {THEME_CHIPS.map((theme) => {
-              const active = selectedTheme === theme;
-              const label = theme === "ALL" ? "All themes" : theme;
-              return (
-                <button
-                  key={theme}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setSelectedTheme(theme)}
-                  className={`press-tactile shrink-0 cursor-pointer rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap ${
-                    active
-                      ? "border-[#FF3B1F]/40 bg-[#FF3B1F]/15 text-[#FF8A7A]"
-                      : "border-white/[0.07] bg-transparent text-[#8B8B94] hover:border-white/[0.15] hover:text-[#F4F3EF]"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
+              {viewMode === "TABLE" && (
+                <motion.span
+                  layoutId="hackathon-view-pill"
+                  transition={prefersReducedMotion ? { duration: 0.1 } : SPRING_UI}
+                  className="absolute inset-0 rounded-lg bg-[#F4F3EF]"
+                />
+              )}
+              <TableIcon className="relative z-10 h-3.5 w-3.5" strokeWidth={1.7} />
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Results Count + Active Filter Reset */}
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-[#8B8B94]">
-        <p>
-          Showing{" "}
-          <span className="font-mono-telemetry font-semibold text-[#F4F3EF]">
-            {filteredHackathons.length}
-          </span>{" "}
-          of{" "}
-          <span className="font-mono-telemetry text-[#A1A1AA]">
-            {hackathons.length}
-          </span>{" "}
-          hackathons
-        </p>
+      {/* Progressive Disclosure Filter Panel (only rendered when toggled open) */}
+      <AnimatePresence initial={false}>
+        {filtersOpen && (
+          <motion.div
+            id="hackathon-filter-drawer"
+            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
+            className="surface-card mt-3 space-y-4 rounded-2xl p-4 sm:p-5"
+          >
+            {/* Format Row */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+              <span className="w-16 shrink-0 text-xs font-medium text-[#8B8B94]">
+                Format
+              </span>
+              <div
+                role="group"
+                aria-label="Hackathon format"
+                className="flex flex-wrap items-center gap-1.5"
+              >
+                {FORMAT_OPTIONS.map((fmt) => {
+                  const active = selectedFormat === fmt.key;
+                  return (
+                    <button
+                      key={fmt.key}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setSelectedFormat(fmt.key)}
+                      className={`press-tactile cursor-pointer rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
+                        active
+                          ? "border-[#F4F3EF] bg-[#F4F3EF] font-semibold text-[#08080A]"
+                          : "border-white/[0.08] bg-[#18181D] text-[#A1A1AA] hover:border-white/[0.18] hover:text-[#F4F3EF]"
+                      }`}
+                    >
+                      {fmt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Source Row */}
+            <div className="flex flex-col gap-2 border-t border-white/[0.06] pt-4 sm:flex-row sm:items-start sm:gap-4">
+              <span className="w-16 shrink-0 pt-1 text-xs font-medium text-[#8B8B94]">
+                Sources
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {SOURCE_CHIPS.map((src) => {
+                  const active = selectedSource === src.key;
+                  return (
+                    <button
+                      key={src.key}
+                      type="button"
+                      id={`source-chip-${src.key}`}
+                      aria-pressed={active}
+                      onClick={() => setSelectedSource(src.key)}
+                      className={`press-tactile cursor-pointer rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
+                        active
+                          ? "border-[#F4F3EF] bg-[#F4F3EF] font-semibold text-[#08080A]"
+                          : "border-white/[0.08] bg-transparent text-[#A1A1AA] hover:border-white/[0.18] hover:text-[#F4F3EF]"
+                      }`}
+                    >
+                      {src.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Theme Row */}
+            <div className="flex flex-col gap-2 border-t border-white/[0.06] pt-4 sm:flex-row sm:items-start sm:gap-4">
+              <span className="w-16 shrink-0 pt-1 text-xs font-medium text-[#8B8B94]">
+                Themes
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {THEME_CHIPS.map((theme) => {
+                  const active = selectedTheme === theme;
+                  const label = theme === "ALL" ? "All themes" : theme;
+                  return (
+                    <button
+                      key={theme}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setSelectedTheme(theme)}
+                      className={`press-tactile cursor-pointer rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
+                        active
+                          ? "border-[#FF3B1F]/40 bg-[#FF3B1F]/15 text-[#FF8A7A]"
+                          : "border-white/[0.08] bg-transparent text-[#A1A1AA] hover:border-white/[0.18] hover:text-[#F4F3EF]"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Quiet Results Count + Active Filter Chips (only appear when filtering) */}
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-2 text-xs text-[#8B8B94]">
+        <div className="flex flex-wrap items-center gap-2">
+          <p>
+            <span className="font-mono-telemetry font-medium text-[#D4D4D8]">
+              {filteredHackathons.length}
+            </span>{" "}
+            {filteredHackathons.length === hackathons.length
+              ? "hackathons"
+              : `of ${hackathons.length} hackathons`}
+          </p>
+
+          {selectedFormat !== "ALL" && (
+            <button
+              type="button"
+              onClick={() => setSelectedFormat("ALL")}
+              className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-2.5 py-0.5 text-[11px] text-[#D4D4D8] hover:border-white/[0.2]"
+            >
+              <span>{formatFormatLabel(selectedFormat)}</span>
+              <X className="h-3 w-3 text-[#8B8B94]" />
+            </button>
+          )}
+          {selectedSource !== "all" && (
+            <button
+              type="button"
+              onClick={() => setSelectedSource("all")}
+              className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-2.5 py-0.5 text-[11px] text-[#D4D4D8] hover:border-white/[0.2]"
+            >
+              <span>{activeSourceLabel}</span>
+              <X className="h-3 w-3 text-[#8B8B94]" />
+            </button>
+          )}
+          {selectedTheme !== "ALL" && (
+            <button
+              type="button"
+              onClick={() => setSelectedTheme("ALL")}
+              className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-white/[0.1] bg-[#18181D] px-2.5 py-0.5 text-[11px] text-[#D4D4D8] hover:border-white/[0.2]"
+            >
+              <span>{selectedTheme}</span>
+              <X className="h-3 w-3 text-[#8B8B94]" />
+            </button>
+          )}
+        </div>
+
         {hasActiveFilters && (
           <button
             type="button"
             onClick={resetFilters}
-            className="press-tactile inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.09] bg-[#111114] px-3 py-1 text-xs font-medium text-[#D4D4D8] hover:border-white/[0.18] hover:text-[#F4F3EF]"
+            className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
           >
             <RotateCcw className="h-3 w-3" strokeWidth={1.7} />
-            <span>Reset filters</span>
+            <span>Reset</span>
           </button>
         )}
       </div>
 
-      {/* Hackathon Listing: Empty State, Grid Cards, or Compact Table */}
+      {/* Hackathon Listing: Empty State, Clean Grid Cards, or Compact Table */}
       {filteredHackathons.length === 0 ? (
-        <div className="surface-card mt-5 p-10 text-center sm:p-16">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-[#FF3B1F]/25 bg-[#FF3B1F]/10 text-[#FF6B54]">
-            <Radar className="h-6 w-6" strokeWidth={1.6} />
+        <div className="surface-card mt-4 p-10 text-center sm:p-14">
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-[#FF3B1F]/25 bg-[#FF3B1F]/10 text-[#FF6B54]">
+            <Radar className="h-5 w-5" strokeWidth={1.6} />
           </div>
-          <h2 className="font-display mt-5 text-2xl font-semibold text-[#F4F3EF]">
+          <h2 className="font-display mt-4 text-xl font-semibold text-[#F4F3EF]">
             No hackathons match your filters
           </h2>
-          <p className="mx-auto mt-2 max-w-[48ch] text-sm leading-relaxed text-[#A1A1AA]">
-            Clear your current filters to view all active events, or submit an X (Twitter)
-            announcement or registration link directly into the verification pipeline.
+          <p className="mx-auto mt-2 max-w-[44ch] text-sm leading-relaxed text-[#A1A1AA]">
+            Clear your filters to view all active events, or submit a link directly into
+            the radar pipeline.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <button
@@ -673,115 +767,124 @@ export function HackathonRadar({
               className="press-tactile inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-[#FF3B1F] px-5 text-sm font-semibold text-[#08080A] hover:bg-[#FF5238]"
             >
               <Plus className="h-4 w-4" strokeWidth={2} />
-              <span>Submit X or link</span>
+              <span>Submit signal</span>
             </button>
           </div>
         </div>
       ) : viewMode === "GRID" ? (
-        <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-5">
           {filteredHackathons.map((hack) => {
             const isBookmarked = bookmarks.includes(hack.id);
+            const firstRelatedLink = hack.related_links?.[0];
+
             return (
               <article
                 key={hack.id}
-                className="surface-card surface-card-interactive flex min-w-0 flex-col justify-between p-6 sm:p-7"
+                className="surface-card surface-card-interactive flex min-w-0 flex-col justify-between p-5 sm:p-6"
               >
                 <div className="min-w-0">
-                  {/* Top Row: Source Badges, Format Pill & OXAKALABS Status */}
+                  {/* Quiet Top Metadata Row */}
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-[#8B8B94]">
                       <SourceBadges sources={hack.sources} />
-                      <span className="inline-flex items-center rounded-full border border-white/[0.08] bg-[#18181D] px-2.5 py-0.5 text-xs font-medium text-[#A1A1AA]">
-                        {formatFormatLabel(hack.format)}
+                      <span aria-hidden="true" className="text-white/25">
+                        ·
                       </span>
+                      <span>{formatFormatLabel(hack.format)}</span>
                     </div>
                     <OxakalabsStatusBadge status={hack.oxakalabs_status} />
                   </div>
 
-                  {hack.image_url && (
-                    <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.08] bg-[#0B0B0E]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={hack.image_url}
-                        alt={hack.title}
-                        className="h-40 w-full object-cover"
-                      />
+                  {/* Title, Organizer & Optional Balanced Thumbnail */}
+                  <div className="mt-3 flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="font-display text-lg leading-snug font-semibold tracking-[-0.02em] text-[#F4F3EF] sm:text-[19px]">
+                        <a
+                          href={hack.primary_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="transition-colors hover:text-[#FF8A7A]"
+                        >
+                          {hack.title}
+                        </a>
+                      </h2>
+                      <p className="mt-1 truncate text-xs text-[#8B8B94]">
+                        <span className="text-[#A1A1AA]">{hack.organizer}</span>
+                        <span className="mx-1.5 text-white/20" aria-hidden="true">
+                          ·
+                        </span>
+                        <span>{hack.location}</span>
+                      </p>
                     </div>
-                  )}
 
-                  {/* Title & Organizer */}
-                  <h2 className="font-display mt-4 text-xl leading-snug font-semibold tracking-[-0.02em] text-[#F4F3EF] sm:text-2xl">
-                    {hack.title}
-                  </h2>
-                  <p className="mt-1.5 text-sm text-[#8B8B94]">
-                    <span className="font-medium text-[#D4D4D8]">{hack.organizer}</span>
-                    <span className="mx-1.5 text-[#52525B]" aria-hidden="true">
-                      /
-                    </span>
-                    <span>{hack.location}</span>
-                  </p>
+                    {hack.image_url && (
+                      <div className="h-12 w-20 shrink-0 overflow-hidden rounded-lg border border-white/[0.08] bg-[#0B0B0E] sm:h-14 sm:w-24">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={hack.image_url}
+                          alt={hack.title}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    )}
+                  </div>
 
-                  {/* Crisp Description */}
-                  <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-[#A1A1AA]">
+                  {/* Concise Summary */}
+                  <p className="mt-3 line-clamp-2 text-[13.5px] leading-relaxed text-[#A1A1AA]">
                     {hack.summary}
                   </p>
 
-                  {hack.related_links && hack.related_links.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {hack.related_links.slice(0, 3).map((lnk, i) => (
-                        <a
-                          key={i}
-                          href={lnk.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-xs font-medium underline underline-offset-2 hover:opacity-80"
-                          style={{ color: hack.design?.accent_color || "#FF8A7A" }}
-                        >
-                          <span>{lnk.label}</span>
-                          <ArrowUpRight className="h-3 w-3" strokeWidth={1.8} />
-                        </a>
+                  {/* Quiet Inline Themes & Optional Link (replaces pill overload) */}
+                  {(hack.themes.length > 0 || firstRelatedLink) && (
+                    <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#8B8B94]">
+                      {hack.themes.slice(0, 3).map((theme, idx) => (
+                        <React.Fragment key={theme}>
+                          {idx > 0 && (
+                            <span aria-hidden="true" className="text-white/20">
+                              ·
+                            </span>
+                          )}
+                          <span>{theme}</span>
+                        </React.Fragment>
                       ))}
+                      {firstRelatedLink && (
+                        <>
+                          {hack.themes.length > 0 && (
+                            <span aria-hidden="true" className="text-white/20">
+                              ·
+                            </span>
+                          )}
+                          <a
+                            href={firstRelatedLink.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-0.5 text-[#D4D4D8] underline decoration-white/25 underline-offset-2 transition-colors hover:text-[#F4F3EF]"
+                          >
+                            <span>{firstRelatedLink.label}</span>
+                            <ArrowUpRight className="h-3 w-3" strokeWidth={1.7} />
+                          </a>
+                        </>
+                      )}
                     </div>
                   )}
-
-                  {/* Theme Tags */}
-                  <div className="mt-4 flex flex-wrap gap-1.5">
-                    {hack.themes.map((theme) => (
-                      <span
-                        key={theme}
-                        className="rounded-full bg-white/[0.05] px-2.5 py-0.5 text-xs font-medium text-[#A1A1AA]"
-                      >
-                        {theme}
-                      </span>
-                    ))}
-                  </div>
                 </div>
 
-                {/* Metrics & Actions Footer */}
-                <div className="mt-6 border-t border-white/[0.07] pt-5">
-                  <div className="flex flex-wrap items-end justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="text-xs text-[#8B8B94]">Prize pool</div>
-                      <div className="font-mono-telemetry mt-0.5 text-sm font-semibold text-[#34D399]">
-                        {hack.prize_display}
-                      </div>
-                    </div>
-                    <div className="text-left sm:text-right">
-                      <div className="text-xs text-[#8B8B94]">Submission deadline</div>
-                      <div className="mt-0.5">
-                        <CountdownTimer deadlineAt={hack.deadline_at} />
-                      </div>
-                    </div>
+                {/* Clean Metrics & Actions Footer */}
+                <div className="mt-5 border-t border-white/[0.06] pt-4">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <span className="font-mono-telemetry text-sm font-semibold text-[#34D399]">
+                      {hack.prize_display}
+                    </span>
+                    <CountdownTimer deadlineAt={hack.deadline_at} compact />
                   </div>
 
-                  {/* Action Row */}
-                  <div className="mt-5 flex flex-wrap items-center justify-between gap-2.5">
-                    <div className="flex flex-wrap items-center gap-2">
+                  <div className="mt-3.5 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3">
                       <a
                         href={hack.primary_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="press-tactile inline-flex h-9 items-center gap-1.5 rounded-full bg-[#F4F3EF] px-4 text-xs font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF3B1F] hover:text-[#08080A]"
+                        className="press-tactile inline-flex h-8.5 items-center gap-1.5 rounded-full bg-[#F4F3EF] px-4 text-xs font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF3B1F]"
                       >
                         <span>Apply</span>
                         <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
@@ -792,26 +895,23 @@ export function HackathonRadar({
                           href={hack.source_tweet_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="press-tactile inline-flex h-9 items-center gap-1.5 rounded-full border border-[#FF3B1F]/35 bg-[#FF3B1F]/12 px-3.5 text-xs font-medium whitespace-nowrap text-[#FF8A7A] hover:bg-[#FF3B1F] hover:text-[#08080A]"
+                          className="inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap text-[#A1A1AA] transition-colors hover:text-[#F4F3EF]"
                         >
-                          <span>View X post</span>
-                          <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.8} />
+                          <span>X post</span>
+                          <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.7} />
                         </a>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => handleDownloadIcs(hack)}
                         title="Add deadline to calendar (.ics)"
-                        className="press-tactile inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.09] bg-[#18181D] px-3 text-xs font-medium text-[#D4D4D8] hover:border-white/[0.18] hover:text-[#F4F3EF]"
+                        aria-label={`Add ${hack.title} deadline to calendar`}
+                        className="press-tactile flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-[#8B8B94] transition-colors hover:bg-white/[0.08] hover:text-[#F4F3EF]"
                       >
-                        <Calendar
-                          className="h-3.5 w-3.5 text-[#FF6B54]"
-                          strokeWidth={1.6}
-                        />
-                        <span className="font-mono-telemetry">.ics</span>
+                        <Calendar className="h-3.5 w-3.5" strokeWidth={1.7} />
                       </button>
 
                       <button
@@ -823,11 +923,11 @@ export function HackathonRadar({
                             : `Bookmark ${hack.title}`
                         }
                         aria-pressed={isBookmarked}
-                        title={isBookmarked ? "Bookmarked" : "Bookmark hackathon"}
-                        className={`press-tactile flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border ${
+                        title={isBookmarked ? "Saved" : "Save hackathon"}
+                        className={`press-tactile flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition-colors ${
                           isBookmarked
-                            ? "border-[#FF3B1F] bg-[#FF3B1F] text-[#08080A]"
-                            : "border-white/[0.09] bg-[#18181D] text-[#A1A1AA] hover:border-white/[0.18] hover:text-[#F4F3EF]"
+                            ? "bg-[#FF3B1F]/15 text-[#FF5238]"
+                            : "text-[#8B8B94] hover:bg-white/[0.08] hover:text-[#F4F3EF]"
                         }`}
                       >
                         <Bookmark
@@ -845,18 +945,17 @@ export function HackathonRadar({
         </div>
       ) : (
         /* Compact Responsive Table View */
-        <div className="surface-card mt-5 overflow-hidden">
+        <div className="surface-card mt-4 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[780px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[740px] border-collapse text-left text-sm">
               <thead>
-                <tr className="border-b border-white/[0.08] bg-[#16161A]/60 text-xs font-medium text-[#8B8B94]">
-                  <th className="px-5 py-3.5 font-medium">Sources</th>
-                  <th className="px-5 py-3.5 font-medium">Hackathon</th>
-                  <th className="px-5 py-3.5 font-medium">Format</th>
-                  <th className="px-5 py-3.5 font-medium">Prize pool</th>
-                  <th className="px-5 py-3.5 font-medium">Deadline</th>
-                  <th className="px-5 py-3.5 font-medium">Status</th>
-                  <th className="px-5 py-3.5 text-right font-medium">Actions</th>
+                <tr className="border-b border-white/[0.07] bg-[#141418]/70 text-xs font-medium text-[#8B8B94]">
+                  <th className="px-4 py-3 font-medium">Hackathon</th>
+                  <th className="px-4 py-3 font-medium">Sources</th>
+                  <th className="px-4 py-3 font-medium">Prize</th>
+                  <th className="px-4 py-3 font-medium">Deadline</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.06]">
@@ -865,33 +964,35 @@ export function HackathonRadar({
                   return (
                     <tr
                       key={hack.id}
-                      className="transition-colors hover:bg-white/[0.03]"
+                      className="transition-colors hover:bg-white/[0.025]"
                     >
-                      <td className="px-5 py-4 align-middle">
-                        <SourceBadges sources={hack.sources} />
-                      </td>
-                      <td className="px-5 py-4 align-middle">
-                        <div className="font-medium text-[#F4F3EF]">{hack.title}</div>
+                      <td className="px-4 py-3.5 align-middle">
+                        <a
+                          href={hack.primary_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-medium text-[#F4F3EF] transition-colors hover:text-[#FF8A7A]"
+                        >
+                          {hack.title}
+                        </a>
                         <div className="mt-0.5 text-xs text-[#8B8B94]">
-                          {hack.organizer} · {hack.location}
+                          {hack.organizer} · {formatFormatLabel(hack.format)}
                         </div>
                       </td>
-                      <td className="px-5 py-4 align-middle">
-                        <span className="inline-flex rounded-full border border-white/[0.08] bg-[#18181D] px-2.5 py-0.5 text-xs text-[#A1A1AA]">
-                          {formatFormatLabel(hack.format)}
-                        </span>
+                      <td className="px-4 py-3.5 align-middle">
+                        <SourceBadges sources={hack.sources} />
                       </td>
-                      <td className="font-mono-telemetry px-5 py-4 align-middle text-xs font-semibold whitespace-nowrap text-[#34D399]">
+                      <td className="font-mono-telemetry px-4 py-3.5 align-middle text-xs font-semibold whitespace-nowrap text-[#34D399]">
                         {hack.prize_display}
                       </td>
-                      <td className="px-5 py-4 align-middle">
+                      <td className="px-4 py-3.5 align-middle">
                         <CountdownTimer deadlineAt={hack.deadline_at} compact />
                       </td>
-                      <td className="px-5 py-4 align-middle">
+                      <td className="px-4 py-3.5 align-middle">
                         <OxakalabsStatusBadge status={hack.oxakalabs_status} />
                       </td>
-                      <td className="px-5 py-4 text-right align-middle">
-                        <div className="inline-flex items-center gap-1.5">
+                      <td className="px-4 py-3.5 text-right align-middle">
+                        <div className="inline-flex items-center gap-1">
                           <button
                             type="button"
                             onClick={() => toggleBookmark(hack.id)}
@@ -901,10 +1002,10 @@ export function HackathonRadar({
                                 : `Bookmark ${hack.title}`
                             }
                             aria-pressed={isBookmarked}
-                            className={`press-tactile flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border ${
+                            className={`press-tactile flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition-colors ${
                               isBookmarked
-                                ? "border-[#FF3B1F] bg-[#FF3B1F] text-[#08080A]"
-                                : "border-white/[0.09] bg-[#18181D] text-[#A1A1AA] hover:text-[#F4F3EF]"
+                                ? "bg-[#FF3B1F]/15 text-[#FF5238]"
+                                : "text-[#8B8B94] hover:bg-white/[0.08] hover:text-[#F4F3EF]"
                             }`}
                           >
                             <Bookmark
@@ -916,15 +1017,17 @@ export function HackathonRadar({
                           <button
                             type="button"
                             onClick={() => handleDownloadIcs(hack)}
-                            className="press-tactile font-mono-telemetry inline-flex h-8 cursor-pointer items-center rounded-full border border-white/[0.09] bg-[#18181D] px-2.5 text-xs text-[#D4D4D8] hover:text-[#F4F3EF]"
+                            title="Add deadline to calendar (.ics)"
+                            aria-label={`Add ${hack.title} deadline to calendar`}
+                            className="press-tactile flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-[#8B8B94] transition-colors hover:bg-white/[0.08] hover:text-[#F4F3EF]"
                           >
-                            .ics
+                            <Calendar className="h-3.5 w-3.5" strokeWidth={1.7} />
                           </button>
                           <a
                             href={hack.primary_url}
                             target="_blank"
                             rel="noreferrer"
-                            className="press-tactile inline-flex h-8 items-center gap-1 rounded-full bg-[#FF3B1F] px-3 text-xs font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF5238]"
+                            className="press-tactile ml-1 inline-flex h-8 items-center gap-1 rounded-full bg-[#F4F3EF] px-3 text-xs font-semibold whitespace-nowrap text-[#08080A] hover:bg-[#FF3B1F]"
                           >
                             <span>Apply</span>
                             <ArrowUpRight className="h-3 w-3" strokeWidth={2} />
