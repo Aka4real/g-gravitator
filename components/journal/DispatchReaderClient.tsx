@@ -322,9 +322,9 @@ export function DispatchReaderClient({
     >
       <div className="mx-auto max-w-[1360px] px-5 pt-4 pb-24 sm:px-8 lg:px-12 lg:pb-32">
         {/* Sticky Floating Reader Toolbar */}
-        <div className="sticky top-[76px] z-20 pt-2">
+        <div className="sticky top-[74px] z-20 pt-2 sm:top-[76px]">
           <div
-            className={`flex flex-wrap items-center justify-between gap-3 rounded-full px-4 py-2 sm:px-5 ${
+            className={`flex flex-nowrap items-center justify-between gap-2 rounded-full px-3 py-1.5 sm:gap-3 sm:px-5 sm:py-2 ${
               isLight
                 ? "border border-black/[0.09] bg-[#F4F3EF]/85 text-[#111114] shadow-[0_12px_32px_rgba(8,8,10,0.08)] backdrop-blur-xl"
                 : "glass-chrome text-[#F4F3EF]"
@@ -332,21 +332,21 @@ export function DispatchReaderClient({
           >
             <PreloadLink
               href="/journal"
-              className={`press-tactile inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm font-medium transition-colors ${
+              className={`press-tactile inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-1.5 py-1 text-xs font-medium transition-colors sm:gap-2 sm:px-2 sm:text-sm ${
                 isLight
                   ? "text-[#27272A] hover:text-[#08080A]"
                   : "text-[#D4D4D8] hover:text-[#F4F3EF]"
               }`}
             >
               <ArrowLeft
-                className="h-4 w-4"
+                className="h-3.5 w-3.5 sm:h-4 sm:w-4"
                 style={{ color: accentColor }}
                 strokeWidth={1.8}
               />
               <span>Journal</span>
             </PreloadLink>
 
-            <div className="flex items-center gap-2.5 sm:gap-3.5">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3.5">
               <span
                 className={`font-mono-telemetry hidden items-center gap-1.5 text-xs md:inline-flex ${
                   isLight ? "text-[#52525B]" : "text-[#A1A1AA]"
@@ -366,7 +366,7 @@ export function DispatchReaderClient({
                 type="button"
                 id="dispatch-toolbar-share-btn"
                 onClick={() => setShareOpen(true)}
-                className={`press-tactile inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`press-tactile inline-flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors sm:px-3 ${
                   isLight
                     ? "border-black/[0.12] bg-[#E8E6DF] text-[#111114] hover:border-black/[0.25]"
                     : "border-white/[0.1] bg-[#18181D] text-[#F4F3EF] hover:border-white/[0.22]"
@@ -384,7 +384,7 @@ export function DispatchReaderClient({
               <div
                 role="group"
                 aria-label="Reading theme"
-                className={`inline-flex items-center rounded-full border p-1 ${
+                className={`inline-flex shrink-0 items-center rounded-full border p-0.5 sm:p-1 ${
                   isLight
                     ? "border-black/[0.1] bg-[#E8E6DF]"
                     : "border-white/[0.09] bg-[#0B0B0E]/90"
@@ -393,9 +393,10 @@ export function DispatchReaderClient({
                 <button
                   type="button"
                   id="reader-mode-dark"
+                  aria-label="Dark reading mode"
                   aria-pressed={!isLight}
                   onClick={() => setReadingMode("DARK")}
-                  className={`press-tactile relative inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  className={`press-tactile relative inline-flex cursor-pointer items-center gap-1.5 rounded-full px-2 py-1.5 text-xs font-medium transition-colors sm:px-3 sm:py-1 ${
                     !isLight
                       ? "text-[#08080A]"
                       : "text-[#52525B] hover:text-[#08080A]"
@@ -409,15 +410,16 @@ export function DispatchReaderClient({
                     />
                   )}
                   <Moon className="relative z-10 h-3.5 w-3.5" strokeWidth={1.7} />
-                  <span className="relative z-10">Dark</span>
+                  <span className="relative z-10 hidden sm:inline">Dark</span>
                 </button>
 
                 <button
                   type="button"
                   id="reader-mode-light"
+                  aria-label="Light reading mode"
                   aria-pressed={isLight}
                   onClick={() => setReadingMode("LIGHT")}
-                  className={`press-tactile relative inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  className={`press-tactile relative inline-flex cursor-pointer items-center gap-1.5 rounded-full px-2 py-1.5 text-xs font-medium transition-colors sm:px-3 sm:py-1 ${
                     isLight
                       ? "text-[#F4F3EF]"
                       : "text-[#A1A1AA] hover:text-[#F4F3EF]"
@@ -431,7 +433,7 @@ export function DispatchReaderClient({
                     />
                   )}
                   <Sun className="relative z-10 h-3.5 w-3.5" strokeWidth={1.7} />
-                  <span className="relative z-10">Light</span>
+                  <span className="relative z-10 hidden sm:inline">Light</span>
                 </button>
               </div>
             </div>
